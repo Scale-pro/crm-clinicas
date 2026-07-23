@@ -1,0 +1,90 @@
+# CI de qualidade, arquitetura e segurança (F0.4 — ADR-012).
+# Política de falha:
+#   BLOQUEANTE: build, typecheck, lint, testes, fronteiras (depcruise),
+#               vulnerabilidade high/critical em dependências, secret detectado.
+#   AVISO:      vulnerabilidades moderadas/baixas (job informativo, não bloqueia).
+#   EXCEÇÃO:    deve ser documentada em PR e aprovada em revisão (ver
+#               docs/governance/pr-review.md).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  quality:
+    name: Lint, typecheck, testes e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalação reproduzível
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Testes (inclui testes de arquitetura)
+        run: pnpm test
+      - name: Fronteiras arquiteturais e ciclos (dependency-cruiser)
+        run: pnpm depcruise
+      - name: Build
+        run: pnpm build
+
+  dependency-audit:
+    name: Auditoria de dependências (bloqueia high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalação reproduzível
+        run: pnpm install --frozen-lockfile
+      - name: Auditoria (falha em high/critical)
+        run: pnpm audit --audit-level high
+
+  dependency-audit-informational:
+    name: Auditoria informativa (moderadas/baixas — não bloqueia)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalação reproduzível
+        run: pnpm install --frozen-lockfile
+      - name: Auditoria completa (informativa)
+        run: pnpm audit
+
+  gitleaks:
+    name: Secret scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks (histórico completo, saída com redação)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source=/repo --no-banner --redact --exit-code 1

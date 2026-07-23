@@ -1,0 +1,7 @@
+# Configuração do Gitleaks (F0.4 — ADR-012).
+# Usa o conjunto de regras padrão do Gitleaks. Exceções (falsos positivos)
+# devem ser adicionadas aqui via allowlist, documentadas em PR e revisadas —
+# nunca ignoradas silenciosamente.
+
+[extend]
+useDefault = true
