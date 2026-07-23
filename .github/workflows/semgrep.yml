@@ -43,7 +43,7 @@ jobs:
     env:
       SEMGREP_SEND_METRICS: "off"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Semgrep scan (falha em achados bloqueantes)
         run: |
           semgrep scan \
