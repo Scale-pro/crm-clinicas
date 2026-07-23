@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# builds
+build/
+dist/
+
+# environment files — nunca versionar segredos (ver docs/ops/environments.md)
+.env
+.env.*
+!.env.example
+
+# logs e caches
+*.log
+.turbo/
+coverage/
+.eslintcache
+*.tsbuildinfo
+
+# editor/os
+.DS_Store
+.idea/
+.vscode/
