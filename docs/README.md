@@ -60,6 +60,20 @@ marcados como *pendente* serão criados em commits posteriores, após revisão.
 - `webhook-dlq.md`, `webhook-reconciliation.md`, `security-incident.md`,
   `backup-restore.md`, `provider-outage.md`.
 
+## Ordem recomendada de leitura
+
+Para entender o projeto do geral ao específico:
+
+1. [`../CLAUDE.md`](../CLAUDE.md) — regras operacionais e invariantes (visão rápida).
+2. Este `README.md` — índice, fases e hierarquia das fontes de verdade.
+3. Os **ADRs** em [`adr/`](adr/), na ordem 001 → 012 — as decisões autoritativas.
+4. Documentos de **produto** e **arquitetura** (`product/`, `architecture/`) — *a
+   partir do Commit 2* — para como as decisões são aplicadas.
+5. Documentos de **segurança** e **runbooks** (`security/`, `runbooks/`) — *a
+   partir do Commit 3*.
+6. [`../AGENTS.md`](../AGENTS.md) — porta de entrada curta para agentes (aponta de
+   volta para o CLAUDE.md e os ADRs).
+
 ## Fases de desenvolvimento (visão geral)
 
 | Fase | Escopo |
@@ -85,3 +99,5 @@ dados reais. Não devem ser preenchidos com números inventados:
 - **Retenção do `raw_payload`** dos webhooks (estratégia em camadas; ver Commit 3).
 - **RPO / RTO** e frequência dos testes de restauração.
 - **Prazo de retenção/anonimização** de dados pessoais.
+- **Provedor final de logs e observabilidade** (ex.: Sentry e um provedor de logs
+  ainda não escolhido em definitivo).

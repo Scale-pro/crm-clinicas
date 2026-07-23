@@ -91,7 +91,8 @@ proponha um ADR.
 
 ### Observabilidade, logs e dados pessoais (ADR-012)
 
-- **Nenhuma** ferramenta de monitoramento (Sentry, logs Vercel) recebe
+- **Nenhuma** ferramenta de monitoramento (ex.: Sentry, logs da Vercel — o
+  provedor final de observabilidade ainda é uma decisão pendente) recebe
   automaticamente: corpo de mensagens, telefone completo, e-mail, nome do
   paciente, tokens, cookies, headers de autorização, `raw_payload` do webhook,
   URLs assinadas de arquivos.
