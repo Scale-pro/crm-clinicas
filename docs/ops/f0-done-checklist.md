@@ -71,7 +71,26 @@ Itens que dependem de plano/configuração administrativa do repositório
    possível resolver SHAs nesta sessão por restrição de rede).
 7. **CODEOWNERS** — criar quando houver mais pessoas no projeto (ADR-012).
 
-## 4. Pronto para a F1
+## 4. Pendência: `sharp` / otimização de imagens
+
+O override `sharp@0.35.3` foi **removido** por estar fora da faixa `^0.34.5`
+declarada pelo `next@16.2.11`. Como a F0 não possui imagens/uploads, `sharp`
+(dependência **opcional** do Next) foi desativado via
+`pnpm.ignoredOptionalDependencies` e **não** está instalado. Na Vercel, a
+otimização de imagens é provida pela plataforma, não exigindo `sharp` no build.
+
+**Antes de implementar uploads, imagens de pacientes, avatares ou otimização de
+imagens (fase futura):**
+
+- [ ] Verificar a **compatibilidade oficial** entre a versão do Next.js em uso e
+      uma versão **segura** do `sharp` (sem os CVEs de libvips corrigidos em
+      `>=0.35.0`); preferir uma versão do Next que já declare a faixa segura.
+- [ ] Executar **smoke test real** do `next/image` (não apenas build).
+- [ ] Validar o comportamento na **Vercel** e em qualquer ambiente **self-hosted**.
+- [ ] **Não** reutilizar automaticamente o override removido; decidir a versão
+      com base na compatibilidade oficial vigente.
+
+## 5. Pronto para a F1
 
 Com a F0 concluída, a F1 (multi-tenant, autenticação e segurança de acesso)
 pode ser planejada sobre: estrutura modular com fronteiras verificadas,
