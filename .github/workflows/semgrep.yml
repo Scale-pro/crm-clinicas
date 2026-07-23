@@ -1,0 +1,58 @@
+# SAST via Semgrep Community Edition (F0 — ADR-012).
+#
+# Substitui o CodeQL, que exigia GitHub Advanced Security (indisponível no
+# plano deste repositório) e por isso falhava permanentemente no upload SARIF.
+#
+# Características:
+# - Semgrep CE, sem token nem conta externa; nenhum código ou resultado é
+#   enviado a plataforma externa (métricas desativadas). Os rulesets públicos
+#   `p/*` são apenas BAIXADOS do registry em tempo de execução.
+# - Sem upload SARIF (não há GitHub Code Security neste repositório).
+# - Falha o job em achados de segurança (--error); exceções pontuais somente
+#   via comentário `// nosemgrep: <regra>` (documentável e revisável em PR) ou
+#   via .semgrepignore para diretórios gerados.
+# - Segredos NÃO são escaneados aqui — Gitleaks (ci.yml) é a ferramenta de
+#   secrets.
+# - Imagem pinada por versão (nunca `latest`); digest adicionado no hardening
+#   de imagens.
+name: Semgrep
+
+on:
+  push:
+    branches: ["main", "claude/claude-code-plugin-setup-kysnwn"]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "31 6 * * 1" # semanal, segunda-feira
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semgrep-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: SAST (Semgrep CE — TypeScript/React/Next.js)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: semgrep/semgrep:1.171.0
+    env:
+      SEMGREP_SEND_METRICS: "off"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep scan (falha em achados bloqueantes)
+        run: |
+          semgrep scan \
+            --config=p/typescript \
+            --config=p/react \
+            --config=p/nextjs \
+            --exclude=.next \
+            --exclude=node_modules \
+            --exclude=coverage \
+            --exclude=out \
+            --metrics=off \
+            --error

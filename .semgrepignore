@@ -1,0 +1,7 @@
+# Diretórios gerados/artefatos — não escanear (SAST em código-fonte apenas).
+.next/
+out/
+node_modules/
+coverage/
+*.tsbuildinfo
+pnpm-lock.yaml
