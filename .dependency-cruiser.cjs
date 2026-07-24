@@ -64,6 +64,14 @@ module.exports = {
       from: { pathNot: "^src/shared/queue/" },
       to: { path: "node_modules/@upstash" },
     },
+    {
+      name: "shared-ui-no-domain",
+      severity: "error",
+      comment:
+        "shared/ui é genérico e não pode depender de módulos de domínio (ADR-011, module-boundaries §5).",
+      from: { path: "^src/shared/ui/" },
+      to: { path: "^src/modules/" },
+    },
   ],
   options: {
     doNotFollow: { path: "node_modules" },

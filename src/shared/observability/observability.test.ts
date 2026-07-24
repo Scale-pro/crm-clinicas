@@ -111,6 +111,34 @@ describe("sanitização estrutural", () => {
     expect(out.self).toBe("[CIRCULAR]");
   });
 
+  it("redige Map sem vazar chaves/valores sensíveis", () => {
+    const map = new Map<string, string>([["telefone", "+5511987654321"]]);
+    const out = sanitizeValue({ dados: map }) as Record<string, unknown>;
+    expect(out.dados).toBe("[REDACTED_MAP]");
+    expect(JSON.stringify(out)).not.toContain("987654321");
+  });
+
+  it("redige Set sem vazar itens sensíveis", () => {
+    const set = new Set(["maria@exemplo.com"]);
+    const out = sanitizeValue({ dados: set }) as Record<string, unknown>;
+    expect(out.dados).toBe("[REDACTED_SET]");
+    expect(JSON.stringify(out)).not.toContain("maria@exemplo.com");
+  });
+
+  it("redige Buffer sem vazar bytes", () => {
+    const buf = Buffer.from("token=eyJabc.def.ghi", "utf8");
+    const out = sanitizeValue({ dados: buf }) as Record<string, unknown>;
+    expect(out.dados).toBe("[REDACTED_BINARY]");
+    expect(JSON.stringify(out)).not.toContain("eyJabc");
+  });
+
+  it("redige TypedArray/ArrayBuffer sem vazar conteúdo", () => {
+    const typed = new Uint8Array([104, 105]); // "hi"
+    const out = sanitizeValue({ a: typed, b: typed.buffer }) as Record<string, unknown>;
+    expect(out.a).toBe("[REDACTED_BINARY]");
+    expect(out.b).toBe("[REDACTED_BINARY]");
+  });
+
   it("não altera o objeto original", () => {
     const original = { telefone: "+5511987654321", nested: { password: "abc" } };
     sanitizeValue(original);
