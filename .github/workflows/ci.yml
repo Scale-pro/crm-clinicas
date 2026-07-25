@@ -21,6 +21,10 @@ concurrency:
 
 env:
   NEXT_TELEMETRY_DISABLED: "1"
+  APP_ENV: development
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: local-build-placeholder
+  ACTIVE_CLINIC_COOKIE_SECRET: local-ci-cookie-secret-at-least-32-characters
 
 jobs:
   quality:
@@ -89,3 +93,79 @@ jobs:
           docker run --rm -v "$PWD:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             detect --source=/repo --no-banner --redact --exit-code 1
+
+  database-auth:
+    name: Banco, Auth, RLS e isolamento
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalação reproduzível
+        run: pnpm install --frozen-lockfile
+      - name: Confirma Supabase CLI versionada
+        run: test "$(pnpm --silent supabase --version)" = "2.109.1"
+      - name: Inicia stack Supabase local
+        shell: bash
+        run: |
+          if ! pnpm --silent supabase start > "$RUNNER_TEMP/supabase-start.log" 2>&1; then
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$RUNNER_TEMP/supabase-start.log"
+            exit 1
+          fi
+          pnpm --silent supabase status -o env > "$RUNNER_TEMP/supabase.env"
+      - name: Exporta somente credenciais da stack local
+        shell: bash
+        run: |
+          set -o allexport
+          source "$RUNNER_TEMP/supabase.env"
+          set +o allexport
+
+          public_key="${PUBLISHABLE_KEY:-${ANON_KEY:-}}"
+          admin_key="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          test -n "${API_URL:-}"
+          test -n "$public_key"
+          test -n "$admin_key"
+          case "$API_URL" in
+            http://127.0.0.1:*|http://localhost:*) ;;
+            *) echo "A stack de testes não é local."; exit 1 ;;
+          esac
+
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$admin_key"
+          {
+            echo "API_URL=$API_URL"
+            echo "SERVICE_ROLE_KEY=$admin_key"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$public_key"
+            if test -n "${PUBLISHABLE_KEY:-}"; then
+              echo "PUBLIC_KEY_KIND=publishable"
+            else
+              echo "PUBLIC_KEY_KIND=anon"
+            fi
+          } >> "$GITHUB_ENV"
+      - name: Reaplica migrations em banco vazio
+        run: pnpm --silent supabase db reset
+      - name: Gera e valida tipos do banco local
+        shell: bash
+        run: |
+          pnpm --silent db:types > "$RUNNER_TEMP/database.types.ts"
+          test -s "$RUNNER_TEMP/database.types.ts"
+          grep -q "export type Database" "$RUNNER_TEMP/database.types.ts"
+      - name: Testes de integração, Auth, RLS e isolamento
+        run: pnpm test:integration
+      - name: Diagnóstico sanitizado em caso de falha
+        if: failure()
+        shell: bash
+        run: |
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          pnpm --silent supabase status || true
+      - name: Encerra stack Supabase
+        if: always()
+        run: pnpm --silent supabase stop --no-backup

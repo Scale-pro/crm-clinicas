@@ -72,6 +72,16 @@ module.exports = {
       from: { path: "^src/shared/ui/" },
       to: { path: "^src/modules/" },
     },
+    {
+      name: "src-must-not-import-test-admin",
+      severity: "error",
+      comment:
+        "Código da aplicação nunca pode importar o cliente administrativo exclusivo de testes.",
+      from: { path: "^src/" },
+      to: {
+        path: "^tests/integration/helpers/create-test-admin-client\\.ts$",
+      },
+    },
   ],
   options: {
     doNotFollow: { path: "node_modules" },

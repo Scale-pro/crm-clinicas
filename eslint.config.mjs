@@ -24,6 +24,11 @@ const restrictedSdkPatterns = {
     message:
       "Importe apenas a interface pública do módulo (@/modules/<nome>) — ADR-003.",
   },
+  testAdminHelper: {
+    regex:
+      "(^|/)tests/integration/helpers/create-test-admin-client(?:\\.[cm]?[jt]s)?$",
+    message: "O cliente administrativo local pertence exclusivamente aos testes.",
+  },
 };
 
 export default defineConfig([
@@ -40,7 +45,16 @@ export default defineConfig([
             restrictedSdkPatterns.supabase,
             restrictedSdkPatterns.upstash,
             restrictedSdkPatterns.moduleInternals,
+            restrictedSdkPatterns.testAdminHelper,
           ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "FunctionDeclaration[id.name='createServiceRoleClient'], VariableDeclarator[id.name='createServiceRoleClient']",
+          message: "É proibido criar cliente service role em src/.",
         },
       ],
     },
@@ -55,6 +69,7 @@ export default defineConfig([
           patterns: [
             restrictedSdkPatterns.upstash,
             restrictedSdkPatterns.moduleInternals,
+            restrictedSdkPatterns.testAdminHelper,
           ],
         },
       ],
@@ -70,6 +85,23 @@ export default defineConfig([
           patterns: [
             restrictedSdkPatterns.supabase,
             restrictedSdkPatterns.moduleInternals,
+            restrictedSdkPatterns.testAdminHelper,
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Exceção fechada: cliente administrativo exclusivo da stack local de testes.
+    files: ["tests/integration/helpers/create-test-admin-client.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            restrictedSdkPatterns.upstash,
+            restrictedSdkPatterns.moduleInternals,
+            restrictedSdkPatterns.testAdminHelper,
           ],
         },
       ],
