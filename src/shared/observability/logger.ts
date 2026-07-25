@@ -40,7 +40,6 @@ export interface Logger {
   error(msg: string, context?: LogContext & { error?: unknown }): void;
 }
 
-/* eslint-disable no-console -- único ponto autorizado de console (CLAUDE.md) */
 const consoleSink: LogSink = {
   write(event) {
     const line = JSON.stringify(event);
@@ -49,7 +48,6 @@ const consoleSink: LogSink = {
     else console.log(line);
   },
 };
-/* eslint-enable no-console */
 
 export interface LoggerOptions {
   sink?: LogSink;
