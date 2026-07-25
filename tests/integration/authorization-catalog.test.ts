@@ -145,10 +145,11 @@ describe("catálogo de autorização e RLS", () => {
       expect(routine.proconfig).toContain('search_path=""');
       expect(routine.anon_execute).toBe(false);
 
-      const isPublicGuard =
+      const isApprovedPublicRpc =
         routine.schema_name === "public" &&
-        routine.proname.startsWith("current_user_");
-      expect(routine.authenticated_execute).toBe(isPublicGuard);
+        (routine.proname.startsWith("current_user_") ||
+          routine.proname === "create_clinic_with_owner");
+      expect(routine.authenticated_execute).toBe(isApprovedPublicRpc);
       expect(routine.identity_arguments).not.toMatch(/\buser_id\b/);
     }
   });

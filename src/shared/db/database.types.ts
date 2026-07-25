@@ -11,6 +11,14 @@ export type Database = {
     Tables: Record<string, never>;
     Views: Record<string, never>;
     Functions: {
+      create_clinic_with_owner: {
+        Args: {
+          clinic_name: string;
+          clinic_slug: string;
+          clinic_timezone: string;
+        };
+        Returns: string;
+      };
       current_user_clinic_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];
