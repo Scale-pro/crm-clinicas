@@ -130,6 +130,7 @@ jobs:
           public_key="${PUBLISHABLE_KEY:-${ANON_KEY:-}}"
           admin_key="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
           test -n "${API_URL:-}"
+          test -n "${DB_URL:-}"
           test -n "$public_key"
           test -n "$admin_key"
           case "$API_URL" in
@@ -139,6 +140,7 @@ jobs:
 
           echo "::add-mask::$public_key"
           echo "::add-mask::$admin_key"
+          echo "::add-mask::$DB_URL"
           if test -n "${PUBLISHABLE_KEY:-}"; then
             public_key_kind="publishable"
           else
@@ -147,6 +149,7 @@ jobs:
           {
             echo "API_URL=$API_URL"
             echo "SERVICE_ROLE_KEY=$admin_key"
+            echo "DB_URL=$DB_URL"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$public_key"
             echo "PUBLIC_KEY_KIND=$public_key_kind"
