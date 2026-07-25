@@ -20,6 +20,22 @@ function requireLocalStack() {
   return { key, url };
 }
 
+function requireLocalPublicStack() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Credenciais públicas da stack Supabase local não configuradas.");
+  }
+
+  const parsed = new URL(url);
+  if (!LOCAL_HOSTS.has(parsed.hostname)) {
+    throw new Error("O cliente autenticado aceita somente a stack Supabase local.");
+  }
+
+  return { key, url };
+}
+
 /**
  * Cliente administrativo exclusivo dos testes de integração. A validação de
  * loopback impede o uso acidental com qualquer projeto remoto.
@@ -27,6 +43,17 @@ function requireLocalStack() {
 export function createTestAdminClient() {
   const { key, url } = requireLocalStack();
   return createClient<Database>(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/**
+ * Cliente de usuário final: usa apenas a chave pública produzida pela stack
+ * local. A autorização real vem do JWT obtido no sign-in do usuário fictício.
+ */
+export function createTestUserClient() {
+  const { key, url } = requireLocalPublicStack();
+  return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
