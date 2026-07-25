@@ -139,17 +139,19 @@ jobs:
 
           echo "::add-mask::$public_key"
           echo "::add-mask::$admin_key"
+          if test -n "${PUBLISHABLE_KEY:-}"; then
+            public_key_kind="publishable"
+          else
+            public_key_kind="anon"
+          fi
           {
             echo "API_URL=$API_URL"
             echo "SERVICE_ROLE_KEY=$admin_key"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$public_key"
-            if test -n "${PUBLISHABLE_KEY:-}"; then
-              echo "PUBLIC_KEY_KIND=publishable"
-            else
-              echo "PUBLIC_KEY_KIND=anon"
-            fi
+            echo "PUBLIC_KEY_KIND=$public_key_kind"
           } >> "$GITHUB_ENV"
+          echo "Tipo de chave pública local detectado: $public_key_kind"
       - name: Reaplica migrations em banco vazio
         run: pnpm --silent supabase db reset
       - name: Gera e valida tipos do banco local
