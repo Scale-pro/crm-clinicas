@@ -160,9 +160,27 @@ jobs:
       - name: Gera e valida tipos do banco local
         shell: bash
         run: |
-          pnpm --silent db:types > "$RUNNER_TEMP/database.types.ts"
-          test -s "$RUNNER_TEMP/database.types.ts"
-          grep -q "export type Database" "$RUNNER_TEMP/database.types.ts"
+          types_file="$RUNNER_TEMP/database.types.ts"
+          types_log="$RUNNER_TEMP/database-types.log"
+          generated=false
+          for attempt in 1 2 3; do
+            if pnpm --silent db:types > "$types_file" 2> "$types_log"; then
+              generated=true
+              break
+            fi
+
+            echo "Geração de tipos falhou na tentativa $attempt/3."
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$types_log"
+            if test "$attempt" -lt 3; then
+              sleep "$((attempt * 10))"
+            fi
+          done
+          test "$generated" = true
+          test -s "$types_file"
+          grep -q "export type Database" "$types_file"
       - name: Testes de integração, Auth, RLS e isolamento
         run: pnpm test:integration
       - name: Diagnóstico sanitizado em caso de falha
@@ -170,7 +188,12 @@ jobs:
         shell: bash
         run: |
           docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
-          pnpm --silent supabase status || true
+          if test -f "$RUNNER_TEMP/supabase-start.log"; then
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$RUNNER_TEMP/supabase-start.log" | tail -n 80
+          fi
       - name: Encerra stack Supabase
         if: always()
         run: pnpm --silent supabase stop --no-backup
