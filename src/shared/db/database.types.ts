@@ -6,16 +6,33 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-/**
- * Replaced by `pnpm db:types` after the F1 migrations exist. Keeping the
- * generated-file contract in F1.1 lets both SSR clients share one type source.
- */
 export type Database = {
   public: {
     Tables: Record<string, never>;
     Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Functions: {
+      current_user_clinic_ids: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[];
+      };
+      current_user_has_permission: {
+        Args: {
+          clinic_id: string;
+          permission_key: string;
+        };
+        Returns: boolean;
+      };
+      current_user_is_platform_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+    };
+    Enums: {
+      support_access_level:
+        | "read_only"
+        | "support_operations"
+        | "restricted_write";
+    };
     CompositeTypes: Record<string, never>;
   };
 };
