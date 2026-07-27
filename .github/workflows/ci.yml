@@ -21,6 +21,11 @@ concurrency:
 
 env:
   NEXT_TELEMETRY_DISABLED: "1"
+  APP_ENV: development
+  APP_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: local-build-placeholder
+  ACTIVE_CLINIC_COOKIE_SECRET: local-ci-cookie-secret-at-least-32-characters
 
 jobs:
   quality:
@@ -28,6 +33,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirma SHA testado
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+          echo "SHA testado: $actual_sha"
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -51,6 +65,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirma SHA testado
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+          echo "SHA testado: $actual_sha"
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -67,6 +90,15 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirma SHA testado
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+          echo "SHA testado: $actual_sha"
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -84,8 +116,129 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirma SHA testado
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+          echo "SHA testado: $actual_sha"
       - name: Gitleaks (histórico completo, saída com redação)
         run: |
           docker run --rm -v "$PWD:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             detect --source=/repo --no-banner --redact --exit-code 1
+
+  database-auth:
+    name: Banco, Auth, RLS e isolamento
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirma SHA testado
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+          echo "SHA testado: $actual_sha"
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalação reproduzível
+        run: pnpm install --frozen-lockfile
+      - name: Confirma Supabase CLI versionada
+        run: test "$(pnpm --silent supabase --version)" = "2.109.1"
+      - name: Inicia stack Supabase local
+        shell: bash
+        run: |
+          if ! pnpm --silent supabase start > "$RUNNER_TEMP/supabase-start.log" 2>&1; then
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$RUNNER_TEMP/supabase-start.log"
+            exit 1
+          fi
+          pnpm --silent supabase status -o env > "$RUNNER_TEMP/supabase.env"
+      - name: Exporta somente credenciais da stack local
+        shell: bash
+        run: |
+          set -o allexport
+          source "$RUNNER_TEMP/supabase.env"
+          set +o allexport
+
+          public_key="${PUBLISHABLE_KEY:-${ANON_KEY:-}}"
+          admin_key="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
+          test -n "${API_URL:-}"
+          test -n "${DB_URL:-}"
+          test -n "$public_key"
+          test -n "$admin_key"
+          case "$API_URL" in
+            http://127.0.0.1:*|http://localhost:*) ;;
+            *) echo "A stack de testes não é local."; exit 1 ;;
+          esac
+
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$admin_key"
+          echo "::add-mask::$DB_URL"
+          if test -n "${PUBLISHABLE_KEY:-}"; then
+            public_key_kind="publishable"
+          else
+            public_key_kind="anon"
+          fi
+          {
+            echo "API_URL=$API_URL"
+            echo "SERVICE_ROLE_KEY=$admin_key"
+            echo "DB_URL=$DB_URL"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$public_key"
+            echo "PUBLIC_KEY_KIND=$public_key_kind"
+          } >> "$GITHUB_ENV"
+          echo "Tipo de chave pública local detectado: $public_key_kind"
+      - name: Reaplica migrations em banco vazio
+        run: pnpm --silent supabase db reset
+      - name: Gera e valida tipos do banco local
+        shell: bash
+        run: |
+          types_file="$RUNNER_TEMP/database.types.ts"
+          types_log="$RUNNER_TEMP/database-types.log"
+          generated=false
+          for attempt in 1 2 3; do
+            if pnpm --silent db:types > "$types_file" 2> "$types_log"; then
+              generated=true
+              break
+            fi
+
+            echo "Geração de tipos falhou na tentativa $attempt/3."
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$types_log"
+            if test "$attempt" -lt 3; then
+              sleep "$((attempt * 10))"
+            fi
+          done
+          test "$generated" = true
+          test -s "$types_file"
+          grep -q "export type Database" "$types_file"
+      - name: Testes de integração, Auth, RLS e isolamento
+        run: pnpm test:integration
+      - name: Diagnóstico sanitizado em caso de falha
+        if: failure()
+        shell: bash
+        run: |
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          if test -f "$RUNNER_TEMP/supabase-start.log"; then
+            sed -E \
+              -e '/(anon|publishable|secret|service.?role)[ _-]?key/Id' \
+              -e 's/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              "$RUNNER_TEMP/supabase-start.log" | tail -n 80
+          fi
+      - name: Encerra stack Supabase
+        if: always()
+        run: pnpm --silent supabase stop --no-backup

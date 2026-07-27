@@ -20,9 +20,13 @@ import { describe, expect, it } from "vitest";
 const projectRoot = path.resolve(__dirname, "..", "..");
 const serverOnlyEntrypoints = [
   "src/shared/db/index.ts",
+  "src/shared/db/server.ts",
   "src/shared/queue/index.ts",
   "src/shared/auth/index.ts",
   "src/shared/config/index.ts",
+  "src/modules/identity/index.ts",
+  "src/modules/tenancy/index.ts",
+  "src/modules/platform-admin/index.ts",
 ];
 
 function firstCodeLine(file: string): string | undefined {
@@ -41,4 +45,14 @@ describe("guarda server-only nas interfaces de infraestrutura", () => {
       expect(firstCodeLine(path.join(projectRoot, entry))).toBe('import "server-only";');
     });
   }
+});
+
+describe("cliente Supabase do navegador", () => {
+  it("não contém marcador server-only", () => {
+    const browserClient = readFileSync(
+      path.join(projectRoot, "src/shared/db/browser.ts"),
+      "utf8",
+    );
+    expect(browserClient).not.toContain('import "server-only"');
+  });
 });

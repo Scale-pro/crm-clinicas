@@ -80,6 +80,17 @@ describe("fronteiras arquiteturais (dependency-cruiser, regras reais)", () => {
     expect(output).toContain("shared-must-not-depend-on-modules");
   });
 
+  it("bloqueia caso de uso de domínio recolocado em shared/auth", () => {
+    write(
+      "src/shared/auth/invitations.ts",
+      `import { db } from "../db";\nexport const invite = () => db;\n`,
+    );
+    write("src/shared/db.ts", `export const db = 1;\n`);
+    const { code, output } = runDepcruise();
+    expect(code).not.toBe(0);
+    expect(output).toContain("no-domain-use-cases-in-shared-auth");
+  });
+
   it("bloqueia importação de internals de outro módulo", () => {
     write("src/modules/a/index.ts", `import { secret } from "../b/internal";\nexport const a = secret;\n`);
     write("src/modules/b/internal.ts", `export const secret = 42;\n`);

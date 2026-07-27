@@ -7,8 +7,8 @@ não criamos diretórios ou interfaces vazias antecipadamente.
 
 | Módulo | Responsabilidade | Fase |
 |---|---|---|
-| `tenancy` | clínicas, membros, convites, features/limites, support_grants | F1 |
-| `identity` | auth, papéis, permissões, sessão, guards | F1 |
+| `tenancy` | clínicas, membros, convites, features/limites e contexto ativo | F1 |
+| `identity` | conta, login, recuperação e MFA | F1 |
 | `contacts` | contato unificado, normalização, deduplicação | F2 |
 | `pipeline` | oportunidades, estágios, activities, motivos de perda | F2 |
 | `tasks` | follow-ups, lembretes (cron) | F2 |
@@ -17,7 +17,7 @@ não criamos diretórios ou interfaces vazias antecipadamente.
 | `scheduling` | profissionais, procedimentos, agendamentos, patients | F4 |
 | `quotes` | orçamentos e itens | F4 |
 | `reporting` | dashboard e relatórios | F6 |
-| `platform-admin` | lógica do superadmin (isolada) | F1+ |
+| `platform-admin` | listagem da plataforma, support grants e leituras allowlisted | F1+ |
 
 ## Regras (verificadas por ESLint e dependency-cruiser)
 

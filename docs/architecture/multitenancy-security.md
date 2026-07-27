@@ -40,19 +40,23 @@ revalidada contra os vínculos reais
   `profissional`) e permissões vivem em `roles`/`permissions`/`role_permissions`
   (ver [data-model](data-model.md)). Cargos personalizados = preparado, não no MVP.
 
-## 3. RLS — políticas separadas por operação
+## 3. RLS para leitura e RPCs para escrita
 
 Para toda tabela de tenant ([ADR-002](../adr/ADR-002-supabase-acesso-hibrido.md),
 [ADR-004](../adr/ADR-004-multitenant-membership-based.md)):
 
 - `enable` **e** `FORCE ROW LEVEL SECURITY` (vale até para o dono da tabela).
-- **Políticas separadas** para SELECT / INSERT / UPDATE / DELETE.
-- `WITH CHECK` impede alteração de `clinic_id` (anti-reatribuição de tenant).
+- Leitura autorizada por políticas de `SELECT` escopadas ao vínculo real.
+- Escrita normal somente por RPC autorizada; `authenticated` não tem `GRANT`
+  direto de `INSERT`, `UPDATE` ou `DELETE` nas tabelas de tenant.
+- Cada RPC valida identidade, tenant, permissão, AAL2 quando aplicável e
+  parâmetros. A ausência de política de escrita direta é intencional.
 - `clinic_id` é a **primeira coluna** dos índices compostos de tenant.
 - Performance: `(select auth.uid())` (avaliação única por statement) e funções
   auxiliares `stable`.
 
-Exemplo **conceitual, não implementado**:
+Exemplo **conceitual, não implementado**, para uma futura exceção que realmente
+precise de escrita direta pela Data API:
 
 ```sql
 -- ILUSTRATIVO — não é migration
@@ -64,6 +68,9 @@ using     ( clinic_id in (select auth_clinic_ids()) )
 with check ( clinic_id in (select auth_clinic_ids())
              and has_permission(clinic_id, 'contact.edit') );
 ```
+
+Essa exceção também exige `GRANT` mínimo explícito, políticas separadas,
+proteção contra alteração de `clinic_id` e teste específico de catálogo.
 
 ## 4. Service role — lista fechada
 
@@ -105,8 +112,8 @@ permissão), **validação de campos permitidos** (allowlist/Zod) e **RLS** no b
 | Ameaça | Controle | Camada responsável | Teste futuro | Fase |
 |---|---|---|---|---|
 | Leitura cross-tenant | RLS SELECT por `auth_clinic_ids()` | Banco | SELECT de outra clínica → 0 linhas | F1 |
-| Escrita/edição cross-tenant | RLS INSERT/UPDATE/DELETE + `WITH CHECK` | Banco | UPDATE/DELETE de outra clínica negado | F1 |
-| Reatribuição de `clinic_id` | `WITH CHECK` impede troca | Banco | mover registro p/ outra clínica negado | F1 |
+| Escrita/edição cross-tenant | RPC autorizada; sem DML direto para `authenticated` | Banco | RPC com clínica alheia e DML direto negados | F1 |
+| Reatribuição de `clinic_id` | RPC não expõe reatribuição; sem UPDATE direto | Banco | mover registro p/ outra clínica negado | F1 |
 | Confiar em `clinic_id` do cliente | tenant vem do vínculo, não do payload | App + Banco | payload com `clinic_id` alheio ignorado | F1/F3 |
 | Escalada por cargo | `has_permission` por ação | App + Banco | ação sem permissão negada | F1/F2 |
 | `service role` indevida | lista fechada + verificação automática | App/CI | lint detecta uso fora da lista | F0/F1 |
@@ -114,6 +121,7 @@ permissão), **validação de campos permitidos** (allowlist/Zod) e **RLS** no b
 | Superadmin onipotente | isolamento + grant escopado/auditado | App + Banco | superadmin sem grant negado | F1 |
 | Abuso de support grant | níveis, expiração, ações proibidas, auditoria | App + Banco | grant expirado/proibido negado | F1 |
 | Tabela nova sem RLS | verificação no catálogo | CI | toda tabela de tenant tem RLS | F0 |
+| `GRANT` DML inseguro | catálogo exige política separada, `USING`, `WITH CHECK` e proteção do tenant | CI | mutação controlada do catálogo falha | F1 |
 | Mass assignment | allowlist Zod; sem `insert(body)` cru | App | escrita fora da allowlist rejeitada | F2 |
 | PII/segredo em logs | logger sanitizado central | App | scanner detecta PII/raw_payload em log | F0/F3 |
 

@@ -13,15 +13,24 @@ import { z } from "zod";
  */
 
 /** Ambiente lógico da aplicação (independente de NODE_ENV, que é do build). */
-export const serverEnvSchema = z.object({
-  APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
+const supabasePublicEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+});
+
+export const serverEnvSchema = supabasePublicEnvSchema.extend({
+  APP_URL: z.url(),
+  APP_ENV: z
+    .enum(["development", "test", "staging", "production"])
+    .default("development"),
+  ACTIVE_CLINIC_COOKIE_SECRET: z.string().min(32),
 });
 
 /**
  * Variáveis públicas (client). Nenhuma é necessária na fundação; o schema
  * existe para fixar o mecanismo — novas chaves NEXT_PUBLIC_* entram aqui.
  */
-export const clientEnvSchema = z.object({});
+export const clientEnvSchema = supabasePublicEnvSchema;
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export type ClientEnv = z.infer<typeof clientEnvSchema>;

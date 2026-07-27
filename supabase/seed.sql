@@ -1,0 +1,2 @@
+-- Catálogos estruturais da F1 são versionados nas migrations.
+-- Este seed permanece intencionalmente sem usuários, clínicas ou dados reais.

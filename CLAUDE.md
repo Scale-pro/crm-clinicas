@@ -49,9 +49,14 @@ proponha um ADR.
 
 ### Multi-tenant e banco (ADR-002, ADR-004)
 
-- Toda tabela de tenant tem `clinic_id` obrigatório (FK), RLS `enable` + `force`,
-  e **políticas separadas** para SELECT/INSERT/UPDATE/DELETE.
-- `with check` **impede a alteração de `clinic_id`** em updates/inserts.
+- Toda tabela de tenant tem `clinic_id` obrigatório (FK) e RLS `enable` +
+  `force`; as leituras autorizadas usam políticas de `SELECT`.
+- Escritas normais de tenant são feitas somente por RPCs autorizadas.
+  `authenticated` não recebe `GRANT` direto de `INSERT`/`UPDATE`/`DELETE`.
+- Toda RPC de mutação valida identidade, tenant, permissão, AAL2 quando
+  aplicável e parâmetros. A ausência de política de escrita é intencional.
+- Escrita direta futura pela Data API exige `GRANT` mínimo, política separada,
+  `USING`, `WITH CHECK`, proteção de `clinic_id` e teste de catálogo.
 - `clinic_id` é a **primeira coluna** de índices compostos de tenant.
 - **Nunca** confiar em `clinic_id` vindo do frontend ou de payload externo.
 - `clinic_id` ativo é só contexto de navegação/filtro; é **revalidado** contra os
@@ -71,7 +76,8 @@ proponha um ADR.
 - Autorização por **ação/permissão** (`has_permission`), nunca por comparação de
   cargo espalhada.
 - Toda operação exige, no servidor: **guard** (sessão + tenant + permissão),
-  **validação de campos permitidos** (allowlist/Zod) e **RLS** no banco.
+  **validação de campos permitidos** (allowlist/Zod) e controle no banco (RLS
+  para leitura; RPC autorizada para escrita).
 - **`PermissionGate` é apenas UX** (esconder/desabilitar na interface). **Nunca**
   é mecanismo de autorização.
 
