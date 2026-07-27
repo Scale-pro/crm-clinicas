@@ -15,6 +15,7 @@ const userIds: string[] = [];
 let clinicA: string;
 let clinicB: string;
 let owner: Awaited<ReturnType<typeof createUser>>;
+let ownerB: Awaited<ReturnType<typeof createUser>>;
 let platformAdmin: Awaited<ReturnType<typeof createUser>>;
 let platformAdminAal1: Awaited<ReturnType<typeof createUser>>;
 
@@ -60,8 +61,9 @@ async function createGrant() {
 }
 
 beforeAll(async () => {
-  [owner, platformAdmin, platformAdminAal1] = await Promise.all([
+  [owner, ownerB, platformAdmin, platformAdminAal1] = await Promise.all([
     createUser("support-owner"),
+    createUser("support-owner-b"),
     createUser("platform-aal2", true),
     createUser("platform-aal1"),
   ]);
@@ -70,9 +72,14 @@ beforeAll(async () => {
     `insert into public.clinics (name, slug, timezone, created_by)
      values
        ('Clínica Suporte A', $1, 'America/Sao_Paulo', $3),
-       ('Clínica Suporte B', $2, 'America/Sao_Paulo', $3)
+       ('Clínica Suporte B', $2, 'America/Sao_Paulo', $4)
      returning id`,
-    [`support-a-${crypto.randomUUID()}`, `support-b-${crypto.randomUUID()}`, owner.id],
+    [
+      `support-a-${crypto.randomUUID()}`,
+      `support-b-${crypto.randomUUID()}`,
+      owner.id,
+      ownerB.id,
+    ],
   );
   clinicA = clinics.rows[0]!.id;
   clinicB = clinics.rows[1]!.id;
