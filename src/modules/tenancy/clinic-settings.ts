@@ -2,9 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { requireAal2, requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
-
-import { requireAal2, requirePermission } from "./session";
 
 const settingsSchema = z
   .object({

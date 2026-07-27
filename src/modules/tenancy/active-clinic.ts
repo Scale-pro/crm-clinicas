@@ -7,17 +7,16 @@ import { z } from "zod";
 import { serverEnv } from "@/shared/config";
 import { createServerSupabaseClient } from "@/shared/db";
 import { errorCapture } from "@/shared/observability";
-
 import {
   ACTIVE_CLINIC_COOKIE_NAME,
   canSelectClinic,
+  requireSession,
   resolveClinicSelection,
+  safeInternalRedirect,
   signActiveClinicValue,
   type ClinicChoice,
   verifyActiveClinicValue,
-} from "./active-clinic-cookie";
-import { safeInternalRedirect } from "./safe-redirect";
-import { requireSession } from "./session";
+} from "@/shared/auth";
 
 const selectionSchema = z
   .object({

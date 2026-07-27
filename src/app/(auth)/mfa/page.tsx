@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getMfaState, safeInternalRedirect } from "@/shared/auth";
+import { getMfaState } from "@/modules/identity";
+import { safeInternalRedirect } from "@/shared/auth";
 import { ErrorState } from "@/shared/ui/error-state";
 import { MfaChallengeForm, MfaEnrollmentForm } from "./mfa-form";
 

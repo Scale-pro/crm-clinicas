@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   ACTIVE_CLINIC_COOKIE_NAME,
-  activeClinicCookieOptions,
   signOutCurrentSession,
 } from "@/shared/auth";
+import { activeClinicCookieOptions } from "@/modules/tenancy";
 
 export async function POST(request: Request) {
   if (request.headers.get("origin") !== new URL(request.url).origin) {

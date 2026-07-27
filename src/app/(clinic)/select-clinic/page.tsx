@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { listCurrentUserClinics } from "@/shared/auth";
+import { listCurrentUserClinics } from "@/modules/tenancy";
 import { ClinicSelector } from "@/shared/ui/clinic-selector";
 import { ErrorState } from "@/shared/ui/error-state";
 import { selectClinicFormAction } from "../actions";

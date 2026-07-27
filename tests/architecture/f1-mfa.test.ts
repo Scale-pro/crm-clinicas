@@ -8,7 +8,7 @@ const migration = readFileSync(
   "utf8",
 ).toLowerCase();
 const security = readFileSync(
-  path.join(root, "src/shared/auth/account-security.ts"),
+  path.join(root, "src/modules/identity/account-security.ts"),
   "utf8",
 );
 const callback = readFileSync(

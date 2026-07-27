@@ -3,10 +3,9 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
+import { requireAal2, requireSession } from "@/shared/auth";
 import { serverEnv } from "@/shared/config";
 import { createServerSupabaseClient } from "@/shared/db";
-
-import { requireAal2, requireSession } from "./session";
 
 const inviteSchema = z.object({
   clinicId: z.uuid(),

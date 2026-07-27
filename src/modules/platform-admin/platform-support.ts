@@ -2,9 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { requirePlatformAdmin } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
-
-import { requirePlatformAdmin } from "./session";
 
 const supportGrantSchema = z
   .object({

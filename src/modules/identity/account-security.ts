@@ -4,9 +4,11 @@ import { z } from "zod";
 
 import { serverEnv } from "@/shared/config";
 import { createServerSupabaseClient } from "@/shared/db";
-
-import { safeInternalRedirect } from "./safe-redirect";
-import { requireAal2, requireSession } from "./session";
+import {
+  requireAal2,
+  requireSession,
+  safeInternalRedirect,
+} from "@/shared/auth";
 
 const credentialsSchema = z.object({
   email: z.email().max(320),

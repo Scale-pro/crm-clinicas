@@ -4,14 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
-  inviteClinicMember,
   removeOwnTotpFactor,
+  updateOwnPassword,
+} from "@/modules/identity";
+import {
+  inviteClinicMember,
   resolveActiveClinicContext,
-  safeInternalRedirect,
   selectActiveClinic,
   updateClinicSettings,
-  updateOwnPassword,
-} from "@/shared/auth";
+} from "@/modules/tenancy";
+import { safeInternalRedirect } from "@/shared/auth";
 
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);

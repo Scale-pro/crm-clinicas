@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMfaState } from "@/shared/auth";
+import { getMfaState } from "@/modules/identity";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { removeMfaFormAction } from "../../actions";

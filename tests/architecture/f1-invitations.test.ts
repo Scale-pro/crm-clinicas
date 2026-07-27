@@ -13,7 +13,7 @@ const safetyMigration = readFileSync(
 ).toLowerCase();
 const migration = `${baseMigration}\n${safetyMigration}`;
 const app = readFileSync(
-  path.join(root, "src/shared/auth/invitations.ts"),
+  path.join(root, "src/modules/tenancy/invitations.ts"),
   "utf8",
 );
 

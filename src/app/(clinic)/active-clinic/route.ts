@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { safeInternalRedirect, selectActiveClinic } from "@/shared/auth";
+import { selectActiveClinic } from "@/modules/tenancy";
+import { safeInternalRedirect } from "@/shared/auth";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

@@ -7,7 +7,7 @@ const sql = readFileSync(
   "utf8",
 ).toLowerCase();
 const serverModule = readFileSync(
-  path.resolve(__dirname, "../../src/shared/auth/platform-support.ts"),
+  path.resolve(__dirname, "../../src/modules/platform-admin/platform-support.ts"),
   "utf8",
 );
 const platformPage = readFileSync(

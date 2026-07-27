@@ -3,17 +3,19 @@
 import { redirect } from "next/navigation";
 
 import {
-  acceptClinicInvitation,
-  createInitialClinic,
   enrollTotp,
   loginWithPassword,
   registerAccount,
   requestPasswordReset,
-  safeInternalRedirect,
-  selectActiveClinic,
   updateOwnPassword,
   verifyTotp,
-} from "@/shared/auth";
+} from "@/modules/identity";
+import {
+  acceptClinicInvitation,
+  createInitialClinic,
+  selectActiveClinic,
+} from "@/modules/tenancy";
+import { safeInternalRedirect } from "@/shared/auth";
 
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);

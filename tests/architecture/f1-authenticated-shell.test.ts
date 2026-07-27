@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const root = path.resolve(__dirname, "../..");
 const source = (relative: string) => readFileSync(path.join(root, relative), "utf8");
-const clinicContext = source("src/shared/auth/active-clinic.ts");
+const clinicContext = source("src/modules/tenancy/active-clinic.ts");
 const cookie = source("src/shared/auth/active-clinic-cookie.ts");
 const clinicActions = source("src/app/(clinic)/actions.ts");
 const layout = source("src/app/(clinic)/app/layout.tsx");
@@ -72,7 +72,7 @@ describe("shell autenticado F1.9", () => {
 
   it("preserva lockfile, migrations e contrato de ambiente da unidade anterior", () => {
     expect(source("package.json")).not.toContain("active-clinic-cookie-secret");
-    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(6);
+    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(7);
     expect(source("src/shared/config/env-schema.ts")).toContain("ACTIVE_CLINIC_COOKIE_SECRET");
   });
 });

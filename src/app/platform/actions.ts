@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import {
   createReadOnlySupportGrant,
   revokeReadOnlySupportGrant,
-} from "@/shared/auth";
+} from "@/modules/platform-admin";
 
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);

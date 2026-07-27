@@ -11,7 +11,7 @@ const migration = readFileSync(
   "utf8",
 ).toLowerCase();
 const onboarding = readFileSync(
-  path.join(projectRoot, "src/shared/auth/onboarding.ts"),
+  path.join(projectRoot, "src/modules/tenancy/onboarding.ts"),
   "utf8",
 );
 const actions = readFileSync(

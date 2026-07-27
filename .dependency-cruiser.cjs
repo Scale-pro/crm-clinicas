@@ -43,6 +43,16 @@ module.exports = {
       to: { path: "^src/modules/" },
     },
     {
+      name: "no-domain-use-cases-in-shared-auth",
+      severity: "error",
+      comment:
+        "Casos de uso de identidade, tenancy e plataforma pertencem aos módulos de domínio.",
+      from: {
+        path: "^src/shared/auth/(account-security|active-clinic|clinic-settings|invitations|onboarding|platform-support)\\.(?:ts|tsx)$",
+      },
+      to: {},
+    },
+    {
       name: "modules-must-not-depend-on-app",
       severity: "error",
       comment: "Módulos de domínio não podem importar rotas/UI de app/ (ADR-003).",

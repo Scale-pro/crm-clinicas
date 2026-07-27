@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { resolveActiveClinicContext } from "@/shared/auth";
+import { resolveActiveClinicContext } from "@/modules/tenancy";
 import { ClinicSelector } from "@/shared/ui/clinic-selector";
 import { ErrorState } from "@/shared/ui/error-state";
 import { selectClinicFormAction } from "../actions";

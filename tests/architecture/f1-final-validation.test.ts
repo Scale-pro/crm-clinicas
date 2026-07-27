@@ -31,6 +31,9 @@ describe("validação final estática da F1", () => {
   it("não usa getSession, localStorage ou estado cliente como autorização", () => {
     const protectedSources = [
       ...filesUnder("src/app/(clinic)"),
+      ...filesUnder("src/modules/identity"),
+      ...filesUnder("src/modules/platform-admin"),
+      ...filesUnder("src/modules/tenancy"),
       ...filesUnder("src/shared/auth"),
     ]
       .filter((file) => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".test.ts"))

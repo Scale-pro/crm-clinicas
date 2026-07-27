@@ -1,17 +1,19 @@
 "use server";
 
 import {
-  acceptClinicInvitation,
-  createInitialClinic,
   enrollTotp,
-  inviteClinicMember,
   loginWithPassword,
   registerAccount,
   removeOwnTotpFactor,
   requestPasswordReset,
   updateOwnPassword,
   verifyTotp,
-} from "@/shared/auth";
+} from "@/modules/identity";
+import {
+  acceptClinicInvitation,
+  createInitialClinic,
+  inviteClinicMember,
+} from "@/modules/tenancy";
 
 export async function registerAction(input: unknown) {
   return registerAccount(input);

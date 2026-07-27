@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { resolveActiveClinicContext } from "@/shared/auth";
+import { resolveActiveClinicContext } from "@/modules/tenancy";
 import { InviteMemberForm } from "./invite-member-form";
 
 export default async function TeamPage() {

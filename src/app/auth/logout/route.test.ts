@@ -6,13 +6,16 @@ const { signOutCurrentSession } = vi.hoisted(() => ({
 
 vi.mock("@/shared/auth", () => ({
   ACTIVE_CLINIC_COOKIE_NAME: "crm_active_clinic",
+  signOutCurrentSession,
+}));
+
+vi.mock("@/modules/tenancy", () => ({
   activeClinicCookieOptions: () => ({
     httpOnly: true,
     path: "/",
     sameSite: "lax" as const,
     secure: false,
   }),
-  signOutCurrentSession,
 }));
 
 import { POST } from "./route";

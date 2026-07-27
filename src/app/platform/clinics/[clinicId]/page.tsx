@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   listPlatformClinics,
   readClinicSupportSnapshot,
-} from "@/shared/auth";
+} from "@/modules/platform-admin";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Input } from "@/shared/ui/input";

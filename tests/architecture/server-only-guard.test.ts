@@ -24,6 +24,9 @@ const serverOnlyEntrypoints = [
   "src/shared/queue/index.ts",
   "src/shared/auth/index.ts",
   "src/shared/config/index.ts",
+  "src/modules/identity/index.ts",
+  "src/modules/tenancy/index.ts",
+  "src/modules/platform-admin/index.ts",
 ];
 
 function firstCodeLine(file: string): string | undefined {

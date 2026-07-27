@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { listPlatformClinics } from "@/shared/auth";
+import { listPlatformClinics } from "@/modules/platform-admin";
 import { ErrorState } from "@/shared/ui/error-state";
 
 export default async function PlatformPage() {

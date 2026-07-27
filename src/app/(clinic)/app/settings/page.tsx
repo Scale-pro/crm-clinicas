@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { resolveActiveClinicContext } from "@/shared/auth";
+import { resolveActiveClinicContext } from "@/modules/tenancy";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { updateClinicSettingsFormAction } from "../../actions";
