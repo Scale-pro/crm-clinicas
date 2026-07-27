@@ -55,10 +55,19 @@ export async function addContactMethod(input: unknown) {
   return { ok: true, contactMethodId: data } as const;
 }
 
-const updateContactMethodSchema = contactMethodSchema
-  .omit({ contactId: true, isPrimary: true })
-  .extend({ contactMethodId: z.uuid() })
-  .strict();
+const updateContactMethodSchema = z
+  .object({
+    clinicId: z.uuid(),
+    contactMethodId: z.uuid(),
+    kind: z.enum(["phone", "email"]),
+    rawValue: z.string().min(3).max(320),
+    label: z.string().trim().min(1).max(40).nullable().optional(),
+    isWhatsapp: z.boolean().default(false),
+  })
+  .strict()
+  .refine((value) => value.kind === "phone" || !value.isWhatsapp, {
+    message: "Somente telefones podem ser WhatsApp.",
+  });
 
 export async function updateContactMethod(input: unknown) {
   const parsed = updateContactMethodSchema.safeParse(input);
