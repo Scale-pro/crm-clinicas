@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createTestDbPool } from "./helpers/create-test-db-client";
+import { findSecurityCatalogViolations } from "./helpers/security-catalog";
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
@@ -21,6 +22,10 @@ const EXPECTED_POLICIES = [
 ] as const;
 
 describe("catálogo de autorização e RLS", () => {
+  it("não possui violações nos invariantes mutáveis de segurança", async () => {
+    expect(await findSecurityCatalogViolations(pool)).toEqual([]);
+  });
+
   it("possui exatamente as políticas separadas aprovadas para a F1.3", async () => {
     const { rows } = await pool.query<{
       cmd: string;

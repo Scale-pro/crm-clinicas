@@ -115,6 +115,18 @@ describe("matriz de convites", () => {
     );
     expect((await rpcInvite(aal1Manager, "viewer")).error).not.toBeNull();
   });
+
+  it("admin precisa de AAL2 para convidar mesmo quando o papel é atribuível", async () => {
+    expect((await rpcInvite(adminUser, "viewer")).error).toBeNull();
+
+    const aal1Admin = await createUser("admin-aal1");
+    await pool.query(
+      `insert into public.clinic_members (clinic_id, user_id, role)
+       values ($1, $2, 'admin')`,
+      [clinicId, aal1Admin.id],
+    );
+    expect((await rpcInvite(aal1Admin, "viewer")).error).not.toBeNull();
+  });
 });
 
 describe("aceite atômico e genérico", () => {
@@ -184,6 +196,36 @@ describe("aceite atômico e genérico", () => {
     ).not.toBeNull();
   });
 
+  it("duplo-submit concorrente cria uma única membership", async () => {
+    const concurrentInvitee = await createUser("concurrent-invitee");
+    const token = `concurrent-${crypto.randomUUID()}`;
+    await insertInvitation(token, {
+      email: concurrentInvitee.email,
+      role: "viewer",
+    });
+
+    const attempts = await Promise.all([
+      concurrentInvitee.client.rpc("accept_invitation", {
+        token_hash: hash(token),
+      }),
+      concurrentInvitee.client.rpc("accept_invitation", {
+        token_hash: hash(token),
+      }),
+    ]);
+    expect(attempts.filter((attempt) => attempt.error === null)).toHaveLength(1);
+    expect(attempts.filter((attempt) => attempt.error !== null)).toHaveLength(1);
+
+    const state = await pool.query<{ memberships: string; status: string }>(
+      `select i.status,
+              (select count(*) from public.clinic_members cm
+               where cm.clinic_id = i.clinic_id and cm.user_id = $2) as memberships
+       from public.invitations i
+       where i.token_hash = $1`,
+      [hash(token), concurrentInvitee.id],
+    );
+    expect(state.rows).toEqual([{ memberships: "1", status: "accepted" }]);
+  });
+
   it("e-mail não confirmado é recusado pelo estado real do Auth", async () => {
     const user = await createUser("unconfirmed-after-login");
     const token = `unconfirmed-${crypto.randomUUID()}`;
@@ -235,5 +277,61 @@ describe("último owner", () => {
         })
       ).error,
     ).not.toBeNull();
+  });
+
+  it("serializa remoções concorrentes e preserva um owner ativo", async () => {
+    const [firstOwner, secondOwner] = await Promise.all([
+      createUser("concurrent-owner-a", true),
+      createUser("concurrent-owner-b", true),
+    ]);
+    const clinic = await pool.query<{ id: string }>(
+      `insert into public.clinics (name, slug, timezone, created_by)
+       values ('Clínica Owners Concorrentes', $1, 'America/Sao_Paulo', $2)
+       returning id`,
+      [`concurrent-owners-${crypto.randomUUID()}`, firstOwner.id],
+    );
+    const concurrentClinicId = clinic.rows[0]!.id;
+
+    try {
+      const memberships = await pool.query<{ id: string; user_id: string }>(
+        `insert into public.clinic_members (clinic_id, user_id, role)
+         values ($1, $2, 'owner'), ($1, $3, 'owner')
+         returning id, user_id`,
+        [concurrentClinicId, firstOwner.id, secondOwner.id],
+      );
+      const firstMembership = memberships.rows.find(
+        (membership) => membership.user_id === firstOwner.id,
+      )!;
+      const secondMembership = memberships.rows.find(
+        (membership) => membership.user_id === secondOwner.id,
+      )!;
+
+      const attempts = await Promise.all([
+        firstOwner.client.rpc("remove_member", {
+          clinic_id: concurrentClinicId,
+          member_id: secondMembership.id,
+        }),
+        secondOwner.client.rpc("remove_member", {
+          clinic_id: concurrentClinicId,
+          member_id: firstMembership.id,
+        }),
+      ]);
+      expect(attempts.filter((attempt) => attempt.error === null)).toHaveLength(1);
+      expect(attempts.filter((attempt) => attempt.error !== null)).toHaveLength(1);
+
+      const owners = await pool.query<{ count: string }>(
+        `select count(*) from public.clinic_members
+         where clinic_id = $1 and role = 'owner' and status = 'active'`,
+        [concurrentClinicId],
+      );
+      expect(owners.rows).toEqual([{ count: "1" }]);
+    } finally {
+      await pool.query("delete from public.audit_logs where clinic_id = $1", [
+        concurrentClinicId,
+      ]);
+      await pool.query("delete from public.clinics where id = $1", [
+        concurrentClinicId,
+      ]);
+    }
   });
 });

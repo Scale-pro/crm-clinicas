@@ -53,6 +53,38 @@ describe("catálogo do schema F1", () => {
     );
   });
 
+  it("mantém clinic_id como primeira coluna nos índices compostos de tenant", async () => {
+    const expectedIndexes = [
+      "activities_clinic_occurred_idx",
+      "audit_logs_clinic_occurred_idx",
+      "clinic_members_clinic_user_idx",
+      "invitations_clinic_status_idx",
+      "support_grants_clinic_expiry_idx",
+    ];
+    const { rows } = await pool.query<{ first_column: string; index_name: string }>(
+      `select index_class.relname as index_name,
+              attribute.attname as first_column
+       from pg_catalog.pg_index index_catalog
+       join pg_catalog.pg_class index_class on index_class.oid = index_catalog.indexrelid
+       join pg_catalog.pg_class table_class on table_class.oid = index_catalog.indrelid
+       join pg_catalog.pg_namespace namespace on namespace.oid = table_class.relnamespace
+       join pg_catalog.pg_attribute attribute
+         on attribute.attrelid = table_class.oid
+        and attribute.attnum = index_catalog.indkey[0]
+       where namespace.nspname = 'public'
+         and index_class.relname = any($1::text[])
+       order by index_class.relname`,
+      [expectedIndexes],
+    );
+
+    expect(rows).toEqual(
+      expectedIndexes.sort().map((indexName) => ({
+        first_column: "clinic_id",
+        index_name: indexName,
+      })),
+    );
+  });
+
   it("semeia exatamente a matriz de papéis e permissões da F1", async () => {
     const roles = await pool.query<{ key: string }>(
       "select key from public.roles order by key",
