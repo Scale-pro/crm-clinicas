@@ -22,6 +22,7 @@ concurrency:
 env:
   NEXT_TELEMETRY_DISABLED: "1"
   APP_ENV: development
+  APP_URL: http://127.0.0.1:3000
   NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: local-build-placeholder
   ACTIVE_CLINIC_COOKIE_SECRET: local-ci-cookie-secret-at-least-32-characters

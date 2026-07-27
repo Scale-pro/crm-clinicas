@@ -5,6 +5,7 @@ import { parseEnv, serverEnvSchema } from "./env-schema";
 
 const validEnv = {
   ACTIVE_CLINIC_COOKIE_SECRET: "a".repeat(32),
+  APP_URL: "http://127.0.0.1:3000",
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "local-public-key",
 };

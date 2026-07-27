@@ -11,6 +11,7 @@ import { parseEnv, serverEnvSchema, type ServerEnv } from "./env-schema";
  * requisição.
  */
 export const serverEnv: ServerEnv = parseEnv(serverEnvSchema, {
+  APP_URL: process.env.APP_URL,
   APP_ENV: process.env.APP_ENV,
   ACTIVE_CLINIC_COOKIE_SECRET: process.env.ACTIVE_CLINIC_COOKIE_SECRET,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

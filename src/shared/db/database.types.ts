@@ -34,6 +34,18 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
       };
+      current_user_requires_mfa: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      update_clinic_settings: {
+        Args: {
+          clinic_id: string;
+          clinic_name: string;
+          clinic_timezone: string;
+        };
+        Returns: boolean;
+      };
     };
     Enums: {
       support_access_level:

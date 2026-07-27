@@ -27,6 +27,10 @@ O ambiente lógico é definido por `APP_ENV` (`development` \| `staging` \|
 terá seu próprio conjunto de segredos (configurados na plataforma de hospedagem
 nas fases seguintes); **segredos nunca são compartilhados entre ambientes**.
 
+`APP_URL` define a origem canônica da aplicação e é usada para callbacks fixos
+de autenticação. Ela é server-only; redirects fornecidos pelo usuário nunca
+substituem essa origem.
+
 ## 2. Regras de variáveis
 
 - **Server-side:** lidas apenas via `src/shared/config` (protegido por
