@@ -1,0 +1,41 @@
+-- F2.1 — catálogo fechado de permissões de contatos e origens.
+
+insert into public.permissions (key) values
+  ('contact.view_own'),
+  ('contact.view_all'),
+  ('contact.create'),
+  ('contact.edit_own'),
+  ('contact.edit_all'),
+  ('contact.archive'),
+  ('lead_source.manage');
+
+insert into public.role_permissions (role, permission) values
+  ('owner', 'contact.view_own'),
+  ('owner', 'contact.view_all'),
+  ('owner', 'contact.create'),
+  ('owner', 'contact.edit_own'),
+  ('owner', 'contact.edit_all'),
+  ('owner', 'contact.archive'),
+  ('owner', 'lead_source.manage'),
+  ('admin', 'contact.view_own'),
+  ('admin', 'contact.view_all'),
+  ('admin', 'contact.create'),
+  ('admin', 'contact.edit_own'),
+  ('admin', 'contact.edit_all'),
+  ('admin', 'contact.archive'),
+  ('admin', 'lead_source.manage'),
+  ('manager', 'contact.view_own'),
+  ('manager', 'contact.view_all'),
+  ('manager', 'contact.create'),
+  ('manager', 'contact.edit_own'),
+  ('manager', 'contact.edit_all'),
+  ('manager', 'lead_source.manage'),
+  ('sdr', 'contact.view_own'),
+  ('sdr', 'contact.create'),
+  ('sdr', 'contact.edit_own'),
+  ('receptionist', 'contact.view_own'),
+  ('receptionist', 'contact.view_all'),
+  ('receptionist', 'contact.create'),
+  ('receptionist', 'contact.edit_own'),
+  ('professional', 'contact.view_own'),
+  ('viewer', 'contact.view_all');
