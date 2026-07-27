@@ -3,10 +3,15 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = path.resolve(__dirname, "../..");
-const migration = readFileSync(
+const baseMigration = readFileSync(
   path.join(root, "supabase/migrations/20260725200000_f1_invitations_and_members.sql"),
   "utf8",
 ).toLowerCase();
+const safetyMigration = readFileSync(
+  path.join(root, "supabase/migrations/20260727220000_f1_invitation_membership_safety.sql"),
+  "utf8",
+).toLowerCase();
+const migration = `${baseMigration}\n${safetyMigration}`;
 const app = readFileSync(
   path.join(root, "src/shared/auth/invitations.ts"),
   "utf8",
@@ -35,14 +40,21 @@ describe("convites e membros", () => {
   });
 
   it("aceite deriva usuário, e-mail e papel exclusivamente no banco", () => {
-    const body = migration.slice(
-      migration.indexOf("create function public.accept_invitation"),
-      migration.indexOf("create function public.revoke_invitation"),
+    const body = safetyMigration.slice(
+      safetyMigration.indexOf("create or replace function public.accept_invitation"),
     );
     expect(body).toContain("auth.uid()");
     expect(body).toContain("email_confirmed_at");
     expect(body).toContain("v_invitation.role");
     expect(body).not.toMatch(/accept_invitation\([^)]*(email|role|user_id)/);
+    expect(body).toContain("v_existing_membership");
+    expect(body).not.toContain("on conflict (clinic_id, user_id) do update");
+  });
+
+  it("convite e aceite recusam memberships ativas ou suspensas", () => {
+    expect(safetyMigration).toContain("cm.status in ('active', 'suspended')");
+    expect(safetyMigration).toContain("for update of cm");
+    expect(safetyMigration).toContain("for update;");
   });
 
   it("operações de owner usam lock e recusam owner zero", () => {

@@ -106,6 +106,47 @@ describe("matriz de convites", () => {
     }
   });
 
+  it("manager não usa convite para rebaixar o único owner", async () => {
+    const before = await pool.query<{ role: string; status: string }>(
+      `select role, status from public.clinic_members
+       where clinic_id = $1 and user_id = $2`,
+      [clinicId, owner.id],
+    );
+    expect((await rpcInvite(manager, "viewer", owner.email)).error).not.toBeNull();
+    const after = await pool.query<{ role: string; status: string }>(
+      `select role, status from public.clinic_members
+       where clinic_id = $1 and user_id = $2`,
+      [clinicId, owner.id],
+    );
+    expect(after.rows).toEqual(before.rows);
+    expect(after.rowCount).toBe(1);
+    const pending = await pool.query<{ count: string }>(
+      `select count(*) from public.invitations
+       where clinic_id = $1 and email = $2 and status = 'pending'`,
+      [clinicId, owner.email],
+    );
+    expect(pending.rows).toEqual([{ count: "0" }]);
+  });
+
+  it("não recria convite para membership ativa ou suspensa", async () => {
+    expect((await rpcInvite(manager, "viewer", adminUser.email)).error).not.toBeNull();
+
+    const suspended = await createUser("already-suspended");
+    await pool.query(
+      `insert into public.clinic_members (clinic_id, user_id, role, status)
+       values ($1, $2, 'professional', 'suspended')`,
+      [clinicId, suspended.id],
+    );
+    expect((await rpcInvite(manager, "viewer", suspended.email)).error).not.toBeNull();
+
+    const pending = await pool.query<{ count: string }>(
+      `select count(*) from public.invitations
+       where clinic_id = $1 and email = any($2::text[]) and status = 'pending'`,
+      [clinicId, [adminUser.email, suspended.email]],
+    );
+    expect(pending.rows).toEqual([{ count: "0" }]);
+  });
+
   it("manager sem AAL2 é bloqueado mesmo com member.invite", async () => {
     const aal1Manager = await createUser("manager-aal1");
     await pool.query(
@@ -171,6 +212,48 @@ describe("aceite atômico e genérico", () => {
         hash(item.token),
       ]);
     }
+  });
+
+  it("convite antigo não altera owner existente", async () => {
+    const token = `existing-owner-${crypto.randomUUID()}`;
+    await insertInvitation(token, { email: owner.email, role: "viewer" });
+    expect(
+      (
+        await owner.client.rpc("accept_invitation", {
+          token_hash: hash(token),
+        })
+      ).error,
+    ).not.toBeNull();
+    const membership = await pool.query<{ role: string; status: string }>(
+      `select role, status from public.clinic_members
+       where clinic_id = $1 and user_id = $2`,
+      [clinicId, owner.id],
+    );
+    expect(membership.rows).toEqual([{ role: "owner", status: "active" }]);
+  });
+
+  it("convite antigo não reativa membership suspensa", async () => {
+    const suspended = await createUser("accept-suspended");
+    const token = `existing-suspended-${crypto.randomUUID()}`;
+    await insertInvitation(token, { email: suspended.email, role: "viewer" });
+    await pool.query(
+      `insert into public.clinic_members (clinic_id, user_id, role, status)
+       values ($1, $2, 'professional', 'suspended')`,
+      [clinicId, suspended.id],
+    );
+    expect(
+      (
+        await suspended.client.rpc("accept_invitation", {
+          token_hash: hash(token),
+        })
+      ).error,
+    ).not.toBeNull();
+    const membership = await pool.query<{ role: string; status: string }>(
+      `select role, status from public.clinic_members
+       where clinic_id = $1 and user_id = $2`,
+      [clinicId, suspended.id],
+    );
+    expect(membership.rows).toEqual([{ role: "professional", status: "suspended" }]);
   });
 
   it("aceita uma vez, usa papel da linha e impede replay", async () => {
