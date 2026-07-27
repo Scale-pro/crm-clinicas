@@ -37,7 +37,7 @@ describe("fronteira transversal de shared/auth", () => {
   });
 
   it("expõe cada módulo somente por index server-only", () => {
-    for (const moduleName of ["identity", "tenancy", "platform-admin"]) {
+    for (const moduleName of ["identity", "tenancy", "platform-admin", "crm"]) {
       const entrypoint = readFileSync(
         path.join(root, "src/modules", moduleName, "index.ts"),
         "utf8",

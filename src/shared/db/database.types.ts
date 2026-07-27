@@ -9,6 +9,34 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activities: {
+        Row: {
+          actor_id: string | null;
+          clinic_id: string;
+          contact_id: string | null;
+          id: string;
+          occurred_at: string;
+          payload: Json;
+          type: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      clinic_members: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          role: string;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       clinics: {
         Row: {
           created_at: string;
@@ -33,9 +61,101 @@ export type Database = {
         };
         Relationships: [];
       };
+      contacts: {
+        Row: {
+          archived_at: string | null;
+          clinic_id: string;
+          created_at: string;
+          created_by: string;
+          full_name: string;
+          id: string;
+          idempotency_key: string | null;
+          notes: string | null;
+          owner_user_id: string | null;
+          updated_at: string;
+          updated_by: string;
+          version: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      lead_sources: {
+        Row: {
+          archived_at: string | null;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      patients: {
+        Row: {
+          became_patient_at: string;
+          clinic_id: string;
+          contact_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      person_contacts: {
+        Row: {
+          archived_at: string | null;
+          clinic_id: string;
+          contact_id: string;
+          created_at: string;
+          id: string;
+          is_primary: boolean;
+          is_whatsapp: boolean;
+          kind: string;
+          label: string | null;
+          normalized_value: string;
+          raw_value: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string;
+          full_name: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      add_contact_method: {
+        Args: {
+          clinic_id: string;
+          contact_id: string;
+          is_primary?: boolean;
+          is_whatsapp?: boolean;
+          kind: string;
+          label?: string | null;
+          normalized_value: string;
+          raw_value: string;
+        };
+        Returns: string;
+      };
+      archive_contact: { Args: { clinic_id: string; contact_id: string }; Returns: boolean };
+      archive_contact_method: { Args: { clinic_id: string; contact_method_id: string }; Returns: boolean };
+      archive_lead_source: { Args: { clinic_id: string; lead_source_id: string }; Returns: boolean };
+      assign_contact_owner: { Args: { clinic_id: string; contact_id: string; owner_user_id: string }; Returns: boolean };
       accept_invitation: {
         Args: { token_hash: string };
         Returns: string;
@@ -48,6 +168,18 @@ export type Database = {
         };
         Returns: string;
       };
+      create_contact: {
+        Args: {
+          clinic_id: string;
+          full_name: string;
+          idempotency_key?: string | null;
+          link_as_patient?: boolean;
+          methods?: Json;
+          notes?: string | null;
+        };
+        Returns: string;
+      };
+      create_lead_source: { Args: { clinic_id: string; name: string }; Returns: string };
       current_user_clinic_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];
@@ -77,6 +209,7 @@ export type Database = {
         };
         Returns: string;
       };
+      link_contact_as_patient: { Args: { clinic_id: string; contact_id: string }; Returns: boolean };
       create_support_grant: {
         Args: {
           access_level: Database["public"]["Enums"]["support_access_level"];
@@ -156,6 +289,31 @@ export type Database = {
         Args: { clinic_id: string; member_id: string };
         Returns: boolean;
       };
+      set_primary_contact_method: { Args: { clinic_id: string; contact_method_id: string }; Returns: boolean };
+      unlink_contact_as_patient: { Args: { clinic_id: string; contact_id: string }; Returns: boolean };
+      update_contact: {
+        Args: {
+          clinic_id: string;
+          contact_id: string;
+          expected_version: number;
+          full_name: string;
+          notes: string | null;
+        };
+        Returns: number;
+      };
+      update_contact_method: {
+        Args: {
+          clinic_id: string;
+          contact_method_id: string;
+          is_whatsapp?: boolean;
+          kind: string;
+          label?: string | null;
+          normalized_value: string;
+          raw_value: string;
+        };
+        Returns: boolean;
+      };
+      update_lead_source: { Args: { clinic_id: string; lead_source_id: string; name: string }; Returns: boolean };
       update_member_role: {
         Args: { clinic_id: string; member_id: string; target_role: string };
         Returns: boolean;
