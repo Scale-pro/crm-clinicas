@@ -7,9 +7,10 @@ Este documento é a matriz versionada `requisito → implementação/teste → j
 - Branch: `feature/f1-multitenant-auth`.
 - PR: #6 (deve permanecer aberto, draft e sem merge).
 - SHA-base verde da F1.9: `2ff991bb0f2f7d8e6cb379e9555146e88edf0ee3`.
-- `V-FINAL`: **VALIDADO — todos os jobs obrigatórios ficaram verdes**.
-- `E-FINAL`: CI [run 30278865181](https://github.com/Scale-pro/crm-clinicas/actions/runs/30278865181) e Semgrep [run 30278865167](https://github.com/Scale-pro/crm-clinicas/actions/runs/30278865167).
-- `S-FINAL`: `397b29687642690f81915b325854cfd84dd3357a`, SHA exato da implementação e dos testes validado pelo job de banco.
+- SHA revisado formalmente: `16cf072d35772c785e4937216e7cb7e637cacecc`.
+- `V-FINAL`: **VALIDADO — correções formais e todos os jobs obrigatórios verdes**.
+- `E-FINAL`: CI [run 30290910613](https://github.com/Scale-pro/crm-clinicas/actions/runs/30290910613) e Semgrep [run 30290910594](https://github.com/Scale-pro/crm-clinicas/actions/runs/30290910594).
+- `S-FINAL`: `0835f46322249322d5e4cb66361970f214c010eb`, SHA exato da implementação e dos testes validado por todos os jobs.
 
 O commit que registra esta evidência é necessariamente um sucessor apenas
 documental de `S-FINAL`: um commit Git não consegue conter literalmente o
@@ -20,8 +21,8 @@ e o run que o valida devem constar no relatório final do PR.
 
 | Controle | Resultado |
 |---|---|
-| Testes locais sem containers | 113 testes em 20 arquivos; sucesso |
-| Integração Supabase/Auth/RLS | 60 testes em 11 arquivos; sucesso |
+| Testes locais sem containers | 130 testes em 21 arquivos; sucesso |
+| Integração Supabase/Auth/RLS | 71 testes em 11 arquivos; sucesso |
 | Migrations em banco vazio (`supabase db reset`) | Sucesso |
 | Geração e validação dos tipos locais | Sucesso |
 | Lint, typecheck, dependency-cruiser e build | Sucesso |
@@ -29,6 +30,22 @@ e o run que o valida devem constar no relatório final do PR.
 | Gitleaks | Sucesso |
 | Semgrep | Sucesso |
 | Encerramento da stack Supabase (`if: always()`) | Sucesso |
+
+## Correções da revisão formal do PR #6
+
+- B-1: migration aditiva impede convite e aceite para membership ativa ou
+  suspensa; `accept_invitation` não usa mais upsert nem altera papel/status.
+- H-1: `/platform` e `/platform/clinics/[clinicId]` entregam somente listagem,
+  grant `read_only`, revogação e as quatro leituras dedicadas. O
+  `SupportModeBanner` só aparece após o grant ser validado no servidor.
+- M-1: casos de uso foram movidos para `identity`, `tenancy` e
+  `platform-admin`; `shared/auth` possui allowlist transversal testada.
+- M-2: ADR-004, regras operacionais e catálogo refletem leitura por RLS e
+  escrita RPC-only, com mutações controladas contra DML direto inseguro.
+- L-1: cookie da clínica ativa usa `Secure` em staging e production, com testes
+  também para development e test.
+- L-2/N-4: jobs obrigatórios fazem checkout, conferem e declaram o head SHA.
+- N-5: as contagens acima consideram a expansão real de `it.each` no Vitest.
 
 ## Referências de testes e jobs
 
@@ -46,7 +63,7 @@ e o run que o valida devem constar no relatório final do PR.
 | T-DEFINER | `tests/integration/authorization-catalog.test.ts`, `tests/integration/tenant-isolation.test.ts` |
 | T-SUPPORT | `tests/integration/platform-support.test.ts`, `tests/architecture/f1-support.test.ts` |
 | T-STATIC | `tests/architecture/f1-final-validation.test.ts`, testes de fronteiras, observabilidade e CI |
-| T-UI | `tests/architecture/f1-authenticated-shell.test.ts`, `tests/architecture/f1-final-validation.test.ts`, `src/shared/ui/clinic-selector.test.ts` |
+| T-UI | `tests/architecture/f1-authenticated-shell.test.ts`, `tests/architecture/f1-final-validation.test.ts`, `tests/architecture/f1-support.test.ts`, `src/shared/ui/clinic-selector.test.ts` |
 | CI-DB | `.github/workflows/ci.yml`: reset em banco vazio, geração de tipos e suíte de integração |
 | CI-SUPPLY | audit high/critical, Gitleaks, dependency-cruiser, build e workflow Semgrep |
 
@@ -214,3 +231,14 @@ proteção de `clinic_id`, conforme a emenda da ADR-004.
 - O provedor definitivo de e-mail de produção ainda não foi definido/configurado.
 - A recuperação de conta não remove a exigência de MFA nem concede autorização. A recuperação de fatores perdidos exige o procedimento operacional controlado descrito nos ADRs/runbooks; não há bypass automático na F1.
 - Estas pendências externas não bloqueiam a conclusão técnica local/CI, mas impedem declarar produção/staging operacionalmente validados.
+
+## Itens deliberadamente adiados
+
+- L-3 (filtro refinado de papéis no formulário) e demais LOW/NOTES não exigidos
+  pela revisão formal não foram aplicados automaticamente.
+- Transferência de ownership, reativação administrativa de suspensos,
+  recuperação administrativa de MFA, envio automático de e-mail e níveis de
+  suporte futuros permanecem fora desta correção.
+- Leitura avançada de auditoria de plataforma e todas as funcionalidades da F2
+  (contatos, pacientes, Kanban, agenda, WhatsApp e financeiro) não foram
+  iniciadas.
