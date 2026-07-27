@@ -17,13 +17,17 @@ const TABLES = [
   "support_grants",
   "activities",
   "audit_logs",
+  "contacts",
+  "person_contacts",
+  "patients",
+  "lead_sources",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema F1", () => {
-  it("contém exatamente as 13 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema F2.1", () => {
+  it("contém exatamente as 17 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -33,7 +37,7 @@ describe("catálogo do schema F1", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 13 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 17 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -47,7 +51,7 @@ describe("catálogo do schema F1", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(13);
+    expect(rows).toHaveLength(17);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -60,6 +64,14 @@ describe("catálogo do schema F1", () => {
       "clinic_members_clinic_user_idx",
       "invitations_clinic_status_idx",
       "support_grants_clinic_expiry_idx",
+      "contacts_clinic_created_idx",
+      "contacts_clinic_owner_active_idx",
+      "contacts_clinic_name_idx",
+      "person_contacts_clinic_value_idx",
+      "person_contacts_clinic_contact_kind_idx",
+      "patients_clinic_became_idx",
+      "lead_sources_clinic_name_idx",
+      "activities_clinic_contact_occurred_idx",
     ];
     const { rows } = await pool.query<{ first_column: string; index_name: string }>(
       `select index_class.relname as index_name,
@@ -85,7 +97,7 @@ describe("catálogo do schema F1", () => {
     );
   });
 
-  it("semeia exatamente a matriz de papéis e permissões da F1", async () => {
+  it("semeia exatamente a matriz de papéis e permissões até a F2.1", async () => {
     const roles = await pool.query<{ key: string }>(
       "select key from public.roles order by key",
     );
@@ -100,9 +112,22 @@ describe("catálogo do schema F1", () => {
       ["admin", "manager", "owner", "professional", "receptionist", "sdr", "viewer"],
     );
     expect(permissions.rows.map((row) => row.key)).toEqual(
-      ["audit.view", "clinic.manage", "member.invite", "member.manage", "member.remove"],
+      [
+        "audit.view",
+        "clinic.manage",
+        "contact.archive",
+        "contact.create",
+        "contact.edit_all",
+        "contact.edit_own",
+        "contact.view_all",
+        "contact.view_own",
+        "lead_source.manage",
+        "member.invite",
+        "member.manage",
+        "member.remove",
+      ],
     );
-    expect(matrix.rows).toHaveLength(10);
+    expect(matrix.rows).toHaveLength(39);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {

@@ -13,7 +13,11 @@ const EXPECTED_POLICIES = [
   ["clinic_limits", "clinic_limits_select", "SELECT"],
   ["clinic_members", "clinic_members_select", "SELECT"],
   ["clinics", "clinics_select", "SELECT"],
+  ["contacts", "contacts_select", "SELECT"],
   ["invitations", "invitations_select", "SELECT"],
+  ["lead_sources", "lead_sources_select", "SELECT"],
+  ["patients", "patients_select", "SELECT"],
+  ["person_contacts", "person_contacts_select", "SELECT"],
   ["permissions", "permissions_select", "SELECT"],
   ["profiles", "profiles_select", "SELECT"],
   ["profiles", "profiles_update", "UPDATE"],
@@ -89,6 +93,10 @@ describe("catálogo de autorização e RLS", () => {
       "clinic_members",
       "invitations",
       "support_grants",
+      "contacts",
+      "person_contacts",
+      "patients",
+      "lead_sources",
     ];
     const { rows } = await pool.query<{
       can_delete: boolean;
@@ -187,6 +195,13 @@ describe("catálogo de autorização e RLS", () => {
         (routine.proname.startsWith("current_user_") ||
           [
             "accept_invitation",
+            "add_contact_method",
+            "archive_contact",
+            "archive_contact_method",
+            "archive_lead_source",
+            "assign_contact_owner",
+            "create_contact",
+            "create_lead_source",
             "create_clinic_with_owner",
             "invite_member",
             "create_support_grant",
@@ -195,10 +210,16 @@ describe("catálogo de autorização e RLS", () => {
             "platform_read_clinic_configuration",
             "platform_read_clinic_invitations",
             "platform_read_clinic_members",
+            "link_contact_as_patient",
             "remove_member",
             "revoke_invitation",
             "revoke_support_grant",
             "suspend_member",
+            "set_primary_contact_method",
+            "unlink_contact_as_patient",
+            "update_contact",
+            "update_contact_method",
+            "update_lead_source",
             "update_clinic_settings",
             "update_member_role",
           ].includes(routine.proname));
