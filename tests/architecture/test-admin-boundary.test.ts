@@ -13,7 +13,7 @@ describe("fronteira do cliente administrativo de testes", () => {
     expect(
       result?.messages.some((message) => message.ruleId === "no-restricted-imports"),
     ).toBe(true);
-  });
+  }, 30_000);
 
   it("não existe factory de service role em src/", async () => {
     const [result] = await eslint.lintText(

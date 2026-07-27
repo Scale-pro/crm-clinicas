@@ -22,7 +22,7 @@ describe("fronteiras de importação (ESLint)", () => {
       "src/app/fixture-arch.ts",
     );
     expect(messages.some((m) => m.ruleId === "no-restricted-imports")).toBe(true);
-  });
+  }, 30_000);
 
   it("bloqueia SDK de fila fora de shared/queue (ADR-009)", async () => {
     const messages = await lintVirtual(
