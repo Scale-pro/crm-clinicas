@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canSelectClinic,
   resolveClinicSelection,
+  shouldSecureActiveClinicCookie,
   signActiveClinicValue,
   verifyActiveClinicValue,
   type ClinicChoice,
@@ -35,6 +36,17 @@ describe("cookie HMAC da clínica ativa", () => {
   it("recusa clinic_id malformado", () => {
     expect(verifyActiveClinicValue("v1.not-a-uuid.signature", SECRET)).toBeNull();
     expect(() => signActiveClinicValue("not-a-uuid", SECRET)).toThrow();
+  });
+});
+
+describe("flag Secure por ambiente", () => {
+  it.each([
+    ["development", false],
+    ["test", false],
+    ["staging", true],
+    ["production", true],
+  ] as const)("%s usa secure=%s", (appEnv, expected) => {
+    expect(shouldSecureActiveClinicCookie(appEnv)).toBe(expected);
   });
 });
 

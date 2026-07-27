@@ -13,6 +13,7 @@ import {
   requireSession,
   resolveClinicSelection,
   safeInternalRedirect,
+  shouldSecureActiveClinicCookie,
   signActiveClinicValue,
   type ClinicChoice,
   verifyActiveClinicValue,
@@ -44,7 +45,7 @@ export function activeClinicCookieOptions() {
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
     sameSite: "lax" as const,
-    secure: serverEnv.APP_ENV === "production",
+    secure: shouldSecureActiveClinicCookie(serverEnv.APP_ENV),
   };
 }
 

@@ -16,6 +16,11 @@ describe("validação de ambiente (F0.5)", () => {
     expect(env.APP_ENV).toBe("staging");
   });
 
+  it("aceita test explicitamente para HTTP local", () => {
+    const env = parseEnv(serverEnvSchema, { ...validEnv, APP_ENV: "test" });
+    expect(env.APP_ENV).toBe("test");
+  });
+
   it("usa development como padrão quando APP_ENV está ausente", () => {
     const env = parseEnv(serverEnvSchema, validEnv);
     expect(env.APP_ENV).toBe("development");

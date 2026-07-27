@@ -4,6 +4,7 @@ export {
   ACTIVE_CLINIC_COOKIE_NAME,
   canSelectClinic,
   resolveClinicSelection,
+  shouldSecureActiveClinicCookie,
   signActiveClinicValue,
   verifyActiveClinicValue,
 } from "./active-clinic-cookie";

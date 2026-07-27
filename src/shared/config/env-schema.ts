@@ -20,7 +20,9 @@ const supabasePublicEnvSchema = z.object({
 
 export const serverEnvSchema = supabasePublicEnvSchema.extend({
   APP_URL: z.url(),
-  APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
+  APP_ENV: z
+    .enum(["development", "test", "staging", "production"])
+    .default("development"),
   ACTIVE_CLINIC_COOKIE_SECRET: z.string().min(32),
 });
 

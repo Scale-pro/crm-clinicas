@@ -19,11 +19,12 @@
 | Ambiente | Uso | Dados |
 |---|---|---|
 | **development** | máquina local | somente fictícios |
+| **test** | testes HTTP locais/CI | somente fictícios |
 | **staging** | validação pré-produção | somente fictícios até o gate F7 |
 | **production** | produção | **somente após aprovação do gate F7** |
 
-O ambiente lógico é definido por `APP_ENV` (`development` \| `staging` \|
-`production`) — separado de `NODE_ENV`, que pertence ao build. Cada ambiente
+O ambiente lógico é definido por `APP_ENV` (`development` \| `test` \|
+`staging` \| `production`) — separado de `NODE_ENV`, que pertence ao build. Cada ambiente
 terá seu próprio conjunto de segredos (configurados na plataforma de hospedagem
 nas fases seguintes); **segredos nunca são compartilhados entre ambientes**.
 

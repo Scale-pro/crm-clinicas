@@ -3,8 +3,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION = "v1";
+const SECURE_COOKIE_ENVIRONMENTS = new Set(["staging", "production"]);
 
 export const ACTIVE_CLINIC_COOKIE_NAME = "crm_active_clinic";
+
+export function shouldSecureActiveClinicCookie(
+  appEnv: "development" | "test" | "staging" | "production",
+): boolean {
+  return SECURE_COOKIE_ENVIRONMENTS.has(appEnv);
+}
 
 export type ClinicChoice = {
   readonly id: string;
