@@ -8,6 +8,13 @@ const workflow = readFileSync(
 );
 
 describe("diagnóstico seguro do job Supabase", () => {
+  it("testa o head SHA exato da branch no job de banco do PR", () => {
+    const databaseJob = workflow.slice(workflow.indexOf("  database-auth:"));
+    expect(databaseJob).toContain(
+      "ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+    );
+  });
+
   it("nunca imprime supabase status, que contém credenciais locais", () => {
     const diagnostic = workflow.slice(
       workflow.indexOf("- name: Diagnóstico sanitizado em caso de falha"),
