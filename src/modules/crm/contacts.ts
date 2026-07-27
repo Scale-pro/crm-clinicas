@@ -18,7 +18,7 @@ export type CrmErrorCode =
 
 export function mapCrmError(error: DatabaseError): CrmErrorCode {
   if (error.code === "23505") return "duplicate";
-  if (error.code === "40001") return "conflict";
+  if (error.code === "P4091") return "conflict";
   if (error.code === "42501") return "forbidden";
   if (error.code === "22023" || error.code === "23514") return "invalid_input";
   if (error.code === "P0002") return "not_found";

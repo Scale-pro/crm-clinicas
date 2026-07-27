@@ -54,7 +54,7 @@ describe("contratos públicos do módulo CRM", () => {
 
   it("mapeia erros do banco sem expor mensagens internas", () => {
     expect(mapCrmError({ code: "23505", message: "valor sensível" })).toBe("duplicate");
-    expect(mapCrmError({ code: "40001", message: "detalhe interno" })).toBe("conflict");
+    expect(mapCrmError({ code: "P4091", message: "detalhe interno" })).toBe("conflict");
     expect(mapCrmError({ code: "XX000", message: "stack interna" })).toBe("unavailable");
     const contactId = crypto.randomUUID();
     expect(

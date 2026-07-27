@@ -347,7 +347,7 @@ describe("CRM F2.1 multi-tenant", () => {
     });
     const results = await Promise.all([update("Versão A"), update("Versão B")]);
     expect(results.filter((result) => result.error === null)).toHaveLength(1);
-    expect(results.filter((result) => result.error?.code === "40001")).toHaveLength(1);
+    expect(results.filter((result) => result.error?.code === "P4091")).toHaveLength(1);
   });
 
   it("set_primary concorrente nunca deixa dois principais", async () => {

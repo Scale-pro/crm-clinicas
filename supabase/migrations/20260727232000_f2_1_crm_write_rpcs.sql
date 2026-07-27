@@ -244,14 +244,14 @@ begin
     raise exception using errcode = '22023', message = 'invalid contact';
   end if;
   if v_contact.version <> expected_version then
-    raise exception using errcode = '40001', message = 'contact version conflict';
+    raise exception using errcode = 'P4091', message = 'contact version conflict';
   end if;
   update public.contacts as c
   set full_name = trim(full_name), notes = notes, version = c.version + 1, updated_by = v_actor_id
   where c.clinic_id = clinic_id and c.id = contact_id and c.version = expected_version
   returning c.version into v_new_version;
   if not found then
-    raise exception using errcode = '40001', message = 'contact version conflict';
+    raise exception using errcode = 'P4091', message = 'contact version conflict';
   end if;
   perform app_private.log_audit_event(
     clinic_id, 'contact.updated', 'contact', contact_id,
@@ -583,7 +583,7 @@ begin
     or (v_contact.owner_user_id = v_actor_id and app_private.has_permission(clinic_id, 'contact.edit_own'))
   ) then raise exception using errcode = '42501', message = 'contact access denied'; end if;
   insert into public.patients (clinic_id, contact_id)
-  values (clinic_id, contact_id) on conflict (clinic_id, contact_id) do nothing;
+  values (clinic_id, contact_id) on conflict on constraint patients_pkey do nothing;
   if not found then return true; end if;
   perform app_private.log_activity(clinic_id, 'contact.patient_linked', '{}'::jsonb, contact_id);
   perform app_private.log_audit_event(
