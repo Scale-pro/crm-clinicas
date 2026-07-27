@@ -6,13 +6,38 @@ const workflow = readFileSync(
   path.resolve(__dirname, "../../.github/workflows/ci.yml"),
   "utf8",
 );
+const semgrepWorkflow = readFileSync(
+  path.resolve(__dirname, "../../.github/workflows/semgrep.yml"),
+  "utf8",
+);
+
+function job(name: string, nextName?: string): string {
+  const start = workflow.indexOf(`  ${name}:`);
+  const end = nextName ? workflow.indexOf(`  ${nextName}:`, start) : workflow.length;
+  return workflow.slice(start, end);
+}
 
 describe("diagnóstico seguro do job Supabase", () => {
-  it("testa o head SHA exato da branch no job de banco do PR", () => {
-    const databaseJob = workflow.slice(workflow.indexOf("  database-auth:"));
-    expect(databaseJob).toContain(
-      "ref: ${{ github.event.pull_request.head.sha || github.sha }}",
-    );
+  it("testa e declara o head SHA exato em todos os jobs obrigatórios", () => {
+    for (const contents of [
+      job("quality", "dependency-audit"),
+      job("dependency-audit", "dependency-audit-informational"),
+      job("gitleaks", "database-auth"),
+      job("database-auth"),
+      semgrepWorkflow,
+    ]) {
+      expect(contents).toContain(
+        "ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+      );
+      expect(contents).toContain("EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}");
+      expect(contents).toContain('echo "SHA testado: $actual_sha"');
+    }
+  });
+
+  it("Semgrep roda em PR e push somente na main", () => {
+    expect(semgrepWorkflow).toContain('branches: ["main"]');
+    expect(semgrepWorkflow).toContain("pull_request:");
+    expect(semgrepWorkflow).not.toContain("claude/claude-code-plugin-setup-kysnwn");
   });
 
   it("nunca imprime supabase status, que contém credenciais locais", () => {
