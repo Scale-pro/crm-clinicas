@@ -52,8 +52,75 @@ export type Database = {
         };
         Returns: string;
       };
+      create_support_grant: {
+        Args: {
+          access_level: Database["public"]["Enums"]["support_access_level"];
+          clinic_id: string;
+          expires_at: string;
+          reason: string;
+        };
+        Returns: string;
+      };
+      platform_list_clinics: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          clinic_id: string;
+          created_at: string;
+          name: string;
+          slug: string;
+          status: string;
+          timezone: string;
+        }[];
+      };
+      platform_read_clinic_audit: {
+        Args: { clinic_id: string; grant_id: string };
+        Returns: {
+          action: string;
+          actor_id: string | null;
+          audit_id: string;
+          entity: string;
+          entity_id: string | null;
+          occurred_at: string;
+          via: string;
+        }[];
+      };
+      platform_read_clinic_configuration: {
+        Args: { clinic_id: string; grant_id: string };
+        Returns: {
+          config: Json | null;
+          enabled: boolean | null;
+          key: string;
+          kind: string;
+          limit_value: number | null;
+        }[];
+      };
+      platform_read_clinic_invitations: {
+        Args: { clinic_id: string; grant_id: string };
+        Returns: {
+          created_at: string;
+          email: string;
+          expires_at: string;
+          invitation_id: string;
+          role: string;
+          status: string;
+        }[];
+      };
+      platform_read_clinic_members: {
+        Args: { clinic_id: string; grant_id: string };
+        Returns: {
+          created_at: string;
+          member_id: string;
+          role: string;
+          status: string;
+          user_id: string;
+        }[];
+      };
       remove_member: {
         Args: { clinic_id: string; member_id: string };
+        Returns: boolean;
+      };
+      revoke_support_grant: {
+        Args: { grant_id: string };
         Returns: boolean;
       };
       revoke_invitation: {

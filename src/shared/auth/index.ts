@@ -23,6 +23,15 @@ export type {
   RegistrationResult,
 } from "./onboarding";
 export {
+  createReadOnlySupportGrant,
+  listPlatformClinics,
+  readClinicAuditForSupport,
+  readClinicConfigurationForSupport,
+  readClinicInvitationsForSupport,
+  readClinicMembersForSupport,
+  revokeReadOnlySupportGrant,
+} from "./platform-support";
+export {
   requireAal2,
   requireClinicAccess,
   requirePermission,
