@@ -11,6 +11,23 @@ export {
 } from "./account-security";
 export type { LoginResult } from "./account-security";
 export {
+  ACTIVE_CLINIC_COOKIE_NAME,
+  canSelectClinic,
+  resolveClinicSelection,
+  signActiveClinicValue,
+  verifyActiveClinicValue,
+} from "./active-clinic-cookie";
+export type { ClinicChoice, ClinicSelection } from "./active-clinic-cookie";
+export {
+  activeClinicCookieOptions,
+  clearActiveClinicCookie,
+  listCurrentUserClinics,
+  resolveActiveClinicContext,
+  selectActiveClinic,
+} from "./active-clinic";
+export type { ActiveClinicContextResult } from "./active-clinic";
+export { updateClinicSettings } from "./clinic-settings";
+export {
   acceptClinicInvitation,
   inviteClinicMember,
 } from "./invitations";

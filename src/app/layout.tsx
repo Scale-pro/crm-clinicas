@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "CRM Clínicas",
-  description: "Fundação técnica (F0) — sem funcionalidades de produto.",
+  description: "Acesso seguro e multi-tenant para clínicas.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

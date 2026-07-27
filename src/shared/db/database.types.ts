@@ -8,7 +8,32 @@ export type Json =
 
 export type Database = {
   public: {
-    Tables: Record<string, never>;
+    Tables: {
+      clinics: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          deleted_at: string | null;
+          id: string;
+          name: string;
+          slug: string;
+          status: string;
+          timezone: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_by: string;
+          name: string;
+          slug: string;
+          timezone: string;
+        };
+        Update: {
+          name?: string;
+          timezone?: string;
+        };
+        Relationships: [];
+      };
+    };
     Views: Record<string, never>;
     Functions: {
       accept_invitation: {

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { signOutCurrentSession } from "@/shared/auth";
+import {
+  ACTIVE_CLINIC_COOKIE_NAME,
+  activeClinicCookieOptions,
+  signOutCurrentSession,
+} from "@/shared/auth";
 
 export async function POST(request: Request) {
   if (request.headers.get("origin") !== new URL(request.url).origin) {
@@ -14,5 +18,13 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.redirect(new URL("/login?reason=signed_out", request.url), 303);
+  const response = NextResponse.redirect(
+    new URL("/login?reason=signed_out", request.url),
+    303,
+  );
+  response.cookies.set(ACTIVE_CLINIC_COOKIE_NAME, "", {
+    ...activeClinicCookieOptions(),
+    maxAge: 0,
+  });
+  return response;
 }
