@@ -11,6 +11,10 @@ export {
 } from "./account-security";
 export type { LoginResult } from "./account-security";
 export {
+  acceptClinicInvitation,
+  inviteClinicMember,
+} from "./invitations";
+export {
   createInitialClinic,
   registerAccount,
 } from "./onboarding";

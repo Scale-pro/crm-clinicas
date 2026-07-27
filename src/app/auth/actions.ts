@@ -1,8 +1,10 @@
 "use server";
 
 import {
+  acceptClinicInvitation,
   createInitialClinic,
   enrollTotp,
+  inviteClinicMember,
   loginWithPassword,
   registerAccount,
   removeOwnTotpFactor,
@@ -41,4 +43,12 @@ export async function verifyTotpAction(factorId: unknown, code: unknown) {
 
 export async function removeTotpFactorAction(factorId: unknown) {
   return removeOwnTotpFactor(factorId);
+}
+
+export async function inviteMemberAction(input: unknown) {
+  return inviteClinicMember(input);
+}
+
+export async function acceptInvitationAction(rawToken: unknown) {
+  return acceptClinicInvitation(rawToken);
 }

@@ -148,8 +148,16 @@ describe("catálogo de autorização e RLS", () => {
       const isApprovedPublicRpc =
         routine.schema_name === "public" &&
         (routine.proname.startsWith("current_user_") ||
-          routine.proname === "create_clinic_with_owner" ||
-          routine.proname === "update_clinic_settings");
+          [
+            "accept_invitation",
+            "create_clinic_with_owner",
+            "invite_member",
+            "remove_member",
+            "revoke_invitation",
+            "suspend_member",
+            "update_clinic_settings",
+            "update_member_role",
+          ].includes(routine.proname));
       expect(routine.authenticated_execute).toBe(isApprovedPublicRpc);
       expect(routine.identity_arguments).not.toMatch(/\buser_id\b/);
     }

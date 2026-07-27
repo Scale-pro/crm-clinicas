@@ -11,6 +11,10 @@ export type Database = {
     Tables: Record<string, never>;
     Views: Record<string, never>;
     Functions: {
+      accept_invitation: {
+        Args: { token_hash: string };
+        Returns: string;
+      };
       create_clinic_with_owner: {
         Args: {
           clinic_name: string;
@@ -36,6 +40,32 @@ export type Database = {
       };
       current_user_requires_mfa: {
         Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      invite_member: {
+        Args: {
+          clinic_id: string;
+          expires_at: string;
+          member_email: string;
+          member_role: string;
+          token_hash: string;
+        };
+        Returns: string;
+      };
+      remove_member: {
+        Args: { clinic_id: string; member_id: string };
+        Returns: boolean;
+      };
+      revoke_invitation: {
+        Args: { clinic_id: string; invitation_id: string };
+        Returns: boolean;
+      };
+      suspend_member: {
+        Args: { clinic_id: string; member_id: string };
+        Returns: boolean;
+      };
+      update_member_role: {
+        Args: { clinic_id: string; member_id: string; target_role: string };
         Returns: boolean;
       };
       update_clinic_settings: {
