@@ -36,8 +36,8 @@ revalidada contra os vínculos reais
   `clinic_members`. Políticas usam `clinic_id in (select auth_clinic_ids())`.
 - `has_permission(clinic_id, 'acao')` — autorização **por ação**, nunca por
   comparação de cargo espalhada.
-- Papéis (`owner`, `admin`, `gestor_comercial`, `sdr`, `recepcionista`,
-  `profissional`) e permissões vivem em `roles`/`permissions`/`role_permissions`
+- Papéis (`owner`, `admin`, `manager`, `sdr`, `receptionist`, `professional`,
+  `viewer`) e permissões vivem em `roles`/`permissions`/`role_permissions`
   (ver [data-model](data-model.md)). Cargos personalizados = preparado, não no MVP.
 
 ## 3. RLS para leitura e RPCs para escrita
