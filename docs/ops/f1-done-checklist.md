@@ -50,6 +50,14 @@ e o run que o valida devem constar no relatório final do PR.
 | CI-DB | `.github/workflows/ci.yml`: reset em banco vazio, geração de tipos e suíte de integração |
 | CI-SUPPLY | audit high/critical, Gitleaks, dependency-cruiser, build e workflow Semgrep |
 
+## Estratégia de escrita multi-tenant
+
+A F1 autoriza leituras por RLS e mantém as mutações de tenant exclusivamente em
+RPCs autorizadas. O papel `authenticated` não possui DML direto nessas tabelas;
+a ausência de políticas de escrita é intencional. `T-MUT` também falha se um
+`GRANT` direto for introduzido sem política separada, `USING`, `WITH CHECK` e
+proteção de `clinic_id`, conforme a emenda da ADR-004.
+
 ## Matriz dos 142 requisitos
 
 | # | Requisito | Status | Teste responsável | Job | Evidência final | SHA |

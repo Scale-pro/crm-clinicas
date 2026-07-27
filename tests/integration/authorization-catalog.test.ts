@@ -80,6 +80,38 @@ describe("catálogo de autorização e RLS", () => {
     ]);
   });
 
+  it("mantém escrita das tabelas de tenant exclusivamente por RPC", async () => {
+    const tenantTables = [
+      "activities",
+      "audit_logs",
+      "clinic_features",
+      "clinic_limits",
+      "clinic_members",
+      "invitations",
+      "support_grants",
+    ];
+    const { rows } = await pool.query<{
+      can_delete: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      table_name: string;
+    }>(
+      `select table_name,
+              has_table_privilege('authenticated', format('public.%I', table_name), 'INSERT') as can_insert,
+              has_table_privilege('authenticated', format('public.%I', table_name), 'UPDATE') as can_update,
+              has_table_privilege('authenticated', format('public.%I', table_name), 'DELETE') as can_delete
+       from unnest($1::text[]) as names(table_name)
+       order by table_name`,
+      [tenantTables],
+    );
+    expect(rows).toHaveLength(tenantTables.length);
+    for (const row of rows) {
+      expect(row.can_delete).toBe(false);
+      expect(row.can_insert).toBe(false);
+      expect(row.can_update).toBe(false);
+    }
+  });
+
   it("nega uso de app_private e execução direta de log_audit_event", async () => {
     const { rows } = await pool.query<{
       anon_audit: boolean;

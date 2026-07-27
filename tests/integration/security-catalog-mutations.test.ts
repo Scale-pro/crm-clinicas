@@ -75,4 +75,44 @@ describe("mutações controladas do catálogo de segurança", () => {
       object: `${table}.${policy}`,
     });
   });
+
+  it.each(["INSERT", "UPDATE", "DELETE"] as const)(
+    "detecta GRANT direto de %s sem política de tenant correspondente",
+    async (command) => {
+      const violations = await withRolledBackMutation(
+        `grant ${command} on public.clinic_features to authenticated`,
+      );
+      expect(violations).toContainEqual({
+        invariant: "tenant_direct_write",
+        object: `clinic_features.${command}`,
+      });
+    },
+  );
+
+  it("detecta USING/WITH CHECK permissivos sem proteção de clinic_id", async () => {
+    const violations = await withRolledBackMutation(
+      `grant update on public.clinic_features to authenticated;
+       create policy f1_mutation_unsafe_write
+       on public.clinic_features for update to authenticated
+       using (true) with check (true)`,
+    );
+    expect(violations).toContainEqual({
+      invariant: "tenant_direct_write",
+      object: "clinic_features.UPDATE",
+    });
+  });
+
+  it("aceita política futura separada com USING, WITH CHECK e tenant protegido", async () => {
+    const violations = await withRolledBackMutation(
+      `grant update on public.clinic_features to authenticated;
+       create policy f1_mutation_safe_write
+       on public.clinic_features for update to authenticated
+       using (clinic_id in (select public.current_user_clinic_ids()))
+       with check (clinic_id in (select public.current_user_clinic_ids()))`,
+    );
+    expect(violations).not.toContainEqual({
+      invariant: "tenant_direct_write",
+      object: "clinic_features.UPDATE",
+    });
+  });
 });

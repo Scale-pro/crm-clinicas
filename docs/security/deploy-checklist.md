@@ -50,8 +50,11 @@
 ## 3. Deploy com alteração de RLS (adicional)
 
 - [ ] **RLS habilitado e forçado** (`enable` + `force`) nas tabelas afetadas.
-- [ ] Políticas **separadas** SELECT/INSERT/UPDATE/DELETE.
-- [ ] **`WITH CHECK`** impede alteração de `clinic_id`.
+- [ ] Leitura possui política `SELECT` escopada ao tenant.
+- [ ] Escrita normal permanece RPC-only e sem `GRANT` DML para `authenticated`.
+- [ ] Se houver exceção de Data API: `GRANT` mínimo, política separada,
+      `USING`, **`WITH CHECK`** e proteção contra alteração de `clinic_id`.
+- [ ] Teste de catálogo cobre qualquer novo `GRANT` direto.
 - [ ] `clinic_id` como **primeira coluna** dos índices compostos afetados.
 - [ ] Teste cross-tenant cobrindo as políticas alteradas.
 - [ ] Revisão dedicada da mudança de RLS.

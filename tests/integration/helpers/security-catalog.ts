@@ -16,10 +16,33 @@ const REQUIRED_TABLES = [
   "audit_logs",
 ] as const;
 
+const TENANT_WRITE_TABLES = [
+  "activities",
+  "audit_logs",
+  "clinic_features",
+  "clinic_limits",
+  "clinic_members",
+  "invitations",
+  "support_grants",
+] as const;
+
 export type SecurityCatalogViolation = {
-  invariant: "append_only" | "force_rls" | "public_execute" | "rls" | "search_path";
+  invariant:
+    | "append_only"
+    | "force_rls"
+    | "public_execute"
+    | "rls"
+    | "search_path"
+    | "tenant_direct_write";
   object: string;
 };
+
+function isTenantScoped(expression: string | null): boolean {
+  if (!expression) return false;
+  const normalized = expression.toLowerCase();
+  return normalized.includes("clinic_id") &&
+    /(auth\.uid|current_user_clinic_ids|has_permission)/.test(normalized);
+}
 
 export async function findSecurityCatalogViolations(
   database: Pick<PoolClient, "query">,
@@ -96,6 +119,75 @@ export async function findSecurityCatalogViolations(
       invariant: "append_only",
       object: `${policy.table_name}.${policy.policy_name}`,
     });
+  }
+
+
+  const directWrites = await database.query<{
+    command: "DELETE" | "INSERT" | "UPDATE";
+    table_name: string;
+  }>(
+    `select table_name, command
+     from unnest($1::text[]) as tenant_tables(table_name)
+     cross join unnest(array['INSERT', 'UPDATE', 'DELETE']) as commands(command)
+     where has_table_privilege(
+       'authenticated', format('public.%I', table_name), command
+     )
+     order by table_name, command`,
+    [TENANT_WRITE_TABLES],
+  );
+  const writePolicies = await database.query<{
+    applies_to_authenticated: boolean;
+    command: "ALL" | "DELETE" | "INSERT" | "UPDATE";
+    table_name: string;
+    using_expression: string | null;
+    with_check_expression: string | null;
+  }>(
+    `select c.relname as table_name,
+            case p.polcmd
+              when '*' then 'ALL'
+              when 'a' then 'INSERT'
+              when 'w' then 'UPDATE'
+              when 'd' then 'DELETE'
+            end as command,
+            0 = any(p.polroles)
+              or (select oid from pg_catalog.pg_roles where rolname = 'authenticated')
+                 = any(p.polroles) as applies_to_authenticated,
+            pg_catalog.pg_get_expr(p.polqual, p.polrelid) as using_expression,
+            pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid) as with_check_expression
+     from pg_catalog.pg_policy p
+     join pg_catalog.pg_class c on c.oid = p.polrelid
+     join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and c.relname = any($1::text[])
+       and p.polcmd in ('*', 'a', 'w', 'd')
+     order by c.relname, p.polname`,
+    [TENANT_WRITE_TABLES],
+  );
+
+  for (const grant of directWrites.rows) {
+    const corresponding = writePolicies.rows.filter(
+      (policy) =>
+        policy.table_name === grant.table_name &&
+        policy.applies_to_authenticated &&
+        (policy.command === grant.command || policy.command === "ALL"),
+    );
+    const safe = corresponding.length > 0 && corresponding.every((policy) => {
+      if (policy.command !== grant.command) return false;
+      if (grant.command === "INSERT") {
+        return isTenantScoped(policy.with_check_expression);
+      }
+      if (grant.command === "UPDATE") {
+        return isTenantScoped(policy.using_expression) &&
+          isTenantScoped(policy.with_check_expression);
+      }
+      return isTenantScoped(policy.using_expression);
+    });
+    if (!safe) {
+      violations.push({
+        invariant: "tenant_direct_write",
+        object: `${grant.table_name}.${grant.command}`,
+      });
+    }
   }
 
   return violations;

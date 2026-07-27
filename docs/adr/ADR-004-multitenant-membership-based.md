@@ -38,6 +38,25 @@ Autorização derivada de **Identidade + Vínculo**, resolvida no banco:
 - Performance: usar `(select auth.uid())` (avaliação única por statement) e
   funções auxiliares `stable`.
 
+## Emenda de 2026-07-27 — escrita de tenant exclusivamente por RPC
+
+Esta emenda substitui, para a implementação da F1, a exigência original acima
+de políticas de escrita direta em toda tabela de tenant. O texto anterior é
+mantido para registrar a evolução da decisão.
+
+- Leituras autorizadas continuam usando RLS, com `ENABLE` e `FORCE`.
+- Mutações normais das tabelas de tenant são expostas exclusivamente por RPCs
+  autorizadas; `authenticated` não recebe `GRANT` direto de `INSERT`, `UPDATE`
+  ou `DELETE` nessas tabelas.
+- A ausência de políticas de escrita é intencional: cada RPC valida identidade,
+  tenant, permissão, AAL2 quando aplicável e parâmetros não confiáveis antes da
+  mutação.
+- A abordagem é mais restritiva, reduz a superfície de escrita e evita dividir
+  regras entre Data API e RPC, preservando RLS como defesa em profundidade.
+- Se uma tabela futura precisar de escrita direta pela Data API, isso exigirá
+  `GRANT` mínimo explícito, políticas separadas por operação, `USING`, `WITH
+  CHECK`, proteção contra alteração de `clinic_id` e teste de catálogo dedicado.
+
 ## Consequências
 
 - **Positivas:** isolamento forte; multi-clínica futuro gratuito; nenhuma
