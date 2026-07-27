@@ -549,9 +549,11 @@ begin
   where pc.clinic_id = clinic_id and pc.contact_id = v_method.contact_id
     and pc.kind = v_method.kind and pc.archived_at is null
   order by pc.id for update;
-  update public.person_contacts as pc set is_primary = (pc.id = contact_method_id)
+  update public.person_contacts as pc set is_primary = false
   where pc.clinic_id = clinic_id and pc.contact_id = v_method.contact_id
     and pc.kind = v_method.kind and pc.archived_at is null;
+  update public.person_contacts as pc set is_primary = true
+  where pc.clinic_id = clinic_id and pc.id = contact_method_id;
   perform app_private.log_audit_event(
     clinic_id, 'contact_method.primary_changed', 'person_contact', contact_method_id,
     null, jsonb_build_object('contact_id', v_method.contact_id, 'method_kind', v_method.kind), null
