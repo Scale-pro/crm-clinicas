@@ -18,6 +18,7 @@ let owner: Awaited<ReturnType<typeof createUser>>;
 let ownerB: Awaited<ReturnType<typeof createUser>>;
 let platformAdmin: Awaited<ReturnType<typeof createUser>>;
 let platformAdminAal1: Awaited<ReturnType<typeof createUser>>;
+let ordinaryUser: Awaited<ReturnType<typeof createUser>>;
 
 async function createUser(label: string, aal2 = false) {
   const email = `${label}-${crypto.randomUUID()}@example.test`;
@@ -61,11 +62,12 @@ async function createGrant() {
 }
 
 beforeAll(async () => {
-  [owner, ownerB, platformAdmin, platformAdminAal1] = await Promise.all([
+  [owner, ownerB, platformAdmin, platformAdminAal1, ordinaryUser] = await Promise.all([
     createUser("support-owner"),
     createUser("support-owner-b"),
     createUser("platform-aal2", true),
     createUser("platform-aal1"),
+    createUser("ordinary-user"),
   ]);
 
   const clinics = await pool.query<{ id: string }>(
@@ -140,6 +142,12 @@ afterAll(async () => {
 });
 
 describe("acesso de suporte isolado", () => {
+  it("recusa clinic owner e usuário comum fora da plataforma", async () => {
+    expect((await owner.client.rpc("platform_list_clinics")).error).not.toBeNull();
+    expect((await ordinaryUser.client.rpc("platform_list_clinics")).error)
+      .not.toBeNull();
+  });
+
   it("lista apenas metadados da plataforma e bloqueia leitura clínica sem grant", async () => {
     const listed = await platformAdmin.client.rpc("platform_list_clinics");
     expect(listed.error).toBeNull();

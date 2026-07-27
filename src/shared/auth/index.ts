@@ -46,6 +46,7 @@ export {
   readClinicConfigurationForSupport,
   readClinicInvitationsForSupport,
   readClinicMembersForSupport,
+  readClinicSupportSnapshot,
   revokeReadOnlySupportGrant,
 } from "./platform-support";
 export {

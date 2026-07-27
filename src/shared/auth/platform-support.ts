@@ -151,3 +151,25 @@ export async function readClinicAuditForSupport(input: unknown) {
   if (error) return unavailable();
   return { ok: true, audit: data } as const;
 }
+
+export async function readClinicSupportSnapshot(input: unknown) {
+  const [members, invitations, configuration, audit] = await Promise.all([
+    readClinicMembersForSupport(input),
+    readClinicInvitationsForSupport(input),
+    readClinicConfigurationForSupport(input),
+    readClinicAuditForSupport(input),
+  ]);
+  if (!members.ok || !invitations.ok || !configuration.ok || !audit.ok) {
+    const failure = [members, invitations, configuration, audit].find(
+      (result) => !result.ok,
+    );
+    return failure && !failure.ok ? failure : unavailable();
+  }
+  return {
+    ok: true,
+    audit: audit.audit,
+    configuration: configuration.configuration,
+    invitations: invitations.invitations,
+    members: members.members,
+  } as const;
+}

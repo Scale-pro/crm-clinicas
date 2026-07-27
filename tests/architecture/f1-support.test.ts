@@ -10,6 +10,18 @@ const serverModule = readFileSync(
   path.resolve(__dirname, "../../src/shared/auth/platform-support.ts"),
   "utf8",
 );
+const platformPage = readFileSync(
+  path.resolve(__dirname, "../../src/app/platform/page.tsx"),
+  "utf8",
+);
+const clinicPage = readFileSync(
+  path.resolve(__dirname, "../../src/app/platform/clinics/[clinicId]/page.tsx"),
+  "utf8",
+);
+const actions = readFileSync(
+  path.resolve(__dirname, "../../src/app/platform/actions.ts"),
+  "utf8",
+);
 const banner = readFileSync(
   path.resolve(__dirname, "../../src/shared/ui/support-mode-banner.tsx"),
   "utf8",
@@ -57,5 +69,33 @@ describe("suporte isolado", () => {
   it("nenhuma escrita operacional existe sob support grant", () => {
     expect(sql).not.toMatch(/support_(write|update|delete|insert)/);
     expect(serverModule).not.toMatch(/platform_(write|update|delete|insert)/);
+  });
+
+  it("expõe o painel mínimo somente pelos casos de uso allowlisted", () => {
+    expect(platformPage).toContain("listPlatformClinics");
+    expect(clinicPage).toContain("readClinicSupportSnapshot");
+    expect(serverModule).toContain("readClinicMembersForSupport(input)");
+    expect(serverModule).toContain("readClinicInvitationsForSupport(input)");
+    expect(serverModule).toContain("readClinicConfigurationForSupport(input)");
+    expect(serverModule).toContain("readClinicAuditForSupport(input)");
+    expect(actions).toContain("createReadOnlySupportGrant");
+    expect(actions).toContain("revokeReadOnlySupportGrant");
+  });
+
+  it("renderiza banner somente depois de validar o grant no servidor", () => {
+    expect(clinicPage.indexOf("if (!query.grantId)")).toBeLessThan(
+      clinicPage.indexOf("const snapshot = await readClinicSupportSnapshot"),
+    );
+    expect(clinicPage.indexOf("if (!snapshot.ok)")).toBeLessThan(
+      clinicPage.indexOf("<SupportModeBanner"),
+    );
+    expect(banner).toContain("validado no servidor");
+  });
+
+  it("não oferece capacidades operacionais ou futuras no painel", () => {
+    const ui = `${platformPage}\n${clinicPage}\n${actions}`;
+    expect(ui).not.toMatch(/support_operations|restricted_write/);
+    expect(ui).not.toMatch(/editar (owner|membro|papel)|alterar mfa/i);
+    expect(ui).not.toMatch(/contato|paciente|oportunidade/i);
   });
 });
