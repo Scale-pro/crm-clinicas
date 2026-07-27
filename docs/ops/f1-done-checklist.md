@@ -7,9 +7,28 @@ Este documento é a matriz versionada `requisito → implementação/teste → j
 - Branch: `feature/f1-multitenant-auth`.
 - PR: #6 (deve permanecer aberto, draft e sem merge).
 - SHA-base verde da F1.9: `2ff991bb0f2f7d8e6cb379e9555146e88edf0ee3`.
-- `V-FINAL`: **PENDENTE — aguardando o run final da F1.10**.
-- `E-FINAL`: **PENDENTE — inserir a identificação e o link do run verde**.
-- `S-FINAL`: **PENDENTE — inserir o SHA exato validado pelo job de banco**.
+- `V-FINAL`: **VALIDADO — todos os jobs obrigatórios ficaram verdes**.
+- `E-FINAL`: CI [run 30278865181](https://github.com/Scale-pro/crm-clinicas/actions/runs/30278865181) e Semgrep [run 30278865167](https://github.com/Scale-pro/crm-clinicas/actions/runs/30278865167).
+- `S-FINAL`: `397b29687642690f81915b325854cfd84dd3357a`, SHA exato da implementação e dos testes validado pelo job de banco.
+
+O commit que registra esta evidência é necessariamente um sucessor apenas
+documental de `S-FINAL`: um commit Git não consegue conter literalmente o
+próprio hash, pois o hash depende do conteúdo do arquivo. O SHA desse sucessor
+e o run que o valida devem constar no relatório final do PR.
+
+## Resultado da execução de referência
+
+| Controle | Resultado |
+|---|---|
+| Testes locais sem containers | 113 testes em 20 arquivos; sucesso |
+| Integração Supabase/Auth/RLS | 60 testes em 11 arquivos; sucesso |
+| Migrations em banco vazio (`supabase db reset`) | Sucesso |
+| Geração e validação dos tipos locais | Sucesso |
+| Lint, typecheck, dependency-cruiser e build | Sucesso |
+| Audit high/critical e audit informativo | Sucesso; nenhuma vulnerabilidade conhecida |
+| Gitleaks | Sucesso |
+| Semgrep | Sucesso |
+| Encerramento da stack Supabase (`if: always()`) | Sucesso |
 
 ## Referências de testes e jobs
 
@@ -187,4 +206,3 @@ Este documento é a matriz versionada `requisito → implementação/teste → j
 - O provedor definitivo de e-mail de produção ainda não foi definido/configurado.
 - A recuperação de conta não remove a exigência de MFA nem concede autorização. A recuperação de fatores perdidos exige o procedimento operacional controlado descrito nos ADRs/runbooks; não há bypass automático na F1.
 - Estas pendências externas não bloqueiam a conclusão técnica local/CI, mas impedem declarar produção/staging operacionalmente validados.
-
