@@ -5,10 +5,13 @@ export {
   assignContactOwner,
   createContact,
   createContactSchema,
+  conflictingContactId,
   getContact,
+  listContactOwners,
   listContacts,
   mapCrmError,
   resolveContactScope,
+  requireContactEditAccess,
   updateContact,
   updateContactSchema,
 } from "./contacts";

@@ -5,7 +5,11 @@ import { z } from "zod";
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
 
-import { mapCrmError, requireContactEditAccess } from "./contacts";
+import {
+  conflictingContactId,
+  mapCrmError,
+  requireContactEditAccess,
+} from "./contacts";
 import { normalizeContactMethod } from "./phone";
 
 export const contactMethodSchema = z
@@ -41,7 +45,13 @@ export async function addContactMethod(input: unknown) {
     is_primary: parsed.data.isPrimary,
     is_whatsapp: parsed.data.isWhatsapp,
   });
-  if (error) return { ok: false, code: mapCrmError(error) } as const;
+  if (error) {
+    return {
+      ok: false,
+      code: mapCrmError(error),
+      conflictingContactId: conflictingContactId(error),
+    } as const;
+  }
   return { ok: true, contactMethodId: data } as const;
 }
 

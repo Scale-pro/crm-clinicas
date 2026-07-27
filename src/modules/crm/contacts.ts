@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from "@/shared/db";
 
 import { normalizeContactMethod } from "./phone";
 
-type DatabaseError = { code?: string; message?: string };
+type DatabaseError = { code?: string; details?: string; message?: string };
 export type CrmErrorCode =
   | "conflict"
   | "duplicate"
@@ -23,6 +23,18 @@ export function mapCrmError(error: DatabaseError): CrmErrorCode {
   if (error.code === "22023" || error.code === "23514") return "invalid_input";
   if (error.code === "P0002") return "not_found";
   return "unavailable";
+}
+
+export function conflictingContactId(error: DatabaseError): string | null {
+  if (error.code !== "23505" || !error.details) return null;
+  try {
+    const parsed = z.object({ contact_id: z.uuid() }).strict().safeParse(
+      JSON.parse(error.details),
+    );
+    return parsed.success ? parsed.data.contact_id : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function resolveContactScope(clinicId: string) {
@@ -68,6 +80,13 @@ export async function listContacts(input: unknown) {
   if (!parsed.success) return { ok: false, code: "invalid_input" } as const;
   const scope = await resolveContactScope(parsed.data.clinicId);
   if (!scope.ok) return scope;
+  if (parsed.data.includeArchived) {
+    const archivePermission = await requirePermission(
+      parsed.data.clinicId,
+      "contact.archive",
+    );
+    if (!archivePermission.allowed) return { ok: false, code: "forbidden" } as const;
+  }
   const supabase = await createServerSupabaseClient();
   let query = supabase
     .from("contacts")
@@ -106,6 +125,36 @@ export async function listContacts(input: unknown) {
     )
     .slice(0, parsed.data.limit);
   return { ok: true, contacts: filtered, scope: scope.scope } as const;
+}
+
+export async function listContactOwners(clinicId: string) {
+  const parsed = z.uuid().safeParse(clinicId);
+  if (!parsed.success) return { ok: false, code: "invalid_input" } as const;
+  const scope = await resolveContactScope(parsed.data);
+  if (!scope.ok) return scope;
+  const supabase = await createServerSupabaseClient();
+  const members = await supabase
+    .from("clinic_members")
+    .select("user_id,role")
+    .eq("clinic_id", parsed.data)
+    .eq("status", "active")
+    .order("role")
+    .order("user_id");
+  if (members.error) return { ok: false, code: "unavailable" } as const;
+  const userIds = members.data.map((member) => member.user_id);
+  const profiles = userIds.length
+    ? await supabase.from("profiles").select("user_id,full_name").in("user_id", userIds)
+    : { data: [], error: null };
+  if (profiles.error) return { ok: false, code: "unavailable" } as const;
+  const names = new Map(profiles.data.map((profile) => [profile.user_id, profile.full_name]));
+  return {
+    ok: true,
+    owners: members.data.map((member) => ({
+      userId: member.user_id,
+      role: member.role,
+      fullName: names.get(member.user_id) ?? "Membro da clínica",
+    })),
+  } as const;
 }
 
 const contactIdSchema = z.object({ clinicId: z.uuid(), contactId: z.uuid() }).strict();
@@ -182,7 +231,13 @@ export async function createContact(input: unknown) {
     methods,
     link_as_patient: parsed.data.linkAsPatient,
   });
-  if (error) return { ok: false, code: mapCrmError(error) } as const;
+  if (error) {
+    return {
+      ok: false,
+      code: mapCrmError(error),
+      conflictingContactId: conflictingContactId(error),
+    } as const;
+  }
   return { ok: true, contactId: data } as const;
 }
 

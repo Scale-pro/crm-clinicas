@@ -102,6 +102,7 @@ as $$
 declare
   v_actor_id uuid := (select auth.uid());
   v_contact_id uuid;
+  v_conflicting_contact_id uuid;
   v_existing_id uuid;
   v_item jsonb;
   v_kind text;
@@ -175,7 +176,27 @@ begin
       where c.clinic_id = clinic_id and c.idempotency_key = idempotency_key;
       if found then return v_existing_id; end if;
     end if;
-    raise exception using errcode = '23505', message = 'contact method already exists';
+    select pc.contact_id into v_conflicting_contact_id
+    from public.person_contacts as pc
+    join public.contacts as c
+      on c.clinic_id = pc.clinic_id and c.id = pc.contact_id
+    where pc.clinic_id = clinic_id
+      and pc.kind = v_kind
+      and pc.normalized_value = v_normalized
+      and pc.archived_at is null
+      and (
+        app_private.has_permission(clinic_id, 'contact.view_all')
+        or (
+          c.owner_user_id = v_actor_id
+          and app_private.has_permission(clinic_id, 'contact.view_own')
+        )
+      )
+    limit 1;
+    raise exception using
+      errcode = '23505',
+      message = 'contact method already exists',
+      detail = case when v_conflicting_contact_id is null then null
+        else jsonb_build_object('contact_id', v_conflicting_contact_id)::text end;
   end;
 
   perform app_private.log_activity(clinic_id, 'contact.created', '{}'::jsonb, v_contact_id);
@@ -345,6 +366,7 @@ as $$
 declare
   v_actor_id uuid := (select auth.uid());
   v_contact public.contacts;
+  v_conflicting_contact_id uuid;
   v_id uuid;
 begin
   if v_actor_id is null or not app_private.is_clinic_member(clinic_id) then
@@ -375,7 +397,27 @@ begin
       nullif(trim(label), ''), is_primary, is_whatsapp
     ) returning id into v_id;
   exception when unique_violation then
-    raise exception using errcode = '23505', message = 'contact method already exists';
+    select pc.contact_id into v_conflicting_contact_id
+    from public.person_contacts as pc
+    join public.contacts as c
+      on c.clinic_id = pc.clinic_id and c.id = pc.contact_id
+    where pc.clinic_id = clinic_id
+      and pc.kind = kind
+      and pc.normalized_value = normalized_value
+      and pc.archived_at is null
+      and (
+        app_private.has_permission(clinic_id, 'contact.view_all')
+        or (
+          c.owner_user_id = v_actor_id
+          and app_private.has_permission(clinic_id, 'contact.view_own')
+        )
+      )
+    limit 1;
+    raise exception using
+      errcode = '23505',
+      message = 'contact method already exists',
+      detail = case when v_conflicting_contact_id is null then null
+        else jsonb_build_object('contact_id', v_conflicting_contact_id)::text end;
   end;
   perform app_private.log_audit_event(
     clinic_id, 'contact_method.created', 'person_contact', v_id,

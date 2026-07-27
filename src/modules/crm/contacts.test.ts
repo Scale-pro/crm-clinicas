@@ -5,14 +5,20 @@ vi.mock("@/shared/auth", () => ({ requirePermission: vi.fn() }));
 vi.mock("@/shared/db", () => ({ createServerSupabaseClient: vi.fn() }));
 
 let createContactSchema: typeof import("./contacts")["createContactSchema"];
+let conflictingContactId: typeof import("./contacts")["conflictingContactId"];
 let mapCrmError: typeof import("./contacts")["mapCrmError"];
 let resolveContactScope: typeof import("./contacts")["resolveContactScope"];
 let updateContactSchema: typeof import("./contacts")["updateContactSchema"];
 let requirePermission: ReturnType<typeof vi.fn>;
 
 beforeAll(async () => {
-  ({ createContactSchema, mapCrmError, resolveContactScope, updateContactSchema } =
-    await import("./contacts"));
+  ({
+    conflictingContactId,
+    createContactSchema,
+    mapCrmError,
+    resolveContactScope,
+    updateContactSchema,
+  } = await import("./contacts"));
   requirePermission = vi.mocked((await import("@/shared/auth")).requirePermission);
 });
 
@@ -50,6 +56,14 @@ describe("contratos públicos do módulo CRM", () => {
     expect(mapCrmError({ code: "23505", message: "valor sensível" })).toBe("duplicate");
     expect(mapCrmError({ code: "40001", message: "detalhe interno" })).toBe("conflict");
     expect(mapCrmError({ code: "XX000", message: "stack interna" })).toBe("unavailable");
+    const contactId = crypto.randomUUID();
+    expect(
+      conflictingContactId({
+        code: "23505",
+        details: JSON.stringify({ contact_id: contactId }),
+      }),
+    ).toBe(contactId);
+    expect(conflictingContactId({ code: "23505", details: "não-json" })).toBeNull();
   });
 
   it("resolve view_all antes de view_own e não inclui owner nulo em own", async () => {
