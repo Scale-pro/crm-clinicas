@@ -38,6 +38,9 @@ describe("diagnóstico seguro do job Supabase", () => {
     expect(semgrepWorkflow).toContain('branches: ["main"]');
     expect(semgrepWorkflow).toContain("pull_request:");
     expect(semgrepWorkflow).not.toContain("claude/claude-code-plugin-setup-kysnwn");
+    expect(semgrepWorkflow).toContain(
+      'git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+    );
   });
 
   it("nunca imprime supabase status, que contém credenciais locais", () => {

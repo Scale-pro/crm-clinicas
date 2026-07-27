@@ -50,6 +50,7 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           actual_sha="$(git rev-parse HEAD)"
           test "$actual_sha" = "$EXPECTED_SHA"
           echo "SHA testado: $actual_sha"
