@@ -63,7 +63,9 @@ describe("shell autenticado F1.9", () => {
   it("possui estados de loading e erro e limita rotas às fases entregues", () => {
     expect(existsSync(path.join(root, "src/app/(clinic)/app/loading.tsx"))).toBe(true);
     expect(existsSync(path.join(root, "src/app/(clinic)/app/error.tsx"))).toBe(true);
-    const forbidden = ["patients", "leads", "appointments", "conversations", "whatsapp", "medical-records", "finance"];
+    // "leads" saiu da lista na F2.2.5: /app/leads é a lista de oportunidades
+    // já entregue. As demais permanecem proibidas até serem implementadas.
+    const forbidden = ["patients", "appointments", "conversations", "whatsapp", "medical-records", "finance"];
     const appFiles = allFiles(path.join(root, "src/app"));
     for (const segment of forbidden) {
       expect(appFiles.some((file) => file.split(path.sep).includes(segment))).toBe(false);
