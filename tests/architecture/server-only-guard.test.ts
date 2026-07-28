@@ -27,6 +27,7 @@ const serverOnlyEntrypoints = [
   "src/modules/identity/index.ts",
   "src/modules/tenancy/index.ts",
   "src/modules/platform-admin/index.ts",
+  "src/modules/crm/index.ts",
 ];
 
 function firstCodeLine(file: string): string | undefined {

@@ -34,6 +34,7 @@ describe("validação final estática da F1", () => {
       ...filesUnder("src/modules/identity"),
       ...filesUnder("src/modules/platform-admin"),
       ...filesUnder("src/modules/tenancy"),
+      ...filesUnder("src/modules/crm"),
       ...filesUnder("src/shared/auth"),
     ]
       .filter((file) => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".test.ts"))
@@ -81,6 +82,7 @@ describe("validação final estática da F1", () => {
     const layout = source("src/app/(clinic)/app/layout.tsx");
     const routes = [
       ["/app", "src/app/(clinic)/app/page.tsx"],
+      ["/app/contacts", "src/app/(clinic)/app/contacts/page.tsx"],
       ["/app/settings", "src/app/(clinic)/app/settings/page.tsx"],
       ["/app/team", "src/app/(clinic)/app/team/page.tsx"],
       ["/app/security", "src/app/(clinic)/app/security/page.tsx"],
@@ -90,7 +92,9 @@ describe("validação final estática da F1", () => {
       expect(layout).toContain(`"${route}"`);
       expect(filesUnder("src/app")).toContain(file);
     }
-    expect(layout).not.toMatch(/contacts|patients|opportunities|pipeline|kanban|appointments|whatsapp|finance/i);
+    expect(layout).not.toMatch(
+      /patients|opportunities|pipeline|kanban|appointments|whatsapp|finance/i,
+    );
   });
 
   it("preserva labels, foco visível e responsividade mínima do shell", () => {

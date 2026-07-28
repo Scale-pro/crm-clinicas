@@ -34,6 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Confirma SHA testado
         env:
@@ -55,6 +56,8 @@ jobs:
         run: pnpm typecheck
       - name: Testes (inclui testes de arquitetura)
         run: pnpm test
+      - name: Verifica whitespace do diff
+        run: git diff --check origin/main...HEAD
       - name: Fronteiras arquiteturais e ciclos (dependency-cruiser)
         run: pnpm depcruise
       - name: Build

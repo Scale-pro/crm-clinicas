@@ -60,10 +60,10 @@ describe("shell autenticado F1.9", () => {
     expect(logout).toContain("maxAge: 0");
   });
 
-  it("possui estados de loading e erro e não introduz rotas de CRM", () => {
+  it("possui estados de loading e erro e limita rotas às fases entregues", () => {
     expect(existsSync(path.join(root, "src/app/(clinic)/app/loading.tsx"))).toBe(true);
     expect(existsSync(path.join(root, "src/app/(clinic)/app/error.tsx"))).toBe(true);
-    const forbidden = ["contacts", "patients", "leads", "opportunities", "pipeline", "kanban", "appointments", "conversations", "whatsapp", "medical-records", "finance"];
+    const forbidden = ["patients", "leads", "opportunities", "pipeline", "kanban", "appointments", "conversations", "whatsapp", "medical-records", "finance"];
     const appFiles = allFiles(path.join(root, "src/app"));
     for (const segment of forbidden) {
       expect(appFiles.some((file) => file.split(path.sep).includes(segment))).toBe(false);
@@ -72,7 +72,7 @@ describe("shell autenticado F1.9", () => {
 
   it("preserva lockfile, migrations e contrato de ambiente da unidade anterior", () => {
     expect(source("package.json")).not.toContain("active-clinic-cookie-secret");
-    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(7);
+    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(10);
     expect(source("src/shared/config/env-schema.ts")).toContain("ACTIVE_CLINIC_COOKIE_SECRET");
   });
 });

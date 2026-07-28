@@ -14,6 +14,10 @@ const REQUIRED_TABLES = [
   "support_grants",
   "activities",
   "audit_logs",
+  "contacts",
+  "person_contacts",
+  "patients",
+  "lead_sources",
 ] as const;
 
 const TENANT_WRITE_TABLES = [
@@ -24,6 +28,10 @@ const TENANT_WRITE_TABLES = [
   "clinic_members",
   "invitations",
   "support_grants",
+  "contacts",
+  "person_contacts",
+  "patients",
+  "lead_sources",
 ] as const;
 
 export type SecurityCatalogViolation = {
@@ -33,6 +41,7 @@ export type SecurityCatalogViolation = {
     | "public_execute"
     | "rls"
     | "search_path"
+    | "tenant_catalog"
     | "tenant_direct_write";
   object: string;
 };
@@ -48,6 +57,21 @@ export async function findSecurityCatalogViolations(
   database: Pick<PoolClient, "query">,
 ): Promise<SecurityCatalogViolation[]> {
   const violations: SecurityCatalogViolation[] = [];
+
+  const tenantTables = await database.query<{ table_name: string }>(
+    `select table_name
+     from information_schema.columns
+     where table_schema = 'public' and column_name = 'clinic_id'
+     order by table_name`,
+  );
+  const actualTenantTables = tenantTables.rows.map((row) => row.table_name);
+  const catalogTenantTables = [...TENANT_WRITE_TABLES].sort();
+  if (JSON.stringify(actualTenantTables) !== JSON.stringify(catalogTenantTables)) {
+    violations.push({
+      invariant: "tenant_catalog",
+      object: `expected=${catalogTenantTables.join(",")};actual=${actualTenantTables.join(",")}`,
+    });
+  }
 
   const tables = await database.query<{
     relforcerowsecurity: boolean;
