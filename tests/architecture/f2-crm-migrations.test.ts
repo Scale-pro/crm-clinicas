@@ -89,4 +89,16 @@ describe("migrations de contatos F2.1", () => {
       .join("\n");
     expect(auditCalls).not.toMatch(/raw_value|normalized_value/);
   });
+
+  it("filtra a busca no banco sob RLS antes do limite final", () => {
+    const searchFunction = schema
+      .split("create function public.search_contacts")[1]!
+      .split("create function app_private.log_activity")[0]!;
+    expect(searchFunction).toContain("security invoker");
+    expect(searchFunction).not.toContain("security definer");
+    expect(searchFunction).toContain("pc.normalized_value = p_normalized_value");
+    expect(searchFunction).toContain("pc.archived_at is null");
+    expect(searchFunction).toContain("order by matched.exact_method desc, c.created_at desc, c.id");
+    expect(searchFunction).toContain("limit p_limit");
+  });
 });

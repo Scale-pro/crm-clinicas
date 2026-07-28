@@ -88,43 +88,18 @@ export async function listContacts(input: unknown) {
     if (!archivePermission.allowed) return { ok: false, code: "forbidden" } as const;
   }
   const supabase = await createServerSupabaseClient();
-  let query = supabase
-    .from("contacts")
-    .select("id,full_name,owner_user_id,notes,archived_at,version,created_at")
-    .eq("clinic_id", parsed.data.clinicId)
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (!parsed.data.includeArchived) query = query.is("archived_at", null);
-  if (parsed.data.ownerUserId) query = query.eq("owner_user_id", parsed.data.ownerUserId);
-  const contacts = await query;
+  const phone = normalizeContactMethod("phone", parsed.data.search);
+  const email = normalizeContactMethod("email", parsed.data.search);
+  const contacts = await supabase.rpc("search_contacts", {
+    p_clinic_id: parsed.data.clinicId,
+    p_include_archived: parsed.data.includeArchived,
+    p_limit: parsed.data.limit,
+    p_normalized_value: phone ?? email,
+    p_owner_user_id: parsed.data.ownerUserId ?? null,
+    p_search_term: parsed.data.search,
+  });
   if (contacts.error) return { ok: false, code: "unavailable" } as const;
-
-  const search = parsed.data.search.toLocaleLowerCase("pt-BR");
-  let methodContactIds = new Set<string>();
-  if (search) {
-    const phone = normalizeContactMethod("phone", parsed.data.search);
-    const email = normalizeContactMethod("email", parsed.data.search);
-    const normalized = phone ?? email;
-    if (normalized) {
-      const methods = await supabase
-        .from("person_contacts")
-        .select("contact_id")
-        .eq("clinic_id", parsed.data.clinicId)
-        .eq("normalized_value", normalized)
-        .is("archived_at", null);
-      if (methods.error) return { ok: false, code: "unavailable" } as const;
-      methodContactIds = new Set(methods.data.map((method) => method.contact_id));
-    }
-  }
-  const filtered = contacts.data
-    .filter(
-      (contact) =>
-        !search ||
-        contact.full_name.toLocaleLowerCase("pt-BR").includes(search) ||
-        methodContactIds.has(contact.id),
-    )
-    .slice(0, parsed.data.limit);
-  return { ok: true, contacts: filtered, scope: scope.scope } as const;
+  return { ok: true, contacts: contacts.data, scope: scope.scope } as const;
 }
 
 export async function listContactOwners(clinicId: string) {

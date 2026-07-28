@@ -6,20 +6,26 @@ vi.mock("@/shared/db", () => ({ createServerSupabaseClient: vi.fn() }));
 
 let createContactSchema: typeof import("./contacts")["createContactSchema"];
 let conflictingContactId: typeof import("./contacts")["conflictingContactId"];
+let listContacts: typeof import("./contacts")["listContacts"];
 let mapCrmError: typeof import("./contacts")["mapCrmError"];
 let resolveContactScope: typeof import("./contacts")["resolveContactScope"];
 let updateContactSchema: typeof import("./contacts")["updateContactSchema"];
+let createServerSupabaseClient: ReturnType<typeof vi.fn>;
 let requirePermission: ReturnType<typeof vi.fn>;
 
 beforeAll(async () => {
   ({
     conflictingContactId,
     createContactSchema,
+    listContacts,
     mapCrmError,
     resolveContactScope,
     updateContactSchema,
   } = await import("./contacts"));
   requirePermission = vi.mocked((await import("@/shared/auth")).requirePermission);
+  createServerSupabaseClient = vi.mocked(
+    (await import("@/shared/db")).createServerSupabaseClient,
+  );
 });
 
 describe("contratos públicos do módulo CRM", () => {
@@ -87,5 +93,54 @@ describe("contratos públicos do módulo CRM", () => {
       scope: "own",
       userId,
     });
+  });
+
+  it.each([
+    ["(11) 99876-5432", "+5511998765432"],
+    [" Maria.Antiga+crm@Example.Test ", "maria.antiga+crm@example.test"],
+    ["Maria Silva", null],
+  ])("delega busca e limite validados ao banco para %s", async (search, normalized) => {
+    const clinicId = crypto.randomUUID();
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    requirePermission.mockReset();
+    requirePermission.mockResolvedValue({
+      allowed: true,
+      session: { aal: "aal1", userId: crypto.randomUUID() },
+    });
+    createServerSupabaseClient.mockResolvedValue({ rpc } as never);
+
+    expect(await listContacts({
+      clinicId,
+      includeArchived: false,
+      limit: 7,
+      search,
+    })).toMatchObject({ ok: true, contacts: [] });
+    expect(rpc).toHaveBeenCalledWith("search_contacts", {
+      p_clinic_id: clinicId,
+      p_include_archived: false,
+      p_limit: 7,
+      p_normalized_value: normalized,
+      p_owner_user_id: null,
+      p_search_term: search.trim(),
+    });
+  });
+
+  it("não consulta arquivados sem contact.archive", async () => {
+    requirePermission.mockReset();
+    requirePermission
+      .mockResolvedValueOnce({
+        allowed: true,
+        session: { aal: "aal1", userId: crypto.randomUUID() },
+      })
+      .mockResolvedValueOnce({ allowed: false, code: "forbidden" });
+    createServerSupabaseClient.mockReset();
+
+    expect(await listContacts({
+      clinicId: crypto.randomUUID(),
+      includeArchived: true,
+      limit: 10,
+      search: "Arquivado",
+    })).toEqual({ ok: false, code: "forbidden" });
+    expect(createServerSupabaseClient).not.toHaveBeenCalled();
   });
 });

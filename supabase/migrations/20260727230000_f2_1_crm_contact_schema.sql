@@ -224,6 +224,69 @@ grant select on table
   public.lead_sources
 to authenticated;
 
+create function public.search_contacts(
+  p_clinic_id uuid,
+  p_search_term text,
+  p_normalized_value text,
+  p_owner_user_id uuid,
+  p_include_archived boolean,
+  p_limit integer
+)
+returns table (
+  id uuid,
+  full_name text,
+  owner_user_id uuid,
+  notes text,
+  archived_at timestamptz,
+  version integer,
+  created_at timestamptz
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    c.id,
+    c.full_name,
+    c.owner_user_id,
+    c.notes,
+    c.archived_at,
+    c.version,
+    c.created_at
+  from public.contacts as c
+  cross join lateral (
+    select p_normalized_value is not null and exists (
+      select 1
+      from public.person_contacts as pc
+      where pc.clinic_id = p_clinic_id
+        and pc.contact_id = c.id
+        and pc.normalized_value = p_normalized_value
+        and pc.archived_at is null
+    ) as exact_method
+  ) as matched
+  where c.clinic_id = p_clinic_id
+    and (p_include_archived or c.archived_at is null)
+    and (
+      not p_include_archived
+      or public.current_user_has_permission(p_clinic_id, 'contact.archive')
+    )
+    and (p_owner_user_id is null or c.owner_user_id = p_owner_user_id)
+    and (
+      p_search_term = ''
+      or position(lower(p_search_term) in lower(c.full_name)) > 0
+      or matched.exact_method
+    )
+  order by matched.exact_method desc, c.created_at desc, c.id
+  limit p_limit;
+$$;
+alter function public.search_contacts(uuid, text, text, uuid, boolean, integer)
+owner to postgres;
+revoke all on function public.search_contacts(uuid, text, text, uuid, boolean, integer)
+from public, anon;
+grant execute on function public.search_contacts(uuid, text, text, uuid, boolean, integer)
+to authenticated;
+
 create function app_private.log_activity(
   p_clinic_id uuid,
   p_type text,

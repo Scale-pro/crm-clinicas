@@ -277,6 +277,25 @@ export type Database = {
         Args: { clinic_id: string; member_id: string };
         Returns: boolean;
       };
+      search_contacts: {
+        Args: {
+          p_clinic_id: string;
+          p_include_archived: boolean;
+          p_limit: number;
+          p_normalized_value: string | null;
+          p_owner_user_id: string | null;
+          p_search_term: string;
+        };
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          full_name: string;
+          id: string;
+          notes: string | null;
+          owner_user_id: string | null;
+          version: number;
+        }[];
+      };
       revoke_support_grant: {
         Args: { grant_id: string };
         Returns: boolean;

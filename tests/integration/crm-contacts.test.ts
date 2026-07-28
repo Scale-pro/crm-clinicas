@@ -72,6 +72,29 @@ async function createContact(
   return result.data;
 }
 
+async function searchContacts(
+  actor: FixtureUser,
+  clinicId: string,
+  search: string,
+  options: {
+    includeArchived?: boolean;
+    limit?: number;
+    normalizedValue?: string | null;
+    ownerUserId?: string | null;
+  } = {},
+) {
+  const result = await actor.client.rpc("search_contacts", {
+    p_clinic_id: clinicId,
+    p_include_archived: options.includeArchived ?? false,
+    p_limit: options.limit ?? 50,
+    p_normalized_value: options.normalizedValue ?? null,
+    p_owner_user_id: options.ownerUserId ?? null,
+    p_search_term: search.trim(),
+  });
+  if (result.error) throw result.error;
+  return result.data as { created_at: string; full_name: string; id: string }[];
+}
+
 beforeAll(async () => {
   [ownerA, ownerB, managerA, sdrA, receptionistA, professionalA, viewerA, platformAdmin] =
     await Promise.all([
@@ -201,6 +224,109 @@ describe("CRM F2.1 multi-tenant", () => {
     expect(otherKey).not.toBe(first);
     expect(otherClinic).not.toBe(first);
     expect(persisted.rows).toEqual([{ owner_user_id: sdrA.id }]);
+  });
+
+  it("busca no banco além dos 100 mais recentes sem contornar RLS ou arquivamento", async () => {
+    const oldest = await pool.query<{ id: string }>(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, created_by, updated_by, created_at, updated_at)
+       values ($1, 'Maria Silva Pesquisa Antiga', $2, $2, $2, '2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')
+       returning id`,
+      [clinicA, sdrA.id],
+    );
+    const oldestId = oldest.rows[0]!.id;
+    await pool.query(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, created_by, updated_by)
+       select $1, 'Contato lote busca ' || lpad(series::text, 3, '0'), $2, $2, $2
+       from generate_series(1, 120) as series`,
+      [clinicA, managerA.id],
+    );
+    await pool.query(
+      `insert into public.person_contacts
+         (clinic_id, contact_id, kind, raw_value, normalized_value, is_primary)
+       values
+         ($1, $2, 'phone', '(11) 99876-5432', '+5511998765432', true),
+         ($1, $2, 'email', 'Maria.Antiga+crm@Example.Test', 'maria.antiga+crm@example.test', true)`,
+      [clinicA, oldestId],
+    );
+    const crossTenant = await pool.query<{ id: string }>(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, created_by, updated_by)
+       values ($1, 'Maria Silva Pesquisa Antiga', $2, $2, $2)
+       returning id`,
+      [clinicB, ownerB.id],
+    );
+    await pool.query(
+      `insert into public.person_contacts
+         (clinic_id, contact_id, kind, raw_value, normalized_value, is_primary)
+       values
+         ($1, $2, 'phone', '(11) 99876-5432', '+5511998765432', true),
+         ($1, $2, 'email', 'Maria.Antiga+crm@Example.Test', 'maria.antiga+crm@example.test', true)`,
+      [clinicB, crossTenant.rows[0]!.id],
+    );
+
+    for (const [search, normalizedValue] of [
+      ["Maria Silva Pesquisa Antiga", null],
+      ["(11) 99876-5432", "+5511998765432"],
+      [" Maria.Antiga+crm@Example.Test ", "maria.antiga+crm@example.test"],
+    ] as const) {
+      expect((await searchContacts(sdrA, clinicA, search, { normalizedValue }))
+        .map((contact) => contact.id))
+        .toEqual([oldestId]);
+    }
+    expect(await searchContacts(sdrA, clinicA, "Pessoa inexistente na busca"))
+      .toEqual([]);
+
+    const limited = await searchContacts(managerA, clinicA, "Contato lote busca", { limit: 7 });
+    expect(limited).toHaveLength(7);
+    expect(limited.map((contact) => contact.id))
+      .toEqual(limited.map((contact) => contact.id).toSorted());
+
+    expect(await searchContacts(sdrA, clinicA, "Contato Manager Fictício")).toEqual([]);
+    expect((await searchContacts(managerA, clinicA, "Contato Manager Fictício"))[0]?.id)
+      .toBe(managerContact);
+
+    const orphan = await pool.query<{ id: string }>(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, created_by, updated_by)
+       values ($1, 'Contato Órfão Pesquisável', null, $2, $2)
+       returning id`,
+      [clinicA, ownerA.id],
+    );
+    expect(await searchContacts(sdrA, clinicA, "Contato Órfão Pesquisável")).toEqual([]);
+    expect((await searchContacts(managerA, clinicA, "Contato Órfão Pesquisável"))[0]?.id)
+      .toBe(orphan.rows[0]!.id);
+
+    const archived = await pool.query<{ id: string }>(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, archived_at, created_by, updated_by)
+       values ($1, 'Contato Arquivado Pesquisável', $2, statement_timestamp(), $2, $2)
+       returning id`,
+      [clinicA, ownerA.id],
+    );
+    expect(await searchContacts(ownerA, clinicA, "Contato Arquivado Pesquisável"))
+      .toEqual([]);
+    expect((await searchContacts(ownerA, clinicA, "Contato Arquivado Pesquisável", {
+      includeArchived: true,
+    }))[0]?.id).toBe(archived.rows[0]!.id);
+
+    const archivedMethodContact = await pool.query<{ id: string }>(
+      `insert into public.contacts
+         (clinic_id, full_name, owner_user_id, created_by, updated_by)
+       values ($1, 'Contato com Meio Arquivado', $2, $2, $2)
+       returning id`,
+      [clinicA, ownerA.id],
+    );
+    await pool.query(
+      `insert into public.person_contacts
+         (clinic_id, contact_id, kind, raw_value, normalized_value, archived_at)
+       values ($1, $2, 'phone', '(11) 91234-0000', '+5511912340000', statement_timestamp())`,
+      [clinicA, archivedMethodContact.rows[0]!.id],
+    );
+    expect(await searchContacts(ownerA, clinicA, "(11) 91234-0000", {
+      normalizedValue: "+5511912340000",
+    })).toEqual([]);
   });
 
   it("isola contacts, person_contacts, patients e lead_sources entre clínicas", async () => {
