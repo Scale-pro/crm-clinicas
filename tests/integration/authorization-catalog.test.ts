@@ -214,8 +214,12 @@ describe("catálogo de autorização e RLS", () => {
             "archive_contact_method",
             "archive_lead_source",
             "assign_contact_owner",
+            "assign_opportunity",
+            "close_opportunity",
             "create_contact",
             "create_lead_source",
+            "create_opportunity",
+            "create_pipeline_stage",
             "create_clinic_with_owner",
             "invite_member",
             "create_support_grant",
@@ -225,7 +229,10 @@ describe("catálogo de autorização e RLS", () => {
             "platform_read_clinic_invitations",
             "platform_read_clinic_members",
             "link_contact_as_patient",
+            "move_opportunity",
             "remove_member",
+            "reopen_opportunity",
+            "reorder_pipeline_stages",
             "revoke_invitation",
             "revoke_support_grant",
             "suspend_member",
@@ -236,6 +243,8 @@ describe("catálogo de autorização e RLS", () => {
             "update_lead_source",
             "update_clinic_settings",
             "update_member_role",
+            "update_opportunity",
+            "update_pipeline_stage",
           ].includes(routine.proname));
       expect(routine.authenticated_execute).toBe(isApprovedPublicRpc);
       expect(routine.identity_arguments).not.toMatch(/\buser_id\b/);
