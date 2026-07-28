@@ -111,6 +111,9 @@ export type Database = {
           archived_at: string | null;
           clinic_id: string;
           created_at: string;
+          creation_idempotency_key: string | null;
+          duplicated_from_pipeline_id: string | null;
+          duplication_idempotency_key: string | null;
           id: string;
           is_default: boolean;
           name: string;
@@ -236,6 +239,10 @@ export type Database = {
         };
         Returns: number;
       };
+      archive_pipeline: {
+        Args: { clinic_id: string; pipeline_id: string };
+        Returns: boolean;
+      };
       accept_invitation: {
         Args: { token_hash: string };
         Returns: string;
@@ -268,11 +275,28 @@ export type Database = {
           contact_id: string;
           idempotency_key?: string | null;
           initial_source_id?: string | null;
+          pipeline_id?: string | null;
           title: string;
         };
         Returns: { has_existing_open: boolean; opportunity_id: string | null }[];
       };
-      create_pipeline_stage: { Args: { clinic_id: string; name: string }; Returns: string };
+      create_pipeline: {
+        Args: { clinic_id: string; idempotency_key: string; name: string };
+        Returns: string;
+      };
+      create_pipeline_stage: {
+        Args: { clinic_id: string; name: string; pipeline_id?: string | null };
+        Returns: string;
+      };
+      duplicate_pipeline: {
+        Args: {
+          clinic_id: string;
+          idempotency_key: string;
+          name: string;
+          source_pipeline_id: string;
+        };
+        Returns: string;
+      };
       current_user_clinic_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];
@@ -417,7 +441,7 @@ export type Database = {
           p_initial_source_id: string | null;
           p_page: number;
           p_page_size: number;
-          p_pipeline_id: string;
+          p_pipeline_id: string | null;
           p_search_term: string;
           p_status: string | null;
         };
@@ -435,6 +459,8 @@ export type Database = {
           idempotency_key: string | null;
           initial_source_id: string | null;
           pipeline_id: string;
+          pipeline_archived_at: string | null;
+          pipeline_name: string;
           stage_id: string;
           stage_position: number;
           status: string;
@@ -461,6 +487,10 @@ export type Database = {
         };
         Returns: number;
       };
+      rename_pipeline: {
+        Args: { clinic_id: string; name: string; pipeline_id: string };
+        Returns: boolean;
+      };
       reorder_pipeline_stages: {
         Args: { clinic_id: string; stage_ids: string[] };
         Returns: boolean;
@@ -470,6 +500,10 @@ export type Database = {
         Returns: boolean;
       };
       set_primary_contact_method: { Args: { clinic_id: string; contact_method_id: string }; Returns: boolean };
+      set_default_pipeline: {
+        Args: { clinic_id: string; pipeline_id: string };
+        Returns: boolean;
+      };
       unlink_contact_as_patient: { Args: { clinic_id: string; contact_id: string }; Returns: boolean };
       update_contact: {
         Args: {
