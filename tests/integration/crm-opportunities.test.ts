@@ -424,7 +424,7 @@ describe("CRM F2.2 oportunidades e pipeline", () => {
       methods: [
         {
           is_primary: true, is_whatsapp: false, kind: "phone", label: "Principal",
-          normalized_value: `+5511${token.replace(/\D/g, "").padEnd(9, "0").slice(0, 9)}`,
+          normalized_value: "+5511900000000",
           raw_value: "+55 11 90000-0000",
         },
         {
