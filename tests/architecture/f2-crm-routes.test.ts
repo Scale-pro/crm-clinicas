@@ -69,6 +69,16 @@ describe("rotas e fronteiras de CRM F2.2", () => {
     expect(board).not.toContain("onDragEnd");
   });
 
+  it("pagina o board e pesquisa contatos antigos no servidor", () => {
+    const board = read("src/app/(clinic)/app/pipeline/page.tsx");
+    expect(board).toContain('name="contactQ"');
+    expect(board).toContain("Pesquisar contato");
+    expect(board).toContain("paginationHref");
+    expect(board).toContain("board.hasMore");
+    expect(board).toContain("Página {page}");
+    expect(board).not.toContain("limit: 100, search: \"\"");
+  });
+
   it("actions validam contexto e payload strict antes da API pública", () => {
     const actions = read("src/app/(clinic)/app/pipeline/actions.ts");
     expect(actions).toContain('"use server"');

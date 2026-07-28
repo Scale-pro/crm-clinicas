@@ -15,6 +15,7 @@ let ownerA: FixtureUser;
 let ownerB: FixtureUser;
 let managerA: FixtureUser;
 let sdrA: FixtureUser;
+let sdrB: FixtureUser;
 let professionalA: FixtureUser;
 let viewerA: FixtureUser;
 let platformAdmin: FixtureUser;
@@ -70,9 +71,9 @@ async function createOpportunity(
 }
 
 beforeAll(async () => {
-  [ownerA, ownerB, managerA, sdrA, professionalA, viewerA, platformAdmin] = await Promise.all([
+  [ownerA, ownerB, managerA, sdrA, sdrB, professionalA, viewerA, platformAdmin] = await Promise.all([
     createUser("opp-owner-a", true), createUser("opp-owner-b"), createUser("opp-manager"),
-    createUser("opp-sdr"), createUser("opp-professional"), createUser("opp-viewer"),
+    createUser("opp-sdr-a"), createUser("opp-sdr-b"), createUser("opp-professional"), createUser("opp-viewer"),
     createUser("opp-platform"),
   ]);
   const clinics = await pool.query<{ id: string; name: string }>(
@@ -86,10 +87,10 @@ beforeAll(async () => {
   clinicB = clinics.rows.find((row) => row.name.endsWith("B"))!.id;
   clinicIds.push(clinicA, clinicB);
   await pool.query(
-    `insert into public.clinic_members (clinic_id, user_id, role) values
+     `insert into public.clinic_members (clinic_id, user_id, role) values
        ($1, $3, 'owner'), ($2, $4, 'owner'), ($1, $5, 'manager'),
-       ($1, $6, 'sdr'), ($1, $7, 'professional'), ($1, $8, 'viewer')`,
-    [clinicA, clinicB, ownerA.id, ownerB.id, managerA.id, sdrA.id, professionalA.id, viewerA.id],
+       ($1, $6, 'sdr'), ($1, $7, 'sdr'), ($1, $8, 'professional'), ($1, $9, 'viewer')`,
+    [clinicA, clinicB, ownerA.id, ownerB.id, managerA.id, sdrA.id, sdrB.id, professionalA.id, viewerA.id],
   );
   await pool.query("insert into public.platform_admins (user_id, created_by) values ($1, $1)", [platformAdmin.id]);
   contactA = await createContact(sdrA, clinicA, "Contato Pipeline A");
@@ -184,6 +185,134 @@ describe("CRM F2.2 oportunidades e pipeline", () => {
     expect(viewerRows.data!.length).toBe(managerRows.data!.length);
     expect(platformRows.data).toEqual([]);
     expect(crossTenantCreate.error).not.toBeNull();
+  });
+
+  it("busca no banco antes do limite e pagina mais de 300 oportunidades sem duplicar", async () => {
+    const token = crypto.randomUUID();
+    const oldContact = await createContact(managerA, clinicA, `Contato antigo ${token}`);
+    const recentContact = await createContact(managerA, clinicA, `Contato recente ${token}`);
+    const source = await pool.query<{ id: string }>(
+      "insert into public.lead_sources (clinic_id, name) values ($1, $2) returning id",
+      [clinicA, `Origem volume ${token}`],
+    );
+    const board = await pool.query<{ pipeline_id: string; stage_id: string }>(
+      `select p.id as pipeline_id, ps.id as stage_id
+       from public.pipelines p
+       join public.pipeline_stages ps on ps.pipeline_id = p.id
+       where p.clinic_id = $1 and p.is_default and ps.stage_kind = 'open'
+       order by ps.position, ps.id limit 1`,
+      [clinicA],
+    );
+    const pipelineId = board.rows[0]!.pipeline_id;
+    const stageId = board.rows[0]!.stage_id;
+    const commonTitle = `Volume ${token}`;
+    const oldTitle = `${commonTitle} antiga 100% _ \\, "aspas" (parênteses)`;
+    const oldOpportunity = await pool.query<{ id: string }>(
+      `insert into public.opportunities (
+         clinic_id, contact_id, pipeline_id, stage_id, status,
+         assigned_to_user_id, initial_source_id, title, board_position
+       ) values ($1, $2, $3, $4, 'open', $5, $6, $7, 1000000)
+       returning id`,
+      [clinicA, oldContact, pipelineId, stageId, managerA.id, source.rows[0]!.id, oldTitle],
+    );
+    await pool.query(
+      `insert into public.opportunities (
+         clinic_id, contact_id, pipeline_id, stage_id, status,
+         assigned_to_user_id, title, board_position
+       )
+       select $1, $2, $3, $4, 'open', $5,
+              $6 || ' ' || lpad(series::text, 3, '0'), series
+       from generate_series(1, 305) as series`,
+      [clinicA, recentContact, pipelineId, stageId, sdrA.id, commonTitle],
+    );
+    await pool.query(
+      `insert into public.opportunities (
+         clinic_id, contact_id, pipeline_id, stage_id, status,
+         assigned_to_user_id, title, board_position
+       )
+       select $1, $2, p.id, ps.id, 'open', $3, $4, 1
+       from public.pipelines p
+       join public.pipeline_stages ps on ps.pipeline_id = p.id
+       where p.clinic_id = $1 and p.is_default and ps.stage_kind = 'open'
+       order by ps.position, ps.id limit 1`,
+      [clinicB, contactB, ownerB.id, commonTitle],
+    );
+
+    const search = async (overrides: Partial<{
+      assigned: string | null;
+      page: number;
+      pageSize: number;
+      source: string | null;
+      term: string;
+    }> = {}) => managerA.client.rpc("search_opportunity_board", {
+      p_assigned_to_user_id: overrides.assigned ?? null,
+      p_clinic_id: clinicA,
+      p_initial_source_id: overrides.source ?? null,
+      p_page: overrides.page ?? 1,
+      p_page_size: overrides.pageSize ?? 40,
+      p_pipeline_id: pipelineId,
+      p_search_term: overrides.term ?? commonTitle,
+      p_status: "open",
+    });
+
+    const [byTitle, byContact, byAssignee, bySource] = await Promise.all([
+      search({ term: `100% _ \\, "aspas" (parênteses)` }),
+      search({ term: `CONTATO ANTIGO ${token.toUpperCase()}` }),
+      search({ assigned: managerA.id }),
+      search({ source: source.rows[0]!.id }),
+    ]);
+    for (const result of [byTitle, byContact, byAssignee, bySource]) {
+      expect(result.error).toBeNull();
+      expect(result.data?.map((row: { id: string }) => row.id)).toEqual([oldOpportunity.rows[0]!.id]);
+    }
+
+    const pages = await Promise.all([1, 2, 3, 4].map((page) => search({ page, pageSize: 100 })));
+    expect(pages.every((result) => result.error === null)).toBe(true);
+    expect(pages.slice(0, 3).every((result) => result.data?.length === 101)).toBe(true);
+    expect(pages[3]!.data).toHaveLength(6);
+    const displayedIds = pages.flatMap((result) =>
+      (result.data ?? []).slice(0, 100).map((row: { id: string }) => row.id));
+    expect(displayedIds).toHaveLength(306);
+    expect(new Set(displayedIds).size).toBe(306);
+    expect(displayedIds).toContain(oldOpportunity.rows[0]!.id);
+    const repeated = await search({ page: 1, pageSize: 100 });
+    expect(repeated.data?.map((row: { id: string }) => row.id)).toEqual(
+      pages[0]!.data?.map((row: { id: string }) => row.id),
+    );
+  });
+
+  it("localiza e seleciona contato antigo após mais de 120 contatos recentes", async () => {
+    const token = crypto.randomUUID();
+    const oldContact = await createContact(managerA, clinicA, `Seleção antiga ${token}`);
+    await pool.query(
+      `insert into public.contacts (
+         clinic_id, owner_user_id, full_name, created_by, updated_by
+       )
+       select $1, $2, $3 || ' ' || lpad(series::text, 3, '0'), $2, $2
+       from generate_series(1, 121) as series`,
+      [clinicA, managerA.id, `Seleção recente ${token}`],
+    );
+    await pool.query(
+      `insert into public.contacts (
+         clinic_id, owner_user_id, full_name, created_by, updated_by
+       ) values ($1, $2, $3, $2, $2)`,
+      [clinicB, ownerB.id, `Seleção antiga ${token}`],
+    );
+    const found = await managerA.client.rpc("search_contacts", {
+      p_clinic_id: clinicA,
+      p_include_archived: false,
+      p_limit: 20,
+      p_normalized_value: null,
+      p_owner_user_id: null,
+      p_search_term: `seleção ANTIGA ${token}`,
+    });
+    expect(found.error).toBeNull();
+    expect(found.data?.map((contact: { id: string }) => contact.id)).toEqual([oldContact]);
+    const selected = await createOpportunity(managerA, clinicA, found.data![0]!.id, {
+      title: `Oportunidade do contato antigo ${token}`,
+    });
+    expect(selected.error).toBeNull();
+    expect(selected.data?.[0]?.opportunity_id).toBeTruthy();
   });
 
   it("deixa órfã fora de own, dentro de all e preserva ao remover membro", async () => {
@@ -283,5 +412,111 @@ describe("CRM F2.2 oportunidades e pipeline", () => {
       .delete().eq("id", event.rows[0]!.id);
     expect(directUpdate.error).not.toBeNull();
     expect(directDelete.error).not.toBeNull();
+  });
+
+  it("expõe contato somente por oportunidade visível e revoga leitura após reatribuição", async () => {
+    const token = crypto.randomUUID();
+    const createdContact = await managerA.client.rpc("create_contact", {
+      clinic_id: clinicA,
+      full_name: `Contato atribuído ${token}`,
+      idempotency_key: crypto.randomUUID(),
+      link_as_patient: false,
+      methods: [
+        {
+          is_primary: true, is_whatsapp: false, kind: "phone", label: "Principal",
+          normalized_value: `+5511${token.replace(/\D/g, "").padEnd(9, "0").slice(0, 9)}`,
+          raw_value: "+55 11 90000-0000",
+        },
+        {
+          is_primary: true, is_whatsapp: false, kind: "email", label: "Principal",
+          normalized_value: `${token}@example.test`, raw_value: `${token}@example.test`,
+        },
+      ],
+      notes: null,
+    });
+    expect(createdContact.error).toBeNull();
+    const contactId = createdContact.data!;
+    const createdOpportunity = await createOpportunity(managerA, clinicA, contactId, {
+      title: `Oportunidade atribuída ${token}`,
+    });
+    const opportunityId = createdOpportunity.data?.[0]?.opportunity_id;
+    if (!opportunityId) throw new Error("Oportunidade para visibilidade não criada.");
+    const initial = await pool.query<{ version: number }>(
+      "select version from public.opportunities where id = $1",
+      [opportunityId],
+    );
+    const assignedToFirst = await managerA.client.rpc("assign_opportunity", {
+      assigned_to_user_id: sdrA.id,
+      clinic_id: clinicA,
+      expected_version: initial.rows[0]!.version,
+      opportunity_id: opportunityId,
+    });
+    expect(assignedToFirst.error).toBeNull();
+
+    const [opportunityRead, contactRead, methodsRead, activityRead, viewerRead, crossTenantRead, platformRead] = await Promise.all([
+      sdrA.client.from("opportunities").select("id").eq("id", opportunityId),
+      sdrA.client.from("contacts").select("id,full_name").eq("id", contactId),
+      sdrA.client.from("person_contacts").select("id,kind,raw_value").eq("contact_id", contactId).order("kind"),
+      sdrA.client.from("activities").select("id").eq("opportunity_id", opportunityId).eq("contact_id", contactId),
+      viewerA.client.from("contacts").select("id").eq("id", contactId),
+      ownerB.client.from("contacts").select("id").eq("id", contactId),
+      platformAdmin.client.from("contacts").select("id").eq("id", contactId),
+    ]);
+    expect(opportunityRead.data).toEqual([{ id: opportunityId }]);
+    expect(contactRead.data).toEqual([{ id: contactId, full_name: `Contato atribuído ${token}` }]);
+    expect(methodsRead.data).toHaveLength(2);
+    expect(methodsRead.data?.map((method) => method.kind).sort()).toEqual(["email", "phone"]);
+    expect(methodsRead.data?.every((method) => Boolean(method.raw_value))).toBe(true);
+    expect(activityRead.data?.length).toBeGreaterThan(0);
+    expect(viewerRead.data).toEqual([{ id: contactId }]);
+    expect(crossTenantRead.data).toEqual([]);
+    expect(platformRead.data).toEqual([]);
+
+    const selectedMethod = methodsRead.data![0]!;
+    const [editContact, editMethod] = await Promise.all([
+      sdrA.client.rpc("update_contact", {
+        clinic_id: clinicA, contact_id: contactId, expected_version: 1,
+        full_name: "Alteração proibida", notes: null,
+      }),
+      sdrA.client.rpc("update_contact_method", {
+        clinic_id: clinicA, contact_method_id: selectedMethod.id, is_whatsapp: false,
+        kind: selectedMethod.kind, label: "Proibido",
+        normalized_value: selectedMethod.kind === "phone"
+          ? "+5511999999999"
+          : "proibido@example.test",
+        raw_value: selectedMethod.kind === "phone" ? "+55 11 99999-9999" : "proibido@example.test",
+      }),
+    ]);
+    expect(editContact.error).not.toBeNull();
+    expect(editMethod.error).not.toBeNull();
+
+    const assignedToSecond = await managerA.client.rpc("assign_opportunity", {
+      assigned_to_user_id: sdrB.id,
+      clinic_id: clinicA,
+      expected_version: assignedToFirst.data!,
+      opportunity_id: opportunityId,
+    });
+    expect(assignedToSecond.error).toBeNull();
+    const [firstAfter, secondAfter, secondMethods, secondActivity] = await Promise.all([
+      sdrA.client.from("contacts").select("id").eq("id", contactId),
+      sdrB.client.from("contacts").select("id").eq("id", contactId),
+      sdrB.client.from("person_contacts").select("id").eq("contact_id", contactId),
+      sdrB.client.from("activities").select("id").eq("opportunity_id", opportunityId),
+    ]);
+    expect(firstAfter.data).toEqual([]);
+    expect(secondAfter.data).toEqual([{ id: contactId }]);
+    expect(secondMethods.data).toHaveLength(2);
+    expect(secondActivity.data?.length).toBeGreaterThan(0);
+
+    await pool.query(
+      "delete from public.clinic_members where clinic_id = $1 and user_id = $2",
+      [clinicA, sdrB.id],
+    );
+    const orphaned = await sdrB.client.from("contacts").select("id").eq("id", contactId);
+    expect(orphaned.data).toEqual([]);
+    await pool.query(
+      "insert into public.clinic_members (clinic_id, user_id, role) values ($1, $2, 'sdr')",
+      [clinicA, sdrB.id],
+    );
   });
 });

@@ -250,4 +250,62 @@ describe("catálogo de autorização e RLS", () => {
       expect(routine.identity_arguments).not.toMatch(/\buser_id\b/);
     }
   });
+
+  it("mantém a busca do board como leitura invoker em allowlist explícita", async () => {
+    const { rows } = await pool.query<{
+      anon_execute: boolean;
+      authenticated_execute: boolean;
+      owner: string;
+      proconfig: string[] | null;
+      security_definer: boolean;
+    }>(
+      `select p.prosecdef as security_definer,
+              pg_get_userbyid(p.proowner) as owner,
+              p.proconfig,
+              has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
+              has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute
+       from pg_catalog.pg_proc p
+       join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.oid = 'public.search_opportunity_board(uuid,uuid,text,text,uuid,uuid,integer,integer)'::regprocedure`,
+    );
+    expect(rows).toEqual([{
+      anon_execute: false,
+      authenticated_execute: true,
+      owner: "postgres",
+      proconfig: ['search_path=""'],
+      security_definer: false,
+    }]);
+  });
+
+  it("mantém uma única contacts_select, FORCE RLS e zero escrita direta", async () => {
+    const { rows } = await pool.query<{
+      can_delete: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      policy_count: string;
+      relforcerowsecurity: boolean;
+      relrowsecurity: boolean;
+    }>(
+      `select c.relrowsecurity,
+              c.relforcerowsecurity,
+              count(p.oid) filter (where p.polcmd = 'r')::text as policy_count,
+              has_table_privilege('authenticated', 'public.contacts', 'INSERT') as can_insert,
+              has_table_privilege('authenticated', 'public.contacts', 'UPDATE') as can_update,
+              has_table_privilege('authenticated', 'public.contacts', 'DELETE') as can_delete
+       from pg_catalog.pg_class c
+       join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+       left join pg_catalog.pg_policy p on p.polrelid = c.oid
+       where n.nspname = 'public' and c.relname = 'contacts'
+       group by c.relrowsecurity, c.relforcerowsecurity`,
+    );
+    expect(rows).toEqual([{
+      can_delete: false,
+      can_insert: false,
+      can_update: false,
+      policy_count: "1",
+      relforcerowsecurity: true,
+      relrowsecurity: true,
+    }]);
+  });
 });

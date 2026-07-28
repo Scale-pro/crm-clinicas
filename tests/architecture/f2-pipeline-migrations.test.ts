@@ -12,6 +12,8 @@ const events = migration("20260728202000_f2_2_opportunity_stage_history.sql");
 const permissions = migration("20260728203000_f2_2_opportunity_permissions.sql");
 const opportunityRpcs = migration("20260728204000_f2_2_opportunity_write_rpcs.sql");
 const pipelineRpcs = migration("20260728205000_f2_2_pipeline_configuration_rpcs.sql");
+const boardSearch = migration("20260728206000_f2_2_opportunity_board_search.sql");
+const contactVisibility = migration("20260728207000_f2_2_opportunity_contact_visibility.sql");
 
 const tables = ["pipelines", "pipeline_stages", "opportunities", "opportunity_stage_events"];
 const rpcNames = [
@@ -73,6 +75,29 @@ describe("migrations de pipeline F2.2", () => {
       expect(sql).toContain(`revoke all on function public.${rpc}`);
       expect(sql).toContain(`grant execute on function public.${rpc}`);
     }
+  });
+
+  it("expõe a leitura paginada em allowlist explícita sem elevar privilégios", () => {
+    const readRpcNames = [
+      ...boardSearch.matchAll(/create function public\.([a-z_]+)/g),
+    ].map((match) => match[1]);
+    expect(readRpcNames).toEqual(["search_opportunity_board"]);
+    expect(boardSearch).toContain("security invoker");
+    expect(boardSearch).not.toContain("security definer");
+    expect(boardSearch).toContain("grant execute on function public.search_opportunity_board");
+    expect(boardSearch).toContain("from public, anon, authenticated");
+    expect(boardSearch).toContain("order by ps.position, o.board_position, o.id");
+    expect(boardSearch).toContain("p_page_size, 1), 100) + 1");
+    expect(boardSearch).not.toContain("execute format");
+  });
+
+  it("amplia somente contacts_select por oportunidade sujeita a RLS", () => {
+    expect(contactVisibility).toContain("drop policy contacts_select");
+    expect(contactVisibility.match(/create policy contacts_select/g)).toHaveLength(1);
+    expect(contactVisibility).toContain("from public.opportunities as visible_opportunity");
+    expect(contactVisibility).toContain("visible_opportunity.contact_id = contacts.id");
+    expect(contactVisibility).not.toMatch(/for (?:insert|update|delete|all)/);
+    expect(contactVisibility).not.toMatch(/security definer|grant (?:insert|update|delete)/);
   });
 
   it("usa AAL2 somente em reopen e configuração do pipeline", () => {

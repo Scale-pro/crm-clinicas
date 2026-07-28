@@ -98,4 +98,82 @@ describe("contratos de oportunidades", () => {
       confirmed_existing_open: false,
     }));
   });
+
+  it("pagina no RPC, preserva busca literal e calcula hasMore com uma linha extra", async () => {
+    const clinicId = crypto.randomUUID();
+    const pipelineId = crypto.randomUUID();
+    const stageId = crypto.randomUUID();
+    const rows = Array.from({ length: 41 }, (_, index) => ({
+      amount_cents: null,
+      assigned_to_user_id: null,
+      board_position: index + 1,
+      clinic_id: clinicId,
+      close_reason: null,
+      closed_at: null,
+      contact_id: crypto.randomUUID(),
+      contact_name: `Contato ${index}`,
+      created_at: "2026-07-28T00:00:00.000Z",
+      id: crypto.randomUUID(),
+      idempotency_key: null,
+      initial_source_id: null,
+      pipeline_id: pipelineId,
+      stage_id: stageId,
+      stage_position: 100,
+      status: "open",
+      title: `Oportunidade ${index}`,
+      updated_at: "2026-07-28T00:00:00.000Z",
+      version: 1,
+    }));
+    const pipelineQuery = {
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { id: pipelineId, name: "Principal" }, error: null }),
+      select: vi.fn().mockReturnThis(),
+    };
+    const stagesResult = {
+      data: [{ id: stageId, name: "Novo lead", position: 100, stage_kind: "open" }],
+      error: null,
+    };
+    const stagesQuery = {
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      then: (resolve: (value: typeof stagesResult) => unknown) => Promise.resolve(stagesResult).then(resolve),
+    };
+    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
+    createServerSupabaseClient.mockResolvedValue({
+      from: vi.fn((table: string) => table === "pipelines" ? pipelineQuery : stagesQuery),
+      rpc,
+    } as never);
+    requirePermission.mockResolvedValue({
+      allowed: true,
+      session: { aal: "aal1", userId: crypto.randomUUID() },
+    });
+
+    const result = await opportunitiesModule.listOpportunityBoard({
+      assignedToUserId: null,
+      clinicId,
+      initialSourceId: null,
+      page: 3,
+      pageSize: 40,
+      search: `% _ \\, " (teste)`,
+      status: "open",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Consulta paginada deveria ser válida.");
+    expect(result.cards).toHaveLength(40);
+    expect(result.hasMore).toBe(true);
+    expect(result.page).toBe(3);
+    expect(rpc).toHaveBeenCalledWith("search_opportunity_board", {
+      p_assigned_to_user_id: null,
+      p_clinic_id: clinicId,
+      p_initial_source_id: null,
+      p_page: 3,
+      p_page_size: 40,
+      p_pipeline_id: pipelineId,
+      p_search_term: `% _ \\, " (teste)`,
+      p_status: "open",
+    });
+  });
 });
