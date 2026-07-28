@@ -508,6 +508,57 @@ describe("CRM F2.1 multi-tenant", () => {
     expect(count.rows).toEqual([{ count: "1" }]);
   });
 
+  it("add principal e archive concorrentes não entram em deadlock nem perdem dados", async () => {
+    const contact = await createContact(ownerA, clinicA, "Locks Consistentes");
+    const existing = await ownerA.client.rpc("add_contact_method", {
+      clinic_id: clinicA,
+      contact_id: contact,
+      kind: "phone",
+      raw_value: "1134567010",
+      normalized_value: "+551134567010",
+      label: null,
+      is_primary: true,
+      is_whatsapp: false,
+    });
+    if (existing.error || typeof existing.data !== "string") throw existing.error;
+
+    const [added, archived] = await Promise.all([
+      ownerA.client.rpc("add_contact_method", {
+        clinic_id: clinicA,
+        contact_id: contact,
+        kind: "phone",
+        raw_value: "1134567011",
+        normalized_value: "+551134567011",
+        label: null,
+        is_primary: true,
+        is_whatsapp: false,
+      }),
+      ownerA.client.rpc("archive_contact_method", {
+        clinic_id: clinicA,
+        contact_method_id: existing.data,
+      }),
+    ]);
+
+    expect([added.error?.code, archived.error?.code]).not.toContain("40P01");
+    expect(added.error).toBeNull();
+    expect(archived.error).toBeNull();
+    const persisted = await pool.query<{
+      archived: boolean;
+      is_primary: boolean;
+      normalized_value: string;
+    }>(
+      `select archived_at is not null as archived, is_primary, normalized_value
+       from public.person_contacts
+       where clinic_id = $1 and contact_id = $2
+       order by normalized_value`,
+      [clinicA, contact],
+    );
+    expect(persisted.rows).toEqual([
+      { archived: true, is_primary: false, normalized_value: "+551134567010" },
+      { archived: false, is_primary: true, normalized_value: "+551134567011" },
+    ]);
+  });
+
   it("atualiza método com normalização consistente e não audita PII", async () => {
     const contact = await createContact(ownerA, clinicA, "Método Atualizável");
     const added = await ownerA.client.rpc("add_contact_method", {

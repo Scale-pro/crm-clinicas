@@ -384,7 +384,7 @@ begin
   if is_primary then
     perform 1 from public.person_contacts as pc
     where pc.clinic_id = clinic_id and pc.contact_id = contact_id and pc.kind = kind
-    for update;
+    order by pc.id for update;
     update public.person_contacts as pc set is_primary = false
     where pc.clinic_id = clinic_id and pc.contact_id = contact_id
       and pc.kind = kind and pc.archived_at is null and pc.is_primary;
@@ -445,18 +445,24 @@ as $$
 #variable_conflict use_variable
 declare
   v_actor_id uuid := (select auth.uid());
+  v_contact_id uuid;
   v_method public.person_contacts;
   v_contact public.contacts;
 begin
   if v_actor_id is null or not app_private.is_clinic_member(clinic_id) then
     raise exception using errcode = '42501', message = 'contact access denied';
   end if;
+  select pc.contact_id into v_contact_id from public.person_contacts as pc
+  where pc.clinic_id = clinic_id and pc.id = contact_method_id;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'contact method not found';
+  end if;
+  v_contact := app_private.assert_contact_editable(clinic_id, v_contact_id, v_actor_id);
   select pc.* into v_method from public.person_contacts as pc
   where pc.clinic_id = clinic_id and pc.id = contact_method_id for update;
   if not found or v_method.archived_at is not null then
     raise exception using errcode = 'P0002', message = 'contact method not found';
   end if;
-  v_contact := app_private.assert_contact_editable(clinic_id, v_method.contact_id, v_actor_id);
   if not (
     app_private.has_permission(clinic_id, 'contact.edit_all')
     or (v_contact.owner_user_id = v_actor_id and app_private.has_permission(clinic_id, 'contact.edit_own'))
@@ -493,16 +499,20 @@ as $$
 #variable_conflict use_variable
 declare
   v_actor_id uuid := (select auth.uid());
+  v_contact_id uuid;
   v_method public.person_contacts;
   v_contact public.contacts;
 begin
   if v_actor_id is null or not app_private.is_clinic_member(clinic_id) then
     raise exception using errcode = '42501', message = 'contact access denied';
   end if;
+  select pc.contact_id into v_contact_id from public.person_contacts as pc
+  where pc.clinic_id = clinic_id and pc.id = contact_method_id;
+  if not found then raise exception using errcode = 'P0002', message = 'contact method not found'; end if;
+  v_contact := app_private.assert_contact_editable(clinic_id, v_contact_id, v_actor_id);
   select pc.* into v_method from public.person_contacts as pc
   where pc.clinic_id = clinic_id and pc.id = contact_method_id for update;
   if not found then raise exception using errcode = 'P0002', message = 'contact method not found'; end if;
-  v_contact := app_private.assert_contact_editable(clinic_id, v_method.contact_id, v_actor_id);
   if not (
     app_private.has_permission(clinic_id, 'contact.edit_all')
     or (v_contact.owner_user_id = v_actor_id and app_private.has_permission(clinic_id, 'contact.edit_own'))
@@ -530,17 +540,21 @@ as $$
 #variable_conflict use_variable
 declare
   v_actor_id uuid := (select auth.uid());
+  v_contact_id uuid;
   v_method public.person_contacts;
   v_contact public.contacts;
 begin
   if v_actor_id is null or not app_private.is_clinic_member(clinic_id) then
     raise exception using errcode = '42501', message = 'contact access denied';
   end if;
+  select pc.contact_id into v_contact_id from public.person_contacts as pc
+  where pc.clinic_id = clinic_id and pc.id = contact_method_id;
+  if not found then raise exception using errcode = 'P0002', message = 'contact method not found'; end if;
+  v_contact := app_private.assert_contact_editable(clinic_id, v_contact_id, v_actor_id);
   select pc.* into v_method from public.person_contacts as pc
   where pc.clinic_id = clinic_id and pc.id = contact_method_id and pc.archived_at is null
   for update;
   if not found then raise exception using errcode = 'P0002', message = 'contact method not found'; end if;
-  v_contact := app_private.assert_contact_editable(clinic_id, v_method.contact_id, v_actor_id);
   if not (
     app_private.has_permission(clinic_id, 'contact.edit_all')
     or (v_contact.owner_user_id = v_actor_id and app_private.has_permission(clinic_id, 'contact.edit_own'))

@@ -101,4 +101,26 @@ describe("migrations de contatos F2.1", () => {
     expect(searchFunction).toContain("order by matched.exact_method desc, c.created_at desc, c.id");
     expect(searchFunction).toContain("limit p_limit");
   });
+
+  it("trava contacts antes de person_contacts em todas as mutações de meios", () => {
+    const methodRpcs = [
+      "add_contact_method",
+      "update_contact_method",
+      "archive_contact_method",
+      "set_primary_contact_method",
+    ];
+    for (const [index, rpc] of methodRpcs.entries()) {
+      const body = rpcs
+        .split(`create function public.${rpc}`)[1]!
+        .split(index === methodRpcs.length - 1
+          ? "create function public.link_contact_as_patient"
+          : `create function public.${methodRpcs[index + 1]}`)[0]!;
+      expect(body.indexOf("assert_contact_editable")).toBeGreaterThan(-1);
+      expect(body.indexOf("for update")).toBeGreaterThan(body.indexOf("assert_contact_editable"));
+    }
+    for (const rpc of ["add_contact_method", "set_primary_contact_method"]) {
+      const body = rpcs.split(`create function public.${rpc}`)[1]!;
+      expect(body).toContain("order by pc.id for update");
+    }
+  });
 });
