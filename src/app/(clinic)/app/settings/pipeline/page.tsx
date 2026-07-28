@@ -56,6 +56,12 @@ export default async function PipelineSettingsPage({ searchParams }: {
     </div>;
   }
 
+  // Assinatura estável das etapas na ordem devolvida pelo servidor. Ao criar uma
+  // etapa ou confirmar uma reordenação, a assinatura muda e o editor remonta com
+  // os dados novos; renderizações comuns (renomear, mensagens) preservam o
+  // estado local ainda não salvo.
+  const stageSignature = board.stages.map((stage) => stage.id).join(":");
+
   return <div className="flex min-h-0 flex-1 flex-col">
     {toolbar}
     <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-5">
@@ -72,7 +78,7 @@ export default async function PipelineSettingsPage({ searchParams }: {
         O tipo da etapa (aberta, ganha ou perdida) é definido pelo sistema e não muda. Alterações exigem
         permissão de gestão do pipeline e verificação em duas etapas no servidor.
       </p>
-      <StageEditor clinicId={context.clinic.id} stages={board.stages} />
+      <StageEditor clinicId={context.clinic.id} key={stageSignature} stages={board.stages} />
     </div>
   </div>;
 }

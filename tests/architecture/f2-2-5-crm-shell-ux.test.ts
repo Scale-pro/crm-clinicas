@@ -86,6 +86,15 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     expect(new Set(prefixes).size).toBe(2);
   });
 
+  it("remonta o editor de etapas quando a assinatura vinda do servidor muda", () => {
+    // Sem isso, uma etapa recém-criada só apareceria após recarregar a página.
+    const page = read(`${clinicApp}/settings/pipeline/page.tsx`);
+    expect(page).toContain("const stageSignature = board.stages.map((stage) => stage.id).join(\":\")");
+    expect(page).toMatch(/<StageEditor[^>]*key=\{stageSignature\}/);
+    // A assinatura acompanha IDs e ordem, não um contador ou índice arbitrário.
+    expect(page).not.toMatch(/key=\{(?:Date\.now|Math\.random|index)/);
+  });
+
   it("remove o editor de etapas do Kanban e o move para as configurações", () => {
     expect(existsSync(path.join(root, `${clinicApp}/pipeline/stage-manager.tsx`))).toBe(false);
     // As Server Actions continuam declaradas em pipeline/actions.ts; o que sai
