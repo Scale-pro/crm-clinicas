@@ -72,7 +72,7 @@ describe("shell autenticado F1.9", () => {
 
   it("preserva lockfile, migrations e contrato de ambiente da unidade anterior", () => {
     expect(source("package.json")).not.toContain("active-clinic-cookie-secret");
-    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(18);
+    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(22);
     expect(source("src/shared/config/env-schema.ts")).toContain("ACTIVE_CLINIC_COOKIE_SECRET");
   });
 });
