@@ -40,10 +40,13 @@ export default async function ClinicLayout({ children }: { children: ReactNode }
 
   // Apenas o pipeline padrão está disponível hoje; a sidebar já aceita a lista
   // completa quando o contrato de múltiplos pipelines existir.
-  const sidebar = <AppSidebar
+  // Desktop e drawer mobile são duas instâncias simultâneas no DOM: cada uma
+  // recebe seu próprio prefixo de ID para não duplicar identificadores.
+  const renderSidebar = (idPrefix: string) => <AppSidebar
     accountItems={accountNavigation}
     clinic={context.clinic}
     clinics={context.clinics}
+    idPrefix={idPrefix}
     navigation={navigation}
     selectClinicAction={selectClinicFormAction}
   />;
@@ -55,11 +58,11 @@ export default async function ClinicLayout({ children }: { children: ReactNode }
     >
       Ir para o conteúdo
     </a>
-    <div className="hidden w-60 shrink-0 lg:block lg:h-svh">{sidebar}</div>
+    <div className="hidden w-60 shrink-0 lg:block lg:h-svh">{renderSidebar("desktop-sidebar")}</div>
     <div className="flex min-w-0 flex-1 flex-col lg:h-svh lg:overflow-hidden">
       <AppHeader
         clinicName={context.clinic.name}
-        navigation={<MobileNavigation>{sidebar}</MobileNavigation>}
+        navigation={<MobileNavigation>{renderSidebar("mobile-sidebar")}</MobileNavigation>}
       />
       <main className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto" id="main-content">
         {children}

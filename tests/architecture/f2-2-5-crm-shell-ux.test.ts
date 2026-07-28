@@ -65,6 +65,27 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     expect(layout).not.toContain("pipelines={");
   });
 
+  it("dá prefixos de ID distintos às sidebars desktop e mobile", () => {
+    // As duas instâncias coexistem no DOM; IDs repetidos fariam o label da
+    // sidebar mobile apontar para o select oculto da sidebar desktop.
+    const switcher = read(`${clinicApp}/_shell/clinic-switcher.tsx`);
+    expect(switcher).toContain("idPrefix");
+    expect(switcher).toContain("const selectId = `${idPrefix}-active-clinic`");
+    expect(switcher).toContain("htmlFor={selectId}");
+    expect(switcher).toContain("id={selectId}");
+    expect(switcher).not.toContain('id="sidebar-active-clinic"');
+    // Sem IDs aleatórios: precisam casar entre servidor e cliente.
+    expect(switcher).not.toMatch(/useId|Math\.random|randomUUID/);
+
+    const sidebar = read(`${clinicApp}/_shell/app-sidebar.tsx`);
+    expect(sidebar).toContain("idPrefix: string;");
+    expect(sidebar).toContain("idPrefix={idPrefix}");
+
+    const prefixes = [...layout.matchAll(/renderSidebar\("([^"]+)"\)/g)].map((match) => match[1]!);
+    expect(prefixes).toHaveLength(2);
+    expect(new Set(prefixes).size).toBe(2);
+  });
+
   it("remove o editor de etapas do Kanban e o move para as configurações", () => {
     expect(existsSync(path.join(root, `${clinicApp}/pipeline/stage-manager.tsx`))).toBe(false);
     // As Server Actions continuam declaradas em pipeline/actions.ts; o que sai

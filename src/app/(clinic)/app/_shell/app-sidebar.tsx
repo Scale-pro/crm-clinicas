@@ -17,6 +17,7 @@ export function AppSidebar({
   accountItems,
   clinic,
   clinics,
+  idPrefix,
   navigation,
   pipelines,
   selectClinicAction,
@@ -25,6 +26,8 @@ export function AppSidebar({
   accountItems: readonly NavItem[];
   clinic: SidebarClinic;
   clinics: readonly SidebarClinic[];
+  /** Identifica a instância (desktop/mobile) para gerar IDs de controle únicos. */
+  idPrefix: string;
   navigation: readonly NavItem[];
   pipelines?: readonly PipelineNavItem[];
   selectClinicAction: (formData: FormData) => void | Promise<void>;
@@ -45,7 +48,7 @@ export function AppSidebar({
     <div className="shrink-0 border-t border-sidebar-border">
       <div className="px-4 py-3">
         {clinics.length > 1
-          ? <SidebarClinicSwitcher action={selectClinicAction} activeClinicId={clinic.id} clinics={clinics} />
+          ? <SidebarClinicSwitcher action={selectClinicAction} activeClinicId={clinic.id} clinics={clinics} idPrefix={idPrefix} />
           : <div className="min-w-0">
             <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-sidebar-muted-foreground">Clínica ativa</p>
             <p className="truncate text-sm font-medium">{clinic.name}</p>
