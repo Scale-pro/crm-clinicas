@@ -19,6 +19,7 @@ type OpportunitySearchRow = {
 };
 let ownerA: FixtureUser;
 let ownerB: FixtureUser;
+let ownerLast: FixtureUser;
 let adminA: FixtureUser;
 let managerA: FixtureUser;
 let sdrA: FixtureUser;
@@ -111,9 +112,10 @@ function createOpportunity(
 }
 
 beforeAll(async () => {
-  [ownerA, ownerB, adminA, managerA, sdrA, platformAdmin] = await Promise.all([
+  [ownerA, ownerB, ownerLast, adminA, managerA, sdrA, platformAdmin] = await Promise.all([
     createUser("multi-owner-a", true),
     createUser("multi-owner-b", true),
+    createUser("multi-owner-last", true),
     createUser("multi-admin-a"),
     createUser("multi-manager-a", true),
     createUser("multi-sdr-a"),
@@ -123,7 +125,7 @@ beforeAll(async () => {
     `insert into public.clinics (name, slug, timezone, created_by)
      values ('Clínica Multi Pipeline A', $1, 'America/Sao_Paulo', $4),
             ('Clínica Multi Pipeline B', $2, 'America/Sao_Paulo', $5),
-            ('Clínica Última Pipeline', $3, 'America/Sao_Paulo', $4)
+            ('Clínica Última Pipeline', $3, 'America/Sao_Paulo', $6)
      returning id, name`,
     [
       `multi-a-${crypto.randomUUID()}`,
@@ -131,17 +133,28 @@ beforeAll(async () => {
       `multi-last-${crypto.randomUUID()}`,
       ownerA.id,
       ownerB.id,
+      ownerLast.id,
     ],
   );
+  clinicIds.push(...clinics.rows.map((clinic) => clinic.id));
   clinicA = clinics.rows.find((row) => row.name.endsWith("A"))!.id;
   clinicB = clinics.rows.find((row) => row.name.endsWith("B"))!.id;
   clinicLast = clinics.rows.find((row) => row.name.includes("Última"))!.id;
-  clinicIds.push(clinicA, clinicB, clinicLast);
   await pool.query(
     `insert into public.clinic_members (clinic_id, user_id, role) values
        ($1, $4, 'owner'), ($1, $5, 'admin'), ($1, $6, 'manager'),
-       ($1, $7, 'sdr'), ($2, $8, 'owner'), ($3, $4, 'owner')`,
-    [clinicA, clinicB, clinicLast, ownerA.id, adminA.id, managerA.id, sdrA.id, ownerB.id],
+       ($1, $7, 'sdr'), ($2, $8, 'owner'), ($3, $9, 'owner')`,
+    [
+      clinicA,
+      clinicB,
+      clinicLast,
+      ownerA.id,
+      adminA.id,
+      managerA.id,
+      sdrA.id,
+      ownerB.id,
+      ownerLast.id,
+    ],
   );
   await pool.query(
     "insert into public.platform_admins (user_id, created_by) values ($1, $1)",
@@ -157,20 +170,67 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  const failures: unknown[] = [];
+  const attempt = async (cleanup: () => Promise<unknown>) => {
+    try {
+      await cleanup();
+    } catch (error) {
+      failures.push(error);
+    }
+  };
+
   if (clinicIds.length) {
-    await pool.query("delete from public.opportunity_stage_events where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.audit_logs where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.activities where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.opportunities where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.pipeline_stages where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.pipelines where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.person_contacts where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.contacts where clinic_id = any($1::uuid[])", [clinicIds]);
-    await pool.query("delete from public.clinics where id = any($1::uuid[])", [clinicIds]);
+    await attempt(() => pool.query(
+      "delete from public.opportunity_stage_events where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.audit_logs where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.activities where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.opportunities where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.pipeline_stages where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.pipelines where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.person_contacts where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.contacts where clinic_id = any($1::uuid[])",
+      [clinicIds],
+    ));
+    await attempt(() => pool.query(
+      "delete from public.clinics where id = any($1::uuid[])",
+      [clinicIds],
+    ));
   }
-  await pool.query("delete from public.platform_admins where user_id = $1", [platformAdmin?.id]);
-  for (const userId of userIds) await admin.auth.admin.deleteUser(userId);
-  await pool.end();
+  if (platformAdmin?.id) {
+    await attempt(() => pool.query(
+      "delete from public.platform_admins where user_id = $1",
+      [platformAdmin.id],
+    ));
+  }
+  for (const userId of userIds) {
+    await attempt(() => admin.auth.admin.deleteUser(userId));
+  }
+  await attempt(() => pool.end());
+
+  if (failures.length) {
+    throw new AggregateError(failures, "Falha ao limpar fixtures multi-pipeline.");
+  }
 });
 
 describe("CRM F2.2.6 múltiplas pipelines", () => {
