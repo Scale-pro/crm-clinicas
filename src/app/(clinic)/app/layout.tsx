@@ -9,6 +9,7 @@ import { selectClinicFormAction } from "../actions";
 
 const navigation = [
   ["Início", "/app"],
+  ["Kanban", "/app/pipeline"],
   ["Contatos", "/app/contacts"],
   ["Configurações", "/app/settings"],
   ["Equipe", "/app/team"],
