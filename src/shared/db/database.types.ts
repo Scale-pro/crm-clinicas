@@ -410,6 +410,39 @@ export type Database = {
           version: number;
         }[];
       };
+      search_opportunity_board: {
+        Args: {
+          p_assigned_to_user_id: string | null;
+          p_clinic_id: string;
+          p_initial_source_id: string | null;
+          p_page: number;
+          p_page_size: number;
+          p_pipeline_id: string;
+          p_search_term: string;
+          p_status: string | null;
+        };
+        Returns: {
+          amount_cents: number | null;
+          assigned_to_user_id: string | null;
+          board_position: number;
+          clinic_id: string;
+          close_reason: string | null;
+          closed_at: string | null;
+          contact_id: string;
+          contact_name: string;
+          created_at: string;
+          id: string;
+          idempotency_key: string | null;
+          initial_source_id: string | null;
+          pipeline_id: string;
+          stage_id: string;
+          stage_position: number;
+          status: string;
+          title: string;
+          updated_at: string;
+          version: number;
+        }[];
+      };
       revoke_support_grant: {
         Args: { grant_id: string };
         Returns: boolean;

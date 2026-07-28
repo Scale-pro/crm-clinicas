@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { listContactOwners, listContacts, listLeadSources, listOpportunityBoard } from "@/modules/crm";
+import {
+  getContact,
+  listContactOwners,
+  listContacts,
+  listLeadSources,
+  listOpportunityBoard,
+} from "@/modules/crm";
 import { resolveActiveClinicContext } from "@/modules/tenancy";
 import { requirePermission } from "@/shared/auth";
 import { formatBrlFromCents } from "@/shared/lib/currency";
@@ -24,6 +30,25 @@ function stringParam(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : "";
 }
 
+function positiveIntParam(
+  value: string | string[] | undefined,
+  fallback: number,
+  maximum: number,
+): number {
+  const parsed = Number(stringParam(value));
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= maximum ? parsed : fallback;
+}
+
+function paginationHref(params: Record<string, string | string[] | undefined>, page: number): string {
+  const query = new URLSearchParams();
+  for (const key of ["q", "assignee", "source", "statusFilter", "contactQ", "contactId", "idempotencyKey", "pageSize"]) {
+    const value = stringParam(params[key]);
+    if (value) query.set(key, value);
+  }
+  query.set("page", String(page));
+  return `/app/pipeline?${query.toString()}`;
+}
+
 export default async function PipelinePage({ searchParams }: { searchParams: SearchParams }) {
   const context = await resolveActiveClinicContext();
   if (context.status !== "ready") redirect("/app");
@@ -33,17 +58,33 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
   const search = stringParam(params.q);
   const assignedToUserId = stringParam(params.assignee);
   const initialSourceId = stringParam(params.source);
-  const [board, owners, sources, contacts, createAccess, closeAccess, manageAccess] = await Promise.all([
+  const page = positiveIntParam(params.page, 1, 1_000_000);
+  const pageSize = positiveIntParam(params.pageSize, 40, 100);
+  const contactQ = stringParam(params.contactQ);
+  const duplicateWarning = params.error === "existing_open";
+  const selectedContact = stringParam(params.contactId);
+  const existingIdempotency = stringParam(params.idempotencyKey);
+  const [board, owners, sources, contacts, selectedContactResult, createAccess, closeAccess, manageAccess] = await Promise.all([
     listOpportunityBoard({
       assignedToUserId: assignedToUserId || null,
       clinicId: context.clinic.id,
       initialSourceId: initialSourceId || null,
+      page,
+      pageSize,
       search,
       status,
     }),
     listContactOwners(context.clinic.id),
     listLeadSources(context.clinic.id),
-    listContacts({ clinicId: context.clinic.id, includeArchived: false, limit: 100, search: "" }),
+    listContacts({
+      clinicId: context.clinic.id,
+      includeArchived: false,
+      limit: contactQ ? 20 : 10,
+      search: contactQ,
+    }),
+    selectedContact
+      ? getContact({ clinicId: context.clinic.id, contactId: selectedContact })
+      : Promise.resolve(null),
     requirePermission(context.clinic.id, "opportunity.create"),
     requirePermission(context.clinic.id, "opportunity.close"),
     requirePermission(context.clinic.id, "pipeline.manage"),
@@ -51,11 +92,17 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
   if (!board.ok) return <ErrorState title="Não foi possível carregar o pipeline" description="Confira suas permissões ou tente novamente." />;
   const ownerOptions = owners.ok ? owners.owners : [];
   const sourceOptions = sources.ok ? sources.leadSources.filter((source) => !source.archived_at) : [];
-  const contactOptions = contacts.ok ? contacts.contacts : [];
+  const contactOptions = contacts.ok
+    ? contacts.contacts.map((contact) => ({ id: contact.id, full_name: contact.full_name }))
+    : [];
+  if (selectedContactResult?.ok
+    && !contactOptions.some((contact) => contact.id === selectedContactResult.contact.id)) {
+    contactOptions.unshift({
+      id: selectedContactResult.contact.id,
+      full_name: selectedContactResult.contact.full_name,
+    });
+  }
   const openStages = board.stages.filter((stage) => stage.stage_kind === "open");
-  const duplicateWarning = params.error === "existing_open";
-  const selectedContact = stringParam(params.contactId);
-  const existingIdempotency = stringParam(params.idempotencyKey);
   const cardsByStage = new Map(openStages.map((stage) => [stage.id, board.cards.filter((card) => card.status === "open" && card.stage_id === stage.id)]));
 
   return <section className="space-y-6">
@@ -76,12 +123,28 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
       <label className="text-sm" htmlFor="pipeline-status">Estado
         <select className="h-9 w-full rounded-md border bg-background px-3" defaultValue={status} id="pipeline-status" name="statusFilter"><option value="open">Abertas</option><option value="won">Ganhas</option><option value="lost">Perdidas</option><option value="all">Todas</option></select>
       </label>
+      <input name="pageSize" type="hidden" value={pageSize} />
       <div className="md:col-span-4"><Button type="submit">Aplicar filtros</Button></div>
     </form>
 
-    {createAccess.allowed ? <details className="rounded-lg border bg-background p-4" open={duplicateWarning}>
+    {createAccess.allowed ? <details className="rounded-lg border bg-background p-4" open={duplicateWarning || Boolean(contactQ)}>
       <summary className="cursor-pointer font-semibold">Criar oportunidade</summary>
       {duplicateWarning ? <div className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm" role="alert"><strong>Já existe uma oportunidade aberta para este contato.</strong> Se deseja criar outra, preencha novamente os dados e marque a confirmação explícita.</div> : null}
+      <form className="mt-4 flex flex-wrap items-end gap-3" method="get">
+        <input name="q" type="hidden" value={search} />
+        <input name="assignee" type="hidden" value={assignedToUserId} />
+        <input name="source" type="hidden" value={initialSourceId} />
+        <input name="statusFilter" type="hidden" value={status} />
+        <input name="page" type="hidden" value={page} />
+        <input name="pageSize" type="hidden" value={pageSize} />
+        {selectedContact ? <input name="contactId" type="hidden" value={selectedContact} /> : null}
+        {existingIdempotency ? <input name="idempotencyKey" type="hidden" value={existingIdempotency} /> : null}
+        <label className="min-w-[16rem] flex-1 text-sm" htmlFor="contact-search">Buscar contato
+          <Input defaultValue={contactQ} id="contact-search" maxLength={160} name="contactQ" placeholder="Nome, telefone ou e-mail" />
+        </label>
+        <Button type="submit" variant="outline">Pesquisar contato</Button>
+      </form>
+      <p className="mt-2 text-xs text-muted-foreground">{contactQ ? `Resultados para “${contactQ}”.` : "Mostrando poucos contatos recentes; pesquise para localizar contatos antigos."}</p>
       <form action={createOpportunityFormAction} className="mt-4 grid gap-3 sm:grid-cols-2">
         <input name="clinicId" type="hidden" value={context.clinic.id} />
         <input name="idempotencyKey" type="hidden" value={existingIdempotency || crypto.randomUUID()} />
@@ -120,7 +183,17 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
       </section>)}
     </div> : board.cards.length ? <div className="overflow-x-auto rounded-lg border bg-background"><table className="w-full text-left text-sm"><thead><tr className="border-b"><th className="p-3">Oportunidade</th><th className="p-3">Contato</th><th className="p-3">Estado</th><th className="p-3">Responsável</th><th className="p-3">Valor</th></tr></thead><tbody>{board.cards.map((card) => <tr className="border-b last:border-0" key={card.id}><td className="p-3"><Link className="font-medium underline" href={`/app/opportunities/${card.id}`}>{card.title}</Link></td><td className="p-3">{card.contactName}</td><td className="p-3">{card.status === "won" ? "Ganha" : card.status === "lost" ? "Perdida" : "Aberta"}</td><td className="p-3">{card.assigneeName}</td><td className="p-3">{formatBrlFromCents(card.amount_cents) ?? "—"}</td></tr>)}</tbody></table></div> : <EmptyState title="Nenhuma oportunidade encontrada" description="Ajuste os filtros para consultar outras oportunidades." />}
 
+    <nav aria-label="Paginação das oportunidades" className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
+      {page > 1
+        ? <Button asChild variant="outline"><Link href={paginationHref(params, page - 1)}>Anterior</Link></Button>
+        : <Button disabled variant="outline">Anterior</Button>}
+      <p className="text-sm text-muted-foreground" role="status">Página {page}{board.hasMore ? " — há mais resultados" : " — última página"}</p>
+      {board.hasMore
+        ? <Button asChild variant="outline"><Link href={paginationHref(params, page + 1)}>Próxima</Link></Button>
+        : <Button disabled variant="outline">Próxima</Button>}
+    </nav>
+
     {manageAccess.allowed ? <StageManager clinicId={context.clinic.id} initialStages={board.stages} /> : null}
-    <p className="text-xs text-muted-foreground" role="status">Cards ordenados por posição e identificador. Escopo: {board.scope === "all" ? "toda a clínica" : "somente suas oportunidades"}.</p>
+    <p className="text-xs text-muted-foreground" role="status">Cards ordenados por etapa, posição e identificador. Escopo: {board.scope === "all" ? "toda a clínica" : "somente suas oportunidades"}.</p>
   </section>;
 }

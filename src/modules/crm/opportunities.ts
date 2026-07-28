@@ -73,6 +73,8 @@ const listBoardSchema = z.object({
   assignedToUserId: z.uuid().nullable().optional(),
   clinicId: z.uuid(),
   initialSourceId: z.uuid().nullable().optional(),
+  page: z.number().int().min(1).max(1_000_000).default(1),
+  pageSize: z.number().int().min(1).max(100).default(40),
   search: z.string().trim().max(160).default(""),
   status: z.enum(["open", "won", "lost", "all"]).default("open"),
 }).strict();
@@ -139,45 +141,51 @@ export async function listOpportunityBoard(input: unknown) {
     .eq("pipeline_id", pipeline.data.id).order("position").order("id");
   if (stages.error) return { ok: false, code: "unavailable" } as const;
 
-  let query = supabase.from("opportunities").select("*")
-    .eq("clinic_id", parsed.data.clinicId).eq("pipeline_id", pipeline.data.id)
-    .order("board_position").order("id").limit(300);
-  if (parsed.data.status !== "all") query = query.eq("status", parsed.data.status);
-  if (parsed.data.assignedToUserId) query = query.eq("assigned_to_user_id", parsed.data.assignedToUserId);
-  if (parsed.data.initialSourceId) query = query.eq("initial_source_id", parsed.data.initialSourceId);
-  const opportunities = await query;
+  const opportunities = await supabase.rpc("search_opportunity_board", {
+    p_assigned_to_user_id: parsed.data.assignedToUserId ?? null,
+    p_clinic_id: parsed.data.clinicId,
+    p_initial_source_id: parsed.data.initialSourceId ?? null,
+    p_page: parsed.data.page,
+    p_page_size: parsed.data.pageSize,
+    p_pipeline_id: pipeline.data.id,
+    p_search_term: parsed.data.search,
+    p_status: parsed.data.status === "all" ? null : parsed.data.status,
+  });
   if (opportunities.error) return { ok: false, code: "unavailable" } as const;
 
-  const contactIds = [...new Set(opportunities.data.map((item) => item.contact_id))];
-  const sourceIds = [...new Set(opportunities.data.flatMap((item) => item.initial_source_id ? [item.initial_source_id] : []))];
-  const assigneeIds = [...new Set(opportunities.data.flatMap((item) => item.assigned_to_user_id ? [item.assigned_to_user_id] : []))];
-  const contacts = contactIds.length
-    ? await supabase.from("contacts").select("id,full_name").in("id", contactIds)
-    : { data: [], error: null };
+  const hasMore = opportunities.data.length > parsed.data.pageSize;
+  const pageRows = opportunities.data.slice(0, parsed.data.pageSize);
+  const sourceIds = [...new Set(pageRows.flatMap((item) => item.initial_source_id ? [item.initial_source_id] : []))];
+  const assigneeIds = [...new Set(pageRows.flatMap((item) => item.assigned_to_user_id ? [item.assigned_to_user_id] : []))];
   const sources = sourceIds.length
     ? await supabase.from("lead_sources").select("id,name").in("id", sourceIds)
     : { data: [], error: null };
   const profiles = assigneeIds.length
     ? await supabase.from("profiles").select("user_id,full_name").in("user_id", assigneeIds)
     : { data: [], error: null };
-  if (contacts.error || sources.error || profiles.error) return { ok: false, code: "unavailable" } as const;
-  const contactNames = new Map(contacts.data.map((item) => [item.id, item.full_name]));
+  if (sources.error || profiles.error) return { ok: false, code: "unavailable" } as const;
   const sourceNames = new Map(sources.data.map((item) => [item.id, item.name]));
   const assigneeNames = new Map(profiles.data.map((item) => [item.user_id, item.full_name]));
-  const term = parsed.data.search.toLocaleLowerCase("pt-BR");
-  const cards = sortBoardCards(opportunities.data.map((item) => ({
+  const cards = pageRows.map((item) => ({
     ...item,
     assigneeName: item.assigned_to_user_id
       ? assigneeNames.get(item.assigned_to_user_id) ?? "Membro da clínica"
       : "Sem responsável",
-    contactName: contactNames.get(item.contact_id) ?? "Contato",
+    contactName: item.contact_name,
     sourceName: item.initial_source_id
       ? sourceNames.get(item.initial_source_id) ?? "Origem arquivada"
       : null,
-  }))).filter((item) => !term
-    || item.title.toLocaleLowerCase("pt-BR").includes(term)
-    || item.contactName.toLocaleLowerCase("pt-BR").includes(term));
-  return { ok: true, cards, pipeline: pipeline.data, scope: scope.scope, stages: stages.data } as const;
+  }));
+  return {
+    ok: true,
+    cards,
+    hasMore,
+    page: parsed.data.page,
+    pageSize: parsed.data.pageSize,
+    pipeline: pipeline.data,
+    scope: scope.scope,
+    stages: stages.data,
+  } as const;
 }
 
 export async function getOpportunityPermissions(clinicId: string) {
