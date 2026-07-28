@@ -92,7 +92,9 @@ describe("validação final estática da F1", () => {
       expect(layout).toContain(`"${route}"`);
       expect(filesUnder("src/app")).toContain(file);
     }
-    expect(layout).not.toMatch(/opportunities|pipeline|kanban|appointments|whatsapp|finance/i);
+    expect(layout).not.toMatch(
+      /patients|opportunities|pipeline|kanban|appointments|whatsapp|finance/i,
+    );
   });
 
   it("preserva labels, foco visível e responsividade mínima do shell", () => {
