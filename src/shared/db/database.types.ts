@@ -16,6 +16,7 @@ export type Database = {
           contact_id: string | null;
           id: string;
           occurred_at: string;
+          opportunity_id: string | null;
           payload: Json;
           type: string;
         };
@@ -105,6 +106,76 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      pipelines: {
+        Row: {
+          archived_at: string | null;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          is_default: boolean;
+          name: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      pipeline_stages: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          pipeline_id: string;
+          position: number;
+          stage_kind: "open" | "won" | "lost";
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      opportunities: {
+        Row: {
+          amount_cents: number | null;
+          assigned_to_user_id: string | null;
+          board_position: number;
+          clinic_id: string;
+          close_reason: string | null;
+          closed_at: string | null;
+          contact_id: string;
+          created_at: string;
+          id: string;
+          idempotency_key: string | null;
+          initial_source_id: string | null;
+          pipeline_id: string;
+          stage_id: string;
+          status: "open" | "won" | "lost";
+          title: string;
+          updated_at: string;
+          version: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      opportunity_stage_events: {
+        Row: {
+          actor_id: string | null;
+          clinic_id: string;
+          from_stage_id: string | null;
+          from_status: "open" | "won" | "lost" | null;
+          id: string;
+          occurred_at: string;
+          opportunity_id: string;
+          reason: string | null;
+          to_stage_id: string;
+          to_status: "open" | "won" | "lost";
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       person_contacts: {
         Row: {
           archived_at: string | null;
@@ -156,6 +227,15 @@ export type Database = {
       archive_contact_method: { Args: { clinic_id: string; contact_method_id: string }; Returns: boolean };
       archive_lead_source: { Args: { clinic_id: string; lead_source_id: string }; Returns: boolean };
       assign_contact_owner: { Args: { clinic_id: string; contact_id: string; owner_user_id: string }; Returns: boolean };
+      assign_opportunity: {
+        Args: {
+          assigned_to_user_id: string;
+          clinic_id: string;
+          expected_version: number;
+          opportunity_id: string;
+        };
+        Returns: number;
+      };
       accept_invitation: {
         Args: { token_hash: string };
         Returns: string;
@@ -180,6 +260,19 @@ export type Database = {
         Returns: string;
       };
       create_lead_source: { Args: { clinic_id: string; name: string }; Returns: string };
+      create_opportunity: {
+        Args: {
+          amount_cents?: number | null;
+          clinic_id: string;
+          confirmed_existing_open?: boolean;
+          contact_id: string;
+          idempotency_key?: string | null;
+          initial_source_id?: string | null;
+          title: string;
+        };
+        Returns: { has_existing_open: boolean; opportunity_id: string | null }[];
+      };
+      create_pipeline_stage: { Args: { clinic_id: string; name: string }; Returns: string };
       current_user_clinic_ids: {
         Args: Record<PropertyKey, never>;
         Returns: string[];
@@ -210,6 +303,27 @@ export type Database = {
         Returns: string;
       };
       link_contact_as_patient: { Args: { clinic_id: string; contact_id: string }; Returns: boolean };
+      close_opportunity: {
+        Args: {
+          clinic_id: string;
+          close_reason: string | null;
+          expected_version: number;
+          opportunity_id: string;
+          target_status: string;
+        };
+        Returns: number;
+      };
+      move_opportunity: {
+        Args: {
+          after_opportunity_id?: string | null;
+          before_opportunity_id?: string | null;
+          clinic_id: string;
+          expected_version: number;
+          opportunity_id: string;
+          target_stage_id: string;
+        };
+        Returns: number;
+      };
       create_support_grant: {
         Args: {
           access_level: Database["public"]["Enums"]["support_access_level"];
@@ -296,12 +410,59 @@ export type Database = {
           version: number;
         }[];
       };
+      search_opportunity_board: {
+        Args: {
+          p_assigned_to_user_id: string | null;
+          p_clinic_id: string;
+          p_initial_source_id: string | null;
+          p_page: number;
+          p_page_size: number;
+          p_pipeline_id: string;
+          p_search_term: string;
+          p_status: string | null;
+        };
+        Returns: {
+          amount_cents: number | null;
+          assigned_to_user_id: string | null;
+          board_position: number;
+          clinic_id: string;
+          close_reason: string | null;
+          closed_at: string | null;
+          contact_id: string;
+          contact_name: string;
+          created_at: string;
+          id: string;
+          idempotency_key: string | null;
+          initial_source_id: string | null;
+          pipeline_id: string;
+          stage_id: string;
+          stage_position: number;
+          status: string;
+          title: string;
+          updated_at: string;
+          version: number;
+        }[];
+      };
       revoke_support_grant: {
         Args: { grant_id: string };
         Returns: boolean;
       };
       revoke_invitation: {
         Args: { clinic_id: string; invitation_id: string };
+        Returns: boolean;
+      };
+      reopen_opportunity: {
+        Args: {
+          clinic_id: string;
+          expected_version: number;
+          opportunity_id: string;
+          reason: string;
+          target_stage_id: string;
+        };
+        Returns: number;
+      };
+      reorder_pipeline_stages: {
+        Args: { clinic_id: string; stage_ids: string[] };
         Returns: boolean;
       };
       suspend_member: {
@@ -333,6 +494,21 @@ export type Database = {
         Returns: boolean;
       };
       update_lead_source: { Args: { clinic_id: string; lead_source_id: string; name: string }; Returns: boolean };
+      update_opportunity: {
+        Args: {
+          amount_cents: number | null;
+          clinic_id: string;
+          expected_version: number;
+          initial_source_id: string | null;
+          opportunity_id: string;
+          title: string;
+        };
+        Returns: number;
+      };
+      update_pipeline_stage: {
+        Args: { clinic_id: string; name: string; pipeline_stage_id: string };
+        Returns: boolean;
+      };
       update_member_role: {
         Args: { clinic_id: string; member_id: string; target_role: string };
         Returns: boolean;

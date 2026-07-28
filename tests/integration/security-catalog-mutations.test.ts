@@ -65,6 +65,7 @@ describe("mutações controladas do catálogo de segurança", () => {
   it.each([
     ["UPDATE", "activities"],
     ["DELETE", "audit_logs"],
+    ["UPDATE", "opportunity_stage_events"],
   ])("detecta política de %s em tabela append-only", async (command, table) => {
     const policy = `f1_mutation_${command.toLowerCase()}`;
     const violations = await withRolledBackMutation(

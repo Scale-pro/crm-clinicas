@@ -18,6 +18,10 @@ const REQUIRED_TABLES = [
   "person_contacts",
   "patients",
   "lead_sources",
+  "pipelines",
+  "pipeline_stages",
+  "opportunities",
+  "opportunity_stage_events",
 ] as const;
 
 const TENANT_WRITE_TABLES = [
@@ -32,6 +36,10 @@ const TENANT_WRITE_TABLES = [
   "person_contacts",
   "patients",
   "lead_sources",
+  "pipelines",
+  "pipeline_stages",
+  "opportunities",
+  "opportunity_stage_events",
 ] as const;
 
 export type SecurityCatalogViolation = {
@@ -134,7 +142,7 @@ export async function findSecurityCatalogViolations(
      join pg_catalog.pg_class c on c.oid = p.polrelid
      join pg_catalog.pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public'
-       and c.relname = any(array['activities', 'audit_logs'])
+       and c.relname = any(array['activities', 'audit_logs', 'opportunity_stage_events'])
        and p.polcmd in ('*', 'w', 'd')
      order by c.relname, p.polname`,
   );

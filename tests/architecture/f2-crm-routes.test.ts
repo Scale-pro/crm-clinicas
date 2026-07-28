@@ -14,7 +14,7 @@ function filesUnder(relativeDirectory: string): string[] {
   );
 }
 
-describe("rotas e fronteiras de contatos F2.1", () => {
+describe("rotas e fronteiras de CRM F2.2", () => {
   it("cria somente as quatro páginas aprovadas dentro de contacts", () => {
     const pages = filesUnder("src/app/(clinic)/app/contacts")
       .filter((file) => file.endsWith("page.tsx"))
@@ -49,6 +49,43 @@ describe("rotas e fronteiras de contatos F2.1", () => {
 
   it("não cria superfície de fases futuras", () => {
     const files = filesUnder("src/app/(clinic)/app").join("\n");
-    expect(files).not.toMatch(/opportunities|pipeline|kanban|appointments|conversations|whatsapp|finance/i);
+    expect(files).not.toMatch(/tasks|appointments|conversations|whatsapp|messages|finance/i);
+  });
+
+  it("cria somente o Kanban e a ficha de oportunidade aprovados", () => {
+    expect(filesUnder("src/app/(clinic)/app/pipeline")).toContain(
+      "src/app/(clinic)/app/pipeline/page.tsx",
+    );
+    expect(filesUnder("src/app/(clinic)/app/opportunities")).toEqual([
+      "src/app/(clinic)/app/opportunities/[opportunityId]/page.tsx",
+    ]);
+  });
+
+  it("move cards por controle acessível e pela mesma Server Action", () => {
+    const board = read("src/app/(clinic)/app/pipeline/page.tsx");
+    expect(board).toContain("Mover para etapa");
+    expect(board).toContain("<select");
+    expect(board).toContain("moveOpportunityFormAction");
+    expect(board).not.toContain("onDragEnd");
+  });
+
+  it("pagina o board e pesquisa contatos antigos no servidor", () => {
+    const board = read("src/app/(clinic)/app/pipeline/page.tsx");
+    expect(board).toContain('name="contactQ"');
+    expect(board).toContain("Pesquisar contato");
+    expect(board).toContain("paginationHref");
+    expect(board).toContain("board.hasMore");
+    expect(board).toContain("Página {page}");
+    expect(board).not.toContain("limit: 100, search: \"\"");
+  });
+
+  it("actions validam contexto e payload strict antes da API pública", () => {
+    const actions = read("src/app/(clinic)/app/pipeline/actions.ts");
+    expect(actions).toContain('"use server"');
+    expect(actions).toContain("resolveActiveClinicContext()");
+    expect(actions).toContain(".strict().safeParse");
+    expect(actions).toContain('from "@/modules/crm"');
+    expect(actions).not.toMatch(/@\/modules\/crm\//);
+    expect(actions).not.toContain("console.");
   });
 });
