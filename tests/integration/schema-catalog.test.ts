@@ -21,13 +21,17 @@ const TABLES = [
   "person_contacts",
   "patients",
   "lead_sources",
+  "pipelines",
+  "pipeline_stages",
+  "opportunities",
+  "opportunity_stage_events",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema F2.1", () => {
-  it("contém exatamente as 17 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema F2.2", () => {
+  it("contém exatamente as 21 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -37,7 +41,7 @@ describe("catálogo do schema F2.1", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 17 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 21 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -51,7 +55,7 @@ describe("catálogo do schema F2.1", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(17);
+    expect(rows).toHaveLength(21);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -72,6 +76,15 @@ describe("catálogo do schema F2.1", () => {
       "patients_clinic_became_idx",
       "lead_sources_clinic_name_idx",
       "activities_clinic_contact_occurred_idx",
+      "pipelines_clinic_default_idx",
+      "pipeline_stages_clinic_pipeline_position_idx",
+      "opportunities_clinic_stage_board_idx",
+      "opportunities_clinic_status_updated_idx",
+      "opportunities_clinic_assignee_open_idx",
+      "opportunities_clinic_contact_idx",
+      "opportunities_clinic_pipeline_status_idx",
+      "opportunity_stage_events_clinic_opportunity_occurred_idx",
+      "activities_clinic_opportunity_occurred_idx",
     ];
     const { rows } = await pool.query<{ first_column: string; index_name: string }>(
       `select index_class.relname as index_name,
@@ -97,7 +110,7 @@ describe("catálogo do schema F2.1", () => {
     );
   });
 
-  it("semeia exatamente a matriz de papéis e permissões até a F2.1", async () => {
+  it("semeia exatamente a matriz de papéis e permissões até a F2.2", async () => {
     const roles = await pool.query<{ key: string }>(
       "select key from public.roles order by key",
     );
@@ -125,9 +138,20 @@ describe("catálogo do schema F2.1", () => {
         "member.invite",
         "member.manage",
         "member.remove",
+        "opportunity.close",
+        "opportunity.create",
+        "opportunity.edit_all",
+        "opportunity.edit_own",
+        "opportunity.move_all",
+        "opportunity.move_own",
+        "opportunity.reopen",
+        "opportunity.view_all",
+        "opportunity.view_own",
+        "pipeline.manage",
       ],
     );
-    expect(matrix.rows).toHaveLength(39);
+    expect(permissions.rows).toHaveLength(22);
+    expect(matrix.rows).toHaveLength(76);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {

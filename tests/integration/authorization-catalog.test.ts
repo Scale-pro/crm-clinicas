@@ -16,9 +16,13 @@ const EXPECTED_POLICIES = [
   ["contacts", "contacts_select", "SELECT"],
   ["invitations", "invitations_select", "SELECT"],
   ["lead_sources", "lead_sources_select", "SELECT"],
+  ["opportunities", "opportunities_select", "SELECT"],
+  ["opportunity_stage_events", "opportunity_stage_events_select", "SELECT"],
   ["patients", "patients_select", "SELECT"],
   ["permissions", "permissions_select", "SELECT"],
   ["person_contacts", "person_contacts_select", "SELECT"],
+  ["pipeline_stages", "pipeline_stages_select", "SELECT"],
+  ["pipelines", "pipelines_select", "SELECT"],
   ["profiles", "profiles_select", "SELECT"],
   ["profiles", "profiles_update", "UPDATE"],
   ["role_permissions", "role_permissions_select", "SELECT"],
@@ -30,7 +34,7 @@ describe("catálogo de autorização e RLS", () => {
     expect(await findSecurityCatalogViolations(pool)).toEqual([]);
   });
 
-  it("possui exatamente as políticas separadas aprovadas para a F1.3", async () => {
+  it("possui exatamente as políticas separadas aprovadas até a F2.2", async () => {
     const { rows } = await pool.query<{
       cmd: string;
       policyname: string;
@@ -64,7 +68,7 @@ describe("catálogo de autorização e RLS", () => {
               has_table_privilege('authenticated', format('public.%I', table_name), 'INSERT') as can_insert,
               has_table_privilege('authenticated', format('public.%I', table_name), 'UPDATE') as can_update,
               has_table_privilege('authenticated', format('public.%I', table_name), 'DELETE') as can_delete
-       from unnest(array['activities', 'audit_logs']) as names(table_name)
+       from unnest(array['activities', 'audit_logs', 'opportunity_stage_events']) as names(table_name)
        order by table_name`,
     );
 
@@ -80,6 +84,12 @@ describe("catálogo de autorização e RLS", () => {
         can_insert: false,
         can_update: false,
         table_name: "audit_logs",
+      },
+      {
+        can_delete: false,
+        can_insert: false,
+        can_update: false,
+        table_name: "opportunity_stage_events",
       },
     ]);
   });
@@ -97,6 +107,10 @@ describe("catálogo de autorização e RLS", () => {
       "person_contacts",
       "patients",
       "lead_sources",
+      "pipelines",
+      "pipeline_stages",
+      "opportunities",
+      "opportunity_stage_events",
     ];
     const { rows } = await pool.query<{
       can_delete: boolean;
