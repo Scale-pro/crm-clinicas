@@ -448,7 +448,7 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       [clinicLast],
     );
     await pool.query("update public.pipelines set is_default = false where id = $1", [last.rows[0]!.id]);
-    const lastDenied = await ownerA.client.rpc("archive_pipeline", {
+    const lastDenied = await ownerLast.client.rpc("archive_pipeline", {
       clinic_id: clinicLast, pipeline_id: last.rows[0]!.id,
     });
     expect(lastDenied.error?.code).toBe("P4203");
