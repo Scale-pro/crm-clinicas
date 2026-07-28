@@ -4,7 +4,7 @@ import { updatePasswordFormAction } from "../../actions";
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const query = await searchParams;
-  return <section className="space-y-6" aria-labelledby="account-title">
+  return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-5" aria-labelledby="account-title">
     <div><h1 id="account-title" className="text-2xl font-semibold">Conta</h1><p className="mt-1 text-sm text-muted-foreground">Gerencie as credenciais da sua própria conta.</p></div>
     {query.status === "password_updated" ? <p role="status" className="rounded-md bg-muted p-3 text-sm">Senha atualizada.</p> : null}
     {query.error ? <p id="account-error" role="alert" className="text-sm text-destructive">Não foi possível atualizar a senha.</p> : null}
