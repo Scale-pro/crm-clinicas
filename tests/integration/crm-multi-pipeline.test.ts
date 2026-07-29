@@ -437,6 +437,55 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       row.assigned_to_user_id === sdrA.id)).toBe(true);
   });
 
+  it("limita chamadas diretas da busca com paginação nula ou inválida", async () => {
+    const request = {
+      p_assigned_to_user_id: null,
+      p_clinic_id: clinicA,
+      p_initial_source_id: null,
+      p_pipeline_id: null,
+      p_search_term: "",
+      p_status: null,
+    };
+    const invalidRequests = [
+      { p_page: 1, p_page_size: null as never },
+      { p_page: null as never, p_page_size: 100 },
+      { p_page: 1, p_page_size: 0 },
+      { p_page: 1, p_page_size: 101 },
+      { p_page: 0, p_page_size: 100 },
+      { p_page: 1000001, p_page_size: 100 },
+    ];
+    const invalidResults = await Promise.all(invalidRequests.map((pagination) =>
+      ownerA.client.rpc("search_opportunity_board", { ...request, ...pagination })));
+    expect(invalidResults.every((result) => result.error === null)).toBe(true);
+    expect(invalidResults.every((result) => result.data?.length === 0)).toBe(true);
+
+    const [bounded, allPipelines, crossTenant] = await Promise.all([
+      ownerA.client.rpc("search_opportunity_board", {
+        ...request,
+        p_page: 1,
+        p_page_size: 100,
+      }),
+      ownerA.client.rpc("search_opportunity_board", {
+        ...request,
+        p_page: 1,
+        p_page_size: 40,
+      }),
+      ownerA.client.rpc("search_opportunity_board", {
+        ...request,
+        p_clinic_id: clinicB,
+        p_page: 1,
+        p_page_size: 100,
+      }),
+    ]);
+    expect(bounded.error).toBeNull();
+    expect(bounded.data!.length).toBeLessThanOrEqual(101);
+    expect(allPipelines.error).toBeNull();
+    expect(allPipelines.data?.every((row: OpportunitySearchRow) =>
+      typeof row.pipeline_id === "string")).toBe(true);
+    expect(crossTenant.error).toBeNull();
+    expect(crossTenant.data).toEqual([]);
+  });
+
   it("protege padrão, última ativa e pipeline com oportunidade aberta", async () => {
     const defaultDenied = await ownerA.client.rpc("archive_pipeline", {
       clinic_id: clinicA, pipeline_id: secondPipelineA,
@@ -463,6 +512,86 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       clinic_id: clinicA, pipeline_id: duplicatedPipelineA,
     });
     expect(openDenied.error?.code).toBe("P4204");
+  });
+
+  it("impede reabertura em pipeline arquivada sem efeitos colaterais", async () => {
+    const pipeline = await createPipeline(ownerA, clinicA, "Pipeline de reabertura negada");
+    if (pipeline.error || typeof pipeline.data !== "string") throw pipeline.error;
+    const contact = await createContact(ownerA, clinicA, "Contato Reabertura Arquivada");
+    const created = await createOpportunity(ownerA, clinicA, contact, {
+      pipelineId: pipeline.data,
+      title: "Não reabrir em pipeline arquivada",
+    });
+    expect(created.error).toBeNull();
+    const opportunityId = created.data?.[0]?.opportunity_id;
+    if (!opportunityId) throw new Error("Oportunidade para reabertura não criada.");
+    const opportunity = await pool.query<{ stage_id: string; version: number }>(
+      "select stage_id, version from public.opportunities where id = $1",
+      [opportunityId],
+    );
+    const closed = await ownerA.client.rpc("close_opportunity", {
+      clinic_id: clinicA,
+      close_reason: null,
+      expected_version: opportunity.rows[0]!.version,
+      opportunity_id: opportunityId,
+      target_status: "won",
+    });
+    expect(closed.error).toBeNull();
+    const archived = await ownerA.client.rpc("archive_pipeline", {
+      clinic_id: clinicA,
+      pipeline_id: pipeline.data,
+    });
+    expect(archived.error).toBeNull();
+    const before = await pool.query<{
+      activities: string;
+      audits: string;
+      events: string;
+    }>(
+      `select
+         (select count(*)::text from public.opportunity_stage_events
+          where opportunity_id = $1) as events,
+         (select count(*)::text from public.activities
+          where opportunity_id = $1 and type = 'opportunity.reopened') as activities,
+         (select count(*)::text from public.audit_logs
+          where entity_id = $1 and action = 'opportunity.reopened') as audits`,
+      [opportunityId],
+    );
+
+    const reopened = await ownerA.client.rpc("reopen_opportunity", {
+      clinic_id: clinicA,
+      expected_version: closed.data!,
+      opportunity_id: opportunityId,
+      reason: "Tentativa após arquivamento",
+      target_stage_id: opportunity.rows[0]!.stage_id,
+    });
+    expect(reopened.error?.code).toBe("P4201");
+
+    const after = await pool.query<{
+      activities: string;
+      archived_at: string | null;
+      audits: string;
+      events: string;
+      status: string;
+    }>(
+      `select o.status, p.archived_at,
+         (select count(*)::text from public.opportunity_stage_events
+          where opportunity_id = o.id) as events,
+         (select count(*)::text from public.activities
+          where opportunity_id = o.id and type = 'opportunity.reopened') as activities,
+         (select count(*)::text from public.audit_logs
+          where entity_id = o.id and action = 'opportunity.reopened') as audits
+       from public.opportunities o
+       join public.pipelines p on p.clinic_id = o.clinic_id and p.id = o.pipeline_id
+       where o.id = $1`,
+      [opportunityId],
+    );
+    expect(after.rows[0]).toMatchObject({
+      activities: "0",
+      archived_at: expect.any(String),
+      audits: "0",
+      events: before.rows[0]!.events,
+      status: "won",
+    });
   });
 
   it("arquiva sem abertas, preserva fechadas e rejeita nova criação", async () => {
@@ -541,6 +670,68 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
     expect([created.error, archived.error].filter((error) => error === null)).toHaveLength(1);
     const errorCode = created.error?.code ?? archived.error?.code;
     expect(["P4201", "P4204"]).toContain(errorCode);
+  });
+
+  it("serializa reabertura de oportunidade contra arquivamento", async () => {
+    const pipeline = await createPipeline(ownerA, clinicA, "Pipeline corrida de reabertura");
+    if (pipeline.error || typeof pipeline.data !== "string") throw pipeline.error;
+    const contact = await createContact(ownerA, clinicA, "Contato Corrida de Reabertura");
+    const created = await createOpportunity(ownerA, clinicA, contact, {
+      pipelineId: pipeline.data,
+      title: "Corrida entre arquivar e reabrir",
+    });
+    expect(created.error).toBeNull();
+    const opportunityId = created.data?.[0]?.opportunity_id;
+    if (!opportunityId) throw new Error("Oportunidade concorrente não criada.");
+    const opportunity = await pool.query<{ stage_id: string; version: number }>(
+      "select stage_id, version from public.opportunities where id = $1",
+      [opportunityId],
+    );
+    const closed = await ownerA.client.rpc("close_opportunity", {
+      clinic_id: clinicA,
+      close_reason: null,
+      expected_version: opportunity.rows[0]!.version,
+      opportunity_id: opportunityId,
+      target_status: "lost",
+    });
+    expect(closed.error).toBeNull();
+
+    const [archiveResult, reopenResult] = await Promise.all([
+      ownerA.client.rpc("archive_pipeline", {
+        clinic_id: clinicA,
+        pipeline_id: pipeline.data,
+      }),
+      ownerA.client.rpc("reopen_opportunity", {
+        clinic_id: clinicA,
+        expected_version: closed.data!,
+        opportunity_id: opportunityId,
+        reason: "Correção concorrente",
+        target_stage_id: opportunity.rows[0]!.stage_id,
+      }),
+    ]);
+    expect([archiveResult, reopenResult].filter((result) => result.error === null))
+      .toHaveLength(1);
+    const loserCode = archiveResult.error?.code ?? reopenResult.error?.code;
+    expect(["P4201", "P4204"]).toContain(loserCode);
+
+    const finalState = await pool.query<{ archived_at: string | null; status: string }>(
+      `select p.archived_at, o.status
+       from public.opportunities o
+       join public.pipelines p on p.clinic_id = o.clinic_id and p.id = o.pipeline_id
+       where o.id = $1`,
+      [opportunityId],
+    );
+    if (archiveResult.error === null) {
+      expect(reopenResult.error?.code).toBe("P4201");
+      expect(finalState.rows[0]!.archived_at).not.toBeNull();
+      expect(finalState.rows[0]!.status).toBe("lost");
+    } else {
+      expect(archiveResult.error.code).toBe("P4204");
+      expect(reopenResult.error).toBeNull();
+      expect(finalState.rows[0]).toEqual({ archived_at: null, status: "open" });
+    }
+    expect(finalState.rows[0]!.archived_at === null || finalState.rows[0]!.status !== "open")
+      .toBe(true);
   });
 
   it("mantém leitura platform isolada, auditoria estrutural e zero escrita direta", async () => {
