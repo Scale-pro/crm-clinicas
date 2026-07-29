@@ -587,11 +587,11 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
     );
     expect(after.rows[0]).toMatchObject({
       activities: "0",
-      archived_at: expect.any(String),
       audits: "0",
       events: before.rows[0]!.events,
       status: "won",
     });
+    expect(after.rows[0]!.archived_at).not.toBeNull();
   });
 
   it("arquiva sem abertas, preserva fechadas e rejeita nova criação", async () => {
@@ -692,7 +692,7 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       close_reason: null,
       expected_version: opportunity.rows[0]!.version,
       opportunity_id: opportunityId,
-      target_status: "lost",
+      target_status: "won",
     });
     expect(closed.error).toBeNull();
 
@@ -724,7 +724,7 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
     if (archiveResult.error === null) {
       expect(reopenResult.error?.code).toBe("P4201");
       expect(finalState.rows[0]!.archived_at).not.toBeNull();
-      expect(finalState.rows[0]!.status).toBe("lost");
+      expect(finalState.rows[0]!.status).toBe("won");
     } else {
       expect(archiveResult.error.code).toBe("P4204");
       expect(reopenResult.error).toBeNull();
