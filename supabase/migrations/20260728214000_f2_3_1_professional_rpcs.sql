@@ -406,9 +406,10 @@ $$;
 create function public.set_professional_weekly_availability(
   clinic_id uuid,
   professional_id uuid,
-  availability jsonb
+  availability jsonb,
+  expected_version integer
 )
-returns boolean
+returns integer
 language plpgsql
 volatile
 security definer
@@ -419,6 +420,7 @@ declare
   v_actor_id uuid := (select auth.uid());
   v_current jsonb;
   v_item jsonb;
+  v_new_version integer;
   v_normalized jsonb;
   v_professional public.professionals;
 begin
@@ -480,7 +482,10 @@ begin
     ) order by current.weekday, current.start_minute, current.end_minute), '[]'::jsonb)
     into v_current from public.professional_weekly_availability as current
     where current.clinic_id = clinic_id and current.professional_id = professional_id;
-    if v_current = v_normalized then return true; end if;
+    if v_current = v_normalized then return v_professional.version; end if;
+    if expected_version is null or v_professional.version <> expected_version then
+      raise exception using errcode = 'P4091', message = 'professional version conflict';
+    end if;
 
     delete from public.professional_weekly_availability as current
     where current.clinic_id = clinic_id and current.professional_id = professional_id;
@@ -492,6 +497,16 @@ begin
       (item ->> 'start_minute')::smallint,
       (item ->> 'end_minute')::smallint
     from jsonb_array_elements(v_normalized) as input(item);
+
+    update public.professionals as professional set
+      version = professional.version + 1,
+      updated_by = v_actor_id
+    where professional.clinic_id = clinic_id and professional.id = professional_id
+      and professional.version = expected_version
+    returning professional.version into v_new_version;
+    if not found then
+      raise exception using errcode = 'P4091', message = 'professional version conflict';
+    end if;
   exception
     when sqlstate 'P4309' then
       raise exception using errcode = 'P4309', message = 'availability overlap';
@@ -501,10 +516,16 @@ begin
 
   perform app_private.log_audit_event(
     clinic_id, 'professional.availability_changed', 'professional', professional_id,
-    jsonb_build_object('interval_count', jsonb_array_length(v_current)),
-    jsonb_build_object('interval_count', jsonb_array_length(v_normalized)), null
+    jsonb_build_object(
+      'version', v_professional.version,
+      'interval_count', jsonb_array_length(v_current)
+    ),
+    jsonb_build_object(
+      'version', v_new_version,
+      'interval_count', jsonb_array_length(v_normalized)
+    ), null
   );
-  return true;
+  return v_new_version;
 end;
 $$;
 
@@ -516,7 +537,8 @@ alter function public.archive_professional(uuid, uuid) owner to postgres;
 alter function public.set_professional_specialties(uuid, uuid, jsonb) owner to postgres;
 alter function public.link_professional_user(uuid, uuid, uuid) owner to postgres;
 alter function public.unlink_professional_user(uuid, uuid) owner to postgres;
-alter function public.set_professional_weekly_availability(uuid, uuid, jsonb) owner to postgres;
+alter function public.set_professional_weekly_availability(uuid, uuid, jsonb, integer)
+owner to postgres;
 
 revoke all on function public.create_professional(uuid, text, text, text, text, text, text, text, uuid)
 from public, anon;
@@ -526,7 +548,7 @@ revoke all on function public.archive_professional(uuid, uuid) from public, anon
 revoke all on function public.set_professional_specialties(uuid, uuid, jsonb) from public, anon;
 revoke all on function public.link_professional_user(uuid, uuid, uuid) from public, anon;
 revoke all on function public.unlink_professional_user(uuid, uuid) from public, anon;
-revoke all on function public.set_professional_weekly_availability(uuid, uuid, jsonb)
+revoke all on function public.set_professional_weekly_availability(uuid, uuid, jsonb, integer)
 from public, anon;
 
 grant execute on function public.create_professional(uuid, text, text, text, text, text, text, text, uuid)
@@ -537,5 +559,5 @@ grant execute on function public.archive_professional(uuid, uuid) to authenticat
 grant execute on function public.set_professional_specialties(uuid, uuid, jsonb) to authenticated;
 grant execute on function public.link_professional_user(uuid, uuid, uuid) to authenticated;
 grant execute on function public.unlink_professional_user(uuid, uuid) to authenticated;
-grant execute on function public.set_professional_weekly_availability(uuid, uuid, jsonb)
+grant execute on function public.set_professional_weekly_availability(uuid, uuid, jsonb, integer)
 to authenticated;

@@ -1675,8 +1675,13 @@ export type Database = {
         Returns: boolean
       }
       set_professional_weekly_availability: {
-        Args: { availability: Json; clinic_id: string; professional_id: string }
-        Returns: boolean
+        Args: {
+          availability: Json
+          clinic_id: string
+          expected_version: number
+          professional_id: string
+        }
+        Returns: number
       }
       suspend_member: {
         Args: { clinic_id: string; member_id: string }

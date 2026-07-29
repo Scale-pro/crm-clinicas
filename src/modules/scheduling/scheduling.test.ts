@@ -114,13 +114,16 @@ describe("contratos públicos de scheduling", () => {
       intervals[2], intervals[1], intervals[0],
     ]);
     expect(api.setProfessionalWeeklyAvailabilitySchema.safeParse({
-      clinicId, professionalId, intervals,
+      clinicId, professionalId, intervals, expectedVersion: 1,
     }).success).toBe(true);
     expect(api.setProfessionalWeeklyAvailabilitySchema.safeParse({
       clinicId, professionalId, intervals: [
         { weekday: 1, startMinute: 480, endMinute: 780 },
         { weekday: 1, startMinute: 779, endMinute: 900 },
-      ],
+      ], expectedVersion: 1,
+    }).success).toBe(false);
+    expect(api.setProfessionalWeeklyAvailabilitySchema.safeParse({
+      clinicId, professionalId, intervals,
     }).success).toBe(false);
   });
 

@@ -18,6 +18,7 @@ export const setProfessionalWeeklyAvailabilitySchema = z.object({
   clinicId: z.uuid(),
   professionalId: z.uuid(),
   intervals: z.array(weeklyAvailabilityIntervalSchema).max(100),
+  expectedVersion: z.number().int().min(1),
 }).strict().superRefine((value, context) => {
   const sorted = sortWeeklyAvailability(value.intervals);
   for (let index = 1; index < sorted.length; index += 1) {
@@ -49,19 +50,22 @@ export async function getProfessionalWeeklyAvailability(input: unknown) {
   const access = await requireSchedulingAccess(parsed.data.clinicId, "professional.view");
   if (!access.ok) return access;
   const supabase = await createServerSupabaseClient();
-  const [result, clinic] = await Promise.all([
+  const [result, clinic, professional] = await Promise.all([
     supabase.from("professional_weekly_availability")
       .select("id,weekday,start_minute,end_minute,created_at,updated_at")
       .eq("clinic_id", parsed.data.clinicId).eq("professional_id", parsed.data.professionalId)
       .order("weekday").order("start_minute").order("end_minute"),
     supabase.from("clinics").select("timezone").eq("id", parsed.data.clinicId).maybeSingle(),
+    supabase.from("professionals").select("version")
+      .eq("clinic_id", parsed.data.clinicId).eq("id", parsed.data.professionalId).maybeSingle(),
   ]);
-  if (result.error || clinic.error || !clinic.data) {
+  if (result.error || clinic.error || professional.error || !clinic.data || !professional.data) {
     return { ok: false, code: "unavailable" } as const;
   }
   return {
     ok: true,
     timezone: clinic.data.timezone,
+    version: professional.data.version,
     intervals: result.data.map((interval) => ({
       id: interval.id,
       weekday: interval.weekday,
@@ -82,6 +86,7 @@ export async function setProfessionalWeeklyAvailability(input: unknown) {
   const result = await supabase.rpc("set_professional_weekly_availability", {
     clinic_id: parsed.data.clinicId,
     professional_id: parsed.data.professionalId,
+    expected_version: parsed.data.expectedVersion,
     availability: sortWeeklyAvailability(parsed.data.intervals).map((interval) => ({
       weekday: interval.weekday,
       start_minute: interval.startMinute,
@@ -89,5 +94,5 @@ export async function setProfessionalWeeklyAvailability(input: unknown) {
     })),
   });
   if (result.error) return { ok: false, code: mapSchedulingError(result.error) } as const;
-  return { ok: true } as const;
+  return { ok: true, version: result.data } as const;
 }

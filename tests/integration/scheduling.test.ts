@@ -389,23 +389,42 @@ describe("scheduling F2.3.1 multi-tenant", () => {
   });
 
   it("substitui disponibilidade local, aceita adjacência e rejeita overlap/intervalos inválidos", async () => {
+    const initial = await pool.query<{ version: number }>(
+      "select version from public.professionals where id = $1",
+      [professionalA],
+    );
+    const initialVersion = initial.rows[0]!.version;
+    const validAvailability = [
+      { weekday: 1, start_minute: 480, end_minute: 720 },
+      { weekday: 1, start_minute: 720, end_minute: 900 },
+      { weekday: 3, start_minute: 600, end_minute: 720 },
+    ];
     const valid = await ownerA.client.rpc("set_professional_weekly_availability", {
       clinic_id: clinicA,
       professional_id: professionalA,
-      availability: [
-        { weekday: 1, start_minute: 480, end_minute: 720 },
-        { weekday: 1, start_minute: 720, end_minute: 900 },
-        { weekday: 3, start_minute: 600, end_minute: 720 },
-      ],
+      availability: validAvailability,
+      expected_version: initialVersion,
     });
     expect(valid.error).toBeNull();
+    expect(valid.data).toBe(initialVersion + 1);
+    const replay = await ownerA.client.rpc("set_professional_weekly_availability", {
+      clinic_id: clinicA,
+      professional_id: professionalA,
+      availability: [...validAvailability].reverse(),
+      expected_version: initialVersion,
+    });
+    expect(replay.error).toBeNull();
+    expect(replay.data).toBe(valid.data);
     for (const availability of [
       [{ weekday: 1, start_minute: 480, end_minute: 700 }, { weekday: 1, start_minute: 699, end_minute: 800 }],
       [{ weekday: 1, start_minute: 480, end_minute: 480 }],
       [{ weekday: 1, start_minute: 600, end_minute: 480 }],
     ]) {
       const result = await ownerA.client.rpc("set_professional_weekly_availability", {
-        clinic_id: clinicA, professional_id: professionalA, availability,
+        clinic_id: clinicA,
+        professional_id: professionalA,
+        availability,
+        expected_version: valid.data!,
       });
       expect(["P4309", "P4310"]).toContain(result.error?.code);
     }
@@ -415,29 +434,42 @@ describe("scheduling F2.3.1 multi-tenant", () => {
     );
     expect(preserved.rows).toEqual([{ count: "3" }]);
 
-    const concurrent = await Promise.all([
+    const availabilityVariants = [
+      [
+        { weekday: 2, start_minute: 480, end_minute: 600 },
+        { weekday: 2, start_minute: 600, end_minute: 720 },
+      ],
+      [
+        { weekday: 4, start_minute: 720, end_minute: 840 },
+        { weekday: 4, start_minute: 840, end_minute: 960 },
+      ],
+    ];
+    const concurrent = await Promise.all(availabilityVariants.map((availability) =>
       ownerA.client.rpc("set_professional_weekly_availability", {
-        clinic_id: clinicA, professional_id: professionalA, availability: [
-          { weekday: 2, start_minute: 480, end_minute: 600 },
-          { weekday: 2, start_minute: 600, end_minute: 720 },
-        ],
-      }),
-      ownerA.client.rpc("set_professional_weekly_availability", {
-        clinic_id: clinicA, professional_id: professionalA, availability: [
-          { weekday: 4, start_minute: 720, end_minute: 840 },
-          { weekday: 4, start_minute: 840, end_minute: 960 },
-        ],
-      }),
-    ]);
-    expect(concurrent.every((result) => result.error === null)).toBe(true);
+        clinic_id: clinicA,
+        professional_id: professionalA,
+        availability,
+        expected_version: valid.data!,
+      })));
+    expect(concurrent.filter((result) => result.error === null)).toHaveLength(1);
+    expect(concurrent.find((result) => result.error)?.error?.code).toBe("P4091");
+    const winnerIndex = concurrent.findIndex((result) => result.error === null);
     const final = await pool.query<{ end_minute: number; start_minute: number; weekday: number }>(
       `select weekday, start_minute, end_minute
        from public.professional_weekly_availability
        where professional_id = $1 order by weekday, start_minute`,
       [professionalA],
     );
-    expect(final.rows).toHaveLength(2);
+    expect(final.rows).toEqual(availabilityVariants[winnerIndex]);
     expect(final.rows[0]!.end_minute).toBe(final.rows[1]!.start_minute);
+    const professional = await pool.query<{ updated_by: string; version: number }>(
+      "select version, updated_by from public.professionals where id = $1",
+      [professionalA],
+    );
+    expect(professional.rows).toEqual([{
+      updated_by: ownerA.id,
+      version: valid.data! + 1,
+    }]);
   });
 
   it("isola leituras e escritas e rejeita disponibilidade em profissional arquivado", async () => {
@@ -455,8 +487,15 @@ describe("scheduling F2.3.1 multi-tenant", () => {
     const replay = await ownerA.client.rpc("archive_professional", {
       clinic_id: clinicA, professional_id: professionalA,
     });
+    const archivedVersion = await pool.query<{ version: number }>(
+      "select version from public.professionals where id = $1",
+      [professionalA],
+    );
     const unavailable = await ownerA.client.rpc("set_professional_weekly_availability", {
-      clinic_id: clinicA, professional_id: professionalA, availability: [],
+      clinic_id: clinicA,
+      professional_id: professionalA,
+      availability: [],
+      expected_version: archivedVersion.rows[0]!.version,
     });
     expect(archived.error).toBeNull();
     expect(replay.error).toBeNull();
