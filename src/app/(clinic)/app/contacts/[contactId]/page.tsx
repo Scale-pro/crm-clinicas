@@ -20,11 +20,11 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
   ]);
   if (!result.ok) {
     if (result.code === "not_found" || result.code === "forbidden") notFound();
-    return <ErrorState title="Não foi possível carregar o contato" description="Tente novamente em instantes." />;
+    return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar o contato" description="Tente novamente em instantes." /></div>;
   }
   const query = await searchParams;
   const owner = owners.ok ? owners.owners.find((item) => item.userId === result.contact.owner_user_id) : null;
-  return <section className="space-y-6">
+  return <section className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Link className="text-sm underline" href="/app/contacts">Voltar para contatos</Link><h1 className="mt-2 text-2xl font-semibold">{result.contact.full_name}</h1><p className="text-sm text-muted-foreground">{result.contact.archived_at ? "Contato arquivado" : "Contato ativo"}</p></div><div className="flex gap-2">{editAccess.ok ? <Button asChild variant="outline"><Link href={`/app/contacts/${contactId}/edit`}>Editar</Link></Button> : null}{archivePermission.allowed && !result.contact.archived_at ? <form action={archiveContactFormAction}><input name="clinicId" type="hidden" value={context.clinic.id} /><input name="contactId" type="hidden" value={contactId} /><Button type="submit" variant="destructive">Arquivar</Button></form> : null}</div></div>
     {query.status ? <p className="rounded-md border bg-muted p-3 text-sm" role="status">Alteração concluída.</p> : null}{query.error ? <p className="rounded-md border border-destructive/30 p-3 text-sm text-destructive" role="alert">Não foi possível concluir a ação.</p> : null}
     <div className="grid gap-4 sm:grid-cols-3"><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Responsável</h2><p className="mt-1 text-sm text-muted-foreground">{owner?.fullName ?? "Sem responsável"}</p></div><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Paciente</h2><p className="mt-1 text-sm text-muted-foreground">{result.patient ? "Vinculado" : "Não vinculado"}</p></div><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Versão</h2><p className="mt-1 text-sm text-muted-foreground">{result.contact.version}</p></div></div>

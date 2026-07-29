@@ -1,21 +1,29 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { resolveActiveClinicContext } from "@/modules/tenancy";
-import { ClinicSelector } from "@/shared/ui/clinic-selector";
 import { ErrorState } from "@/shared/ui/error-state";
 import { selectClinicFormAction } from "../actions";
+import { AppHeader } from "./_shell/app-header";
+import { AppSidebar } from "./_shell/app-sidebar";
+import { MobileNavigation } from "./_shell/mobile-navigation";
+import type { NavItem } from "./_shell/navigation";
 
-const navigation = [
-  ["Início", "/app"],
-  ["Kanban", "/app/pipeline"],
-  ["Contatos", "/app/contacts"],
-  ["Configurações", "/app/settings"],
-  ["Equipe", "/app/team"],
-  ["Segurança", "/app/security"],
-  ["Conta", "/app/account"],
-] as const;
+/** Somente áreas já entregues. Conversas, agenda, relatórios, automações e IA
+ * entram na navegação junto com a implementação de cada uma. */
+const navigation: readonly NavItem[] = [
+  { label: "Visão geral", href: "/app", icon: "overview" },
+  { label: "Pipeline", href: "/app/pipeline", icon: "pipeline" },
+  { label: "Todos os leads", href: "/app/leads", icon: "leads" },
+  { label: "Contatos", href: "/app/contacts", icon: "contacts" },
+  { label: "Equipe", href: "/app/team", icon: "team" },
+  { label: "Configurações", href: "/app/settings", icon: "settings" },
+];
+
+const accountNavigation: readonly NavItem[] = [
+  { label: "Conta", href: "/app/account", icon: "account" },
+  { label: "Segurança", href: "/app/security", icon: "security" },
+];
 
 export default async function ClinicLayout({ children }: { children: ReactNode }) {
   const context = await resolveActiveClinicContext();
@@ -30,19 +38,35 @@ export default async function ClinicLayout({ children }: { children: ReactNode }
     redirect(`/active-clinic?clinicId=${encodeURIComponent(context.clinic.id)}&next=%2Fapp`);
   }
 
-  return <div className="min-h-svh bg-muted/30">
-    <header className="border-b bg-background">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-        <div><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Clínica ativa</p><p className="font-semibold">{context.clinic.name}</p></div>
-        {context.clinics.length > 1 ? <div className="w-full lg:max-w-md"><ClinicSelector action={selectClinicFormAction} activeClinicId={context.clinic.id} clinics={context.clinics} /></div> : null}
-      </div>
-    </header>
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_1fr]">
-      <aside className="space-y-4">
-        <nav aria-label="Navegação principal"><ul className="flex flex-wrap gap-2 lg:flex-col">{navigation.map(([label, href]) => <li key={href}><Link className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={href}>{label}</Link></li>)}</ul></nav>
-        <form action="/auth/logout" method="post"><button className="rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/5 focus-visible:outline-2 focus-visible:outline-offset-2" type="submit">Sair</button></form>
-      </aside>
-      <main id="main-content" className="min-w-0">{children}</main>
+  // Apenas o pipeline padrão está disponível hoje; a sidebar já aceita a lista
+  // completa quando o contrato de múltiplos pipelines existir.
+  // Desktop e drawer mobile são duas instâncias simultâneas no DOM: cada uma
+  // recebe seu próprio prefixo de ID para não duplicar identificadores.
+  const renderSidebar = (idPrefix: string) => <AppSidebar
+    accountItems={accountNavigation}
+    clinic={context.clinic}
+    clinics={context.clinics}
+    idPrefix={idPrefix}
+    navigation={navigation}
+    selectClinicAction={selectClinicFormAction}
+  />;
+
+  return <div className="flex min-h-svh flex-col bg-canvas lg:h-svh lg:flex-row lg:overflow-hidden">
+    <a
+      className="sr-only left-2 top-2 z-50 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:not-sr-only focus-visible:fixed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:left-4 sm:top-4"
+      href="#main-content"
+    >
+      Ir para o conteúdo
+    </a>
+    <div className="hidden w-60 shrink-0 lg:block lg:h-svh">{renderSidebar("desktop-sidebar")}</div>
+    <div className="flex min-w-0 flex-1 flex-col lg:h-svh lg:overflow-hidden">
+      <AppHeader
+        clinicName={context.clinic.name}
+        navigation={<MobileNavigation>{renderSidebar("mobile-sidebar")}</MobileNavigation>}
+      />
+      <main className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto" id="main-content">
+        {children}
+      </main>
     </div>
   </div>;
 }
