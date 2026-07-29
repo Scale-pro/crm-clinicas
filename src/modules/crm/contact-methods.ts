@@ -4,13 +4,13 @@ import { z } from "zod";
 
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
+import { normalizeContactMethod } from "@/shared/lib/contact-method";
 
 import {
   conflictingContactId,
   mapCrmError,
   requireContactEditAccess,
 } from "./contacts";
-import { normalizeContactMethod } from "./phone";
 
 export const contactMethodSchema = z
   .object({

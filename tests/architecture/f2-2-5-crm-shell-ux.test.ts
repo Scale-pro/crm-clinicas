@@ -215,7 +215,13 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
   });
 
   it("não altera o backend nem contorna os casos de uso do domínio", () => {
-    expect(filesUnder("supabase/migrations").length).toBe(18);
+    // A contagem acompanha o backend já mesclado na main (F2.2.6 multi-pipeline
+    // e F2.3.1 profissionais/procedimentos incluídos). O que esta entrega
+    // garante é não contribuir com nenhuma migration própria: a F2.2.5 é
+    // exclusivamente frontend/UX.
+    const migrations = filesUnder("supabase/migrations");
+    expect(migrations.length).toBe(28);
+    expect(migrations.some((file) => file.includes("f2_2_5"))).toBe(false);
     const tree = readTree(clinicApp);
     expect(tree).not.toContain("@supabase/");
     expect(tree).not.toContain("createServerSupabaseClient");

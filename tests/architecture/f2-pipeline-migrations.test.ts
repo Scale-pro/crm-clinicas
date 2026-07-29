@@ -14,6 +14,10 @@ const opportunityRpcs = migration("20260728204000_f2_2_opportunity_write_rpcs.sq
 const pipelineRpcs = migration("20260728205000_f2_2_pipeline_configuration_rpcs.sql");
 const boardSearch = migration("20260728206000_f2_2_opportunity_board_search.sql");
 const contactVisibility = migration("20260728207000_f2_2_opportunity_contact_visibility.sql");
+const reopenGuard = migration("20260728211500_f2_2_6_archived_pipeline_reopen_guard.sql");
+const paginationGuard = migration(
+  "20260728211600_f2_2_6_opportunity_search_pagination_guard.sql",
+);
 
 const tables = ["pipelines", "pipeline_stages", "opportunities", "opportunity_stage_events"];
 const rpcNames = [
@@ -87,7 +91,11 @@ describe("migrations de pipeline F2.2", () => {
     expect(boardSearch).toContain("grant execute on function public.search_opportunity_board");
     expect(boardSearch).toContain("from public, anon, authenticated");
     expect(boardSearch).toContain("order by ps.position, o.board_position, o.id");
-    expect(boardSearch).toContain("p_page_size, 1), 100) + 1");
+    expect(paginationGuard).toContain("p_page between 1 and 1000000");
+    expect(paginationGuard).toContain("p_page_size between 1 and 100");
+    expect(paginationGuard).toContain("then p_page_size + 1");
+    expect(paginationGuard).toContain("security invoker");
+    expect(paginationGuard).not.toContain("limit least(greatest(p_page_size");
     expect(boardSearch).not.toContain("execute format");
   });
 
@@ -121,6 +129,10 @@ describe("migrations de pipeline F2.2", () => {
     expect(events).not.toContain("updated_at");
     expect(events).not.toMatch(/for (?:update|delete)/);
     expect(pipeline).toContain("deferrable initially deferred");
+    expect(reopenGuard).toContain("from public.pipelines as p");
+    expect(reopenGuard).toContain("for update");
+    expect(reopenGuard).toContain("v_pipeline.archived_at is not null");
+    expect(reopenGuard).toContain("errcode = 'p4201'");
   });
 
   it("não envia PII de contato para auditoria ou activities", () => {
