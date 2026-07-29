@@ -14,6 +14,11 @@ function filesUnder(relativeDirectory: string): string[] {
   );
 }
 
+/** Concatena todos os arquivos de uma rota (página + componentes próximos). */
+function readTree(relativeDirectory: string): string {
+  return filesUnder(relativeDirectory).map(read).join("\n");
+}
+
 describe("rotas e fronteiras de CRM F2.2", () => {
   it("cria somente as quatro páginas aprovadas dentro de contacts", () => {
     const pages = filesUnder("src/app/(clinic)/app/contacts")
@@ -62,7 +67,7 @@ describe("rotas e fronteiras de CRM F2.2", () => {
   });
 
   it("move cards por controle acessível e pela mesma Server Action", () => {
-    const board = read("src/app/(clinic)/app/pipeline/page.tsx");
+    const board = readTree("src/app/(clinic)/app/pipeline");
     expect(board).toContain("Mover para etapa");
     expect(board).toContain("<select");
     expect(board).toContain("moveOpportunityFormAction");
@@ -70,12 +75,13 @@ describe("rotas e fronteiras de CRM F2.2", () => {
   });
 
   it("pagina o board e pesquisa contatos antigos no servidor", () => {
-    const board = read("src/app/(clinic)/app/pipeline/page.tsx");
+    const board = readTree("src/app/(clinic)/app/pipeline");
     expect(board).toContain('name="contactQ"');
     expect(board).toContain("Pesquisar contato");
     expect(board).toContain("paginationHref");
     expect(board).toContain("board.hasMore");
-    expect(board).toContain("Página {page}");
+    expect(board).toContain("<PaginationBar");
+    expect(read("src/app/(clinic)/app/_components/pagination-bar.tsx")).toContain("Página {page}");
     expect(board).not.toContain("limit: 100, search: \"\"");
   });
 

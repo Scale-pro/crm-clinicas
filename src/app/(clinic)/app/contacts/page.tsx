@@ -22,9 +22,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     requirePermission(context.clinic.id, "contact.create"),
     requirePermission(context.clinic.id, "contact.archive"),
   ]);
-  if (!result.ok) return <ErrorState title="Não foi possível carregar os contatos" description="Confira suas permissões ou tente novamente." />;
+  if (!result.ok) return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar os contatos" description="Confira suas permissões ou tente novamente." /></div>;
   const ownerOptions = owners.ok ? owners.owners : [];
-  return <section className="space-y-5">
+  return <section className="space-y-4 p-4 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">Contatos</h1><p className="text-sm text-muted-foreground">Pessoas visíveis no seu escopo de acesso.</p></div>{createPermission.allowed ? <Button asChild><Link href="/app/contacts/new">Novo contato</Link></Button> : null}</div>
     <form className="grid gap-3 rounded-lg border bg-background p-4 sm:grid-cols-[1fr_14rem_auto]" method="get">
       <div><label className="mb-1 block text-sm font-medium" htmlFor="q">Pesquisar</label><Input defaultValue={search} id="q" name="q" placeholder="Nome, telefone ou e-mail exato" /></div>

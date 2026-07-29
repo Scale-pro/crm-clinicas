@@ -31,7 +31,7 @@ export default async function OpportunityPage({ params, searchParams }: {
   ]);
   if (!result.ok) {
     if (result.code === "not_found" || result.code === "forbidden") notFound();
-    return <ErrorState title="Não foi possível carregar a oportunidade" description="Tente novamente em instantes." />;
+    return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar a oportunidade" description="Tente novamente em instantes." /></div>;
   }
   const query = await searchParams;
   const opportunity = result.opportunity;
@@ -52,7 +52,7 @@ export default async function OpportunityPage({ params, searchParams }: {
     ? canReopenAt(opportunity.closed_at)
     : false;
 
-  return <section className="space-y-6">
+  return <section className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-5">
     <div><Link className="text-sm underline" href="/app/pipeline">Voltar para o Kanban</Link><h1 className="mt-2 text-2xl font-semibold">{opportunity.title}</h1><p className="text-sm text-muted-foreground">{opportunity.status === "open" ? "Aberta" : opportunity.status === "won" ? "Ganha" : "Perdida"}</p></div>
     {query.status ? <p className="rounded-md border bg-muted p-3 text-sm" role="status">Alteração concluída.</p> : null}
     {query.error ? <p className="rounded-md border border-destructive/30 p-3 text-sm text-destructive" role="alert">{query.error === "conflict" ? "Esta oportunidade foi alterada em outra sessão. Recarregue antes de tentar novamente." : query.error === "mfa_required" ? "Confirme o MFA para executar esta ação." : "Não foi possível concluir a ação."}</p> : null}

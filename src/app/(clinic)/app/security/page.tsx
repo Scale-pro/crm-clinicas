@@ -6,8 +6,8 @@ import { removeMfaFormAction } from "../../actions";
 
 export default async function SecurityPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const [state, query] = await Promise.all([getMfaState(), searchParams]);
-  if (!state.ok) return <ErrorState title="Não foi possível carregar a segurança da conta" description="Tente novamente em alguns instantes." />;
-  return <section className="space-y-6" aria-labelledby="security-title">
+  if (!state.ok) return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar a segurança da conta" description="Tente novamente em alguns instantes." /></div>;
+  return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-5" aria-labelledby="security-title">
     <div><h1 id="security-title" className="text-2xl font-semibold">Segurança e MFA</h1><p className="mt-1 text-sm text-muted-foreground">Nível atual da sessão: {(state.aal ?? "aal1").toUpperCase()}.</p></div>
     {query.status ? <p role="status" className="rounded-md bg-muted p-3 text-sm">Fator removido.</p> : null}
     {query.error ? <p role="alert" className="text-sm text-destructive">Não foi possível alterar o fator. Contas obrigadas a usar MFA devem manter pelo menos um.</p> : null}

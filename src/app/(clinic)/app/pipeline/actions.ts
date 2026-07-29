@@ -45,6 +45,16 @@ async function activeClinic(formData: FormData, fallback: string) {
   return context.clinic.id;
 }
 
+/** Telas que hospedam o editor de etapas. O padrão continua sendo o quadro. */
+function stageReturnPath(formData: FormData): string {
+  return field(formData, "returnTo") === "settings" ? "/app/settings/pipeline" : "/app/pipeline";
+}
+
+function revalidateStageSurfaces() {
+  revalidatePath("/app/pipeline");
+  revalidatePath("/app/settings/pipeline");
+}
+
 function opportunityPath(opportunityId: string, code?: string) {
   const path = `/app/opportunities/${encodeURIComponent(opportunityId)}`;
   return code ? `${path}?error=${encodeURIComponent(code)}` : path;
@@ -184,38 +194,41 @@ export async function reopenOpportunityFormAction(formData: FormData) {
 }
 
 export async function createPipelineStageFormAction(formData: FormData) {
-  const clinicId = await activeClinic(formData, "/app/pipeline");
+  const returnTo = stageReturnPath(formData);
+  const clinicId = await activeClinic(formData, returnTo);
   const payload = z.object({ clinicId: uuid, name: z.string().trim().min(1).max(60) })
     .strict().safeParse({ clinicId, name: field(formData, "name") });
-  if (!payload.success) redirect("/app/pipeline?error=invalid_input");
+  if (!payload.success) redirect(`${returnTo}?error=invalid_input`);
   const result = await createPipelineStage(payload.data);
-  if (!result.ok) redirect(`/app/pipeline?error=${encodeURIComponent(result.code)}`);
-  revalidatePath("/app/pipeline");
-  redirect("/app/pipeline?status=stage_created");
+  if (!result.ok) redirect(`${returnTo}?error=${encodeURIComponent(result.code)}`);
+  revalidateStageSurfaces();
+  redirect(`${returnTo}?status=stage_created`);
 }
 
 export async function updatePipelineStageFormAction(formData: FormData) {
-  const clinicId = await activeClinic(formData, "/app/pipeline");
+  const returnTo = stageReturnPath(formData);
+  const clinicId = await activeClinic(formData, returnTo);
   const payload = z.object({
     clinicId: uuid, name: z.string().trim().min(1).max(60), pipelineStageId: uuid,
   }).strict().safeParse({
     clinicId, name: field(formData, "name"), pipelineStageId: field(formData, "pipelineStageId"),
   });
-  if (!payload.success) redirect("/app/pipeline?error=invalid_input");
+  if (!payload.success) redirect(`${returnTo}?error=invalid_input`);
   const result = await updatePipelineStage(payload.data);
-  if (!result.ok) redirect(`/app/pipeline?error=${encodeURIComponent(result.code)}`);
-  revalidatePath("/app/pipeline");
-  redirect("/app/pipeline?status=stage_updated");
+  if (!result.ok) redirect(`${returnTo}?error=${encodeURIComponent(result.code)}`);
+  revalidateStageSurfaces();
+  redirect(`${returnTo}?status=stage_updated`);
 }
 
 export async function reorderPipelineStagesFormAction(formData: FormData) {
-  const clinicId = await activeClinic(formData, "/app/pipeline");
+  const returnTo = stageReturnPath(formData);
+  const clinicId = await activeClinic(formData, returnTo);
   const payload = z.object({ clinicId: uuid, stageIds: z.array(uuid).min(1).max(100) })
     .strict().refine((value) => new Set(value.stageIds).size === value.stageIds.length)
     .safeParse({ clinicId, stageIds: field(formData, "stageIds").split(",").filter(Boolean) });
-  if (!payload.success) redirect("/app/pipeline?error=invalid_input");
+  if (!payload.success) redirect(`${returnTo}?error=invalid_input`);
   const result = await reorderPipelineStages(payload.data);
-  if (!result.ok) redirect(`/app/pipeline?error=${encodeURIComponent(result.code)}`);
-  revalidatePath("/app/pipeline");
-  redirect("/app/pipeline?status=stages_reordered");
+  if (!result.ok) redirect(`${returnTo}?error=${encodeURIComponent(result.code)}`);
+  revalidateStageSurfaces();
+  redirect(`${returnTo}?status=stages_reordered`);
 }
