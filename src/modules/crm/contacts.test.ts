@@ -61,6 +61,11 @@ describe("contratos públicos do módulo CRM", () => {
   it("mapeia erros do banco sem expor mensagens internas", () => {
     expect(mapCrmError({ code: "23505", message: "valor sensível" })).toBe("duplicate");
     expect(mapCrmError({ code: "P4091", message: "detalhe interno" })).toBe("conflict");
+    expect(mapCrmError({ code: "P4201", message: "detalhe interno" })).toBe("pipeline_archived");
+    expect(mapCrmError({ code: "P4202", message: "detalhe interno" })).toBe("default_pipeline");
+    expect(mapCrmError({ code: "P4203", message: "detalhe interno" })).toBe("last_active_pipeline");
+    expect(mapCrmError({ code: "P4204", message: "detalhe interno" }))
+      .toBe("pipeline_has_open_opportunities");
     expect(mapCrmError({ code: "XX000", message: "stack interna" })).toBe("unavailable");
     const contactId = crypto.randomUUID();
     expect(

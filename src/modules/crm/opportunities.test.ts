@@ -25,6 +25,7 @@ describe("contratos de oportunidades", () => {
       contactId: crypto.randomUUID(),
       idempotencyKey: crypto.randomUUID(),
       initialSourceId: null,
+      pipelineId: crypto.randomUUID(),
       title: "Avaliação fictícia",
     };
     expect(opportunitiesModule.createOpportunitySchema.safeParse(base).success).toBe(true);
@@ -88,14 +89,16 @@ describe("contratos de oportunidades", () => {
       data: [{ has_existing_open: true, opportunity_id: null }], error: null,
     });
     createServerSupabaseClient.mockResolvedValue({ rpc } as never);
+    const pipelineId = crypto.randomUUID();
     const result = await opportunitiesModule.createOpportunity({
       amountCents: null, clinicId: crypto.randomUUID(), confirmedExistingOpen: false,
       contactId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(),
-      initialSourceId: null, title: "Nova oportunidade",
+      initialSourceId: null, pipelineId, title: "Nova oportunidade",
     });
     expect(result).toEqual({ ok: false, code: "existing_open", needsConfirmation: true });
     expect(rpc).toHaveBeenCalledWith("create_opportunity", expect.objectContaining({
       confirmed_existing_open: false,
+      pipeline_id: pipelineId,
     }));
   });
 
@@ -117,6 +120,8 @@ describe("contratos de oportunidades", () => {
       idempotency_key: null,
       initial_source_id: null,
       pipeline_id: pipelineId,
+      pipeline_archived_at: null,
+      pipeline_name: "Principal",
       stage_id: stageId,
       stage_position: 100,
       status: "open",

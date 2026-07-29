@@ -17,6 +17,7 @@ export const createOpportunitySchema = z.object({
   contactId: z.uuid(),
   idempotencyKey: z.uuid(),
   initialSourceId: z.uuid().nullable().optional().default(null),
+  pipelineId: z.uuid().nullable().optional().default(null),
   title: z.string().trim().min(2).max(160),
 }).strict();
 
@@ -75,6 +76,7 @@ const listBoardSchema = z.object({
   initialSourceId: z.uuid().nullable().optional(),
   page: z.number().int().min(1).max(1_000_000).default(1),
   pageSize: z.number().int().min(1).max(100).default(40),
+  pipelineId: z.uuid().nullable().optional(),
   search: z.string().trim().max(160).default(""),
   status: z.enum(["open", "won", "lost", "all"]).default("open"),
 }).strict();
@@ -126,19 +128,34 @@ async function requireOpportunityMutationScope(
   return { ok: true, scope: "own" } as const;
 }
 
-export async function listOpportunityBoard(input: unknown) {
+async function listOpportunityBoardInternal(input: unknown) {
   const parsed = listBoardSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" } as const;
   const scope = await resolveOpportunityScope(parsed.data.clinicId);
   if (!scope.ok) return scope;
   const supabase = await createServerSupabaseClient();
-  const pipeline = await supabase.from("pipelines").select("id,name")
-    .eq("clinic_id", parsed.data.clinicId).eq("is_default", true)
-    .is("archived_at", null).maybeSingle();
-  if (pipeline.error || !pipeline.data) return { ok: false, code: "unavailable" } as const;
-  const stages = await supabase.from("pipeline_stages")
-    .select("id,name,position,stage_kind").eq("clinic_id", parsed.data.clinicId)
-    .eq("pipeline_id", pipeline.data.id).order("position").order("id");
+  const allPipelines = parsed.data.pipelineId === null;
+  let selectedPipelineId: string | null = parsed.data.pipelineId ?? null;
+  let pipeline: {
+    data: { archived_at: string | null; id: string; name: string } | null;
+    error: unknown;
+  } = { data: null, error: null };
+  if (!allPipelines) {
+    let pipelineQuery = supabase.from("pipelines").select("id,name,archived_at")
+      .eq("clinic_id", parsed.data.clinicId);
+    pipelineQuery = parsed.data.pipelineId === undefined
+      ? pipelineQuery.eq("is_default", true)
+      : pipelineQuery.eq("id", parsed.data.pipelineId!);
+    pipeline = await pipelineQuery.is("archived_at", null).maybeSingle();
+    if (pipeline.error) return { ok: false, code: "unavailable" } as const;
+    if (!pipeline.data) return { ok: false, code: "not_found" } as const;
+    selectedPipelineId = pipeline.data.id;
+  }
+  const stages = selectedPipelineId
+    ? await supabase.from("pipeline_stages")
+      .select("id,name,position,stage_kind").eq("clinic_id", parsed.data.clinicId)
+      .eq("pipeline_id", selectedPipelineId).order("position").order("id")
+    : { data: [], error: null };
   if (stages.error) return { ok: false, code: "unavailable" } as const;
 
   const opportunities = await supabase.rpc("search_opportunity_board", {
@@ -147,7 +164,7 @@ export async function listOpportunityBoard(input: unknown) {
     p_initial_source_id: parsed.data.initialSourceId ?? null,
     p_page: parsed.data.page,
     p_page_size: parsed.data.pageSize,
-    p_pipeline_id: pipeline.data.id,
+    p_pipeline_id: selectedPipelineId,
     p_search_term: parsed.data.search,
     p_status: parsed.data.status === "all" ? null : parsed.data.status,
   });
@@ -186,6 +203,29 @@ export async function listOpportunityBoard(input: unknown) {
     scope: scope.scope,
     stages: stages.data,
   } as const;
+}
+
+export async function listOpportunityBoard(input: unknown) {
+  const result = await listOpportunityBoardInternal(input);
+  if (!result.ok) return result;
+  if (result.pipeline === null) {
+    return { ok: false, code: "invalid_input" } as const;
+  }
+  return { ...result, pipeline: result.pipeline } as const;
+}
+
+export async function listOpportunitiesByPipeline(input: unknown) {
+  const parsed = listBoardSchema.safeParse(input);
+  if (!parsed.success || !parsed.data.pipelineId) {
+    return { ok: false, code: "invalid_input" } as const;
+  }
+  return listOpportunityBoard(parsed.data);
+}
+
+export async function listAllOpportunities(input: unknown) {
+  const parsed = listBoardSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" } as const;
+  return listOpportunityBoardInternal({ ...parsed.data, pipelineId: null });
 }
 
 export async function getOpportunityPermissions(clinicId: string) {
@@ -255,7 +295,8 @@ export async function createOpportunity(input: unknown) {
     amount_cents: parsed.data.amountCents, clinic_id: parsed.data.clinicId,
     confirmed_existing_open: parsed.data.confirmedExistingOpen,
     contact_id: parsed.data.contactId, idempotency_key: parsed.data.idempotencyKey,
-    initial_source_id: parsed.data.initialSourceId, title: parsed.data.title,
+    initial_source_id: parsed.data.initialSourceId, pipeline_id: parsed.data.pipelineId,
+    title: parsed.data.title,
   });
   if (result.error) return { ok: false, code: mapCrmError(result.error) } as const;
   const row = result.data[0];
