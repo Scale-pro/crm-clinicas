@@ -2,7 +2,9 @@ import * as React from "react";
 
 import { cn } from "@/shared/lib/utils";
 
-function Input({ className, type, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+// `ComponentPropsWithRef` (mesmo padrão do `Button`) permite encaminhar `ref`
+// para gestão de foco — necessário em editores que devolvem o foco ao campo.
+function Input({ className, type, ...props }: React.ComponentPropsWithRef<"input">) {
   return (
     <input
       type={type}
