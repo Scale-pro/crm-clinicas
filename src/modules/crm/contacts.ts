@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
+import { normalizeContactMethod } from "@/shared/lib/contact-method";
 
-import { normalizeContactMethod } from "./phone";
 
 type DatabaseError = { code?: string; details?: string; message?: string };
 export type CrmErrorCode =

@@ -23,6 +23,11 @@ const EXPECTED_POLICIES = [
   ["person_contacts", "person_contacts_select", "SELECT"],
   ["pipeline_stages", "pipeline_stages_select", "SELECT"],
   ["pipelines", "pipelines_select", "SELECT"],
+  ["procedures", "procedures_select", "SELECT"],
+  ["professional_procedures", "professional_procedures_select", "SELECT"],
+  ["professional_specialties", "professional_specialties_select", "SELECT"],
+  ["professional_weekly_availability", "professional_weekly_availability_select", "SELECT"],
+  ["professionals", "professionals_select", "SELECT"],
   ["profiles", "profiles_select", "SELECT"],
   ["profiles", "profiles_update", "UPDATE"],
   ["role_permissions", "role_permissions_select", "SELECT"],
@@ -34,7 +39,7 @@ describe("catálogo de autorização e RLS", () => {
     expect(await findSecurityCatalogViolations(pool)).toEqual([]);
   });
 
-  it("possui exatamente as políticas separadas aprovadas até a F2.2", async () => {
+  it("possui exatamente as políticas separadas aprovadas até a F2.3.1", async () => {
     const { rows } = await pool.query<{
       cmd: string;
       policyname: string;
@@ -111,6 +116,11 @@ describe("catálogo de autorização e RLS", () => {
       "pipeline_stages",
       "opportunities",
       "opportunity_stage_events",
+      "professionals",
+      "professional_specialties",
+      "procedures",
+      "professional_procedures",
+      "professional_weekly_availability",
     ];
     const { rows } = await pool.query<{
       can_delete: boolean;
@@ -214,6 +224,9 @@ describe("catálogo de autorização e RLS", () => {
             "archive_contact_method",
             "archive_lead_source",
             "archive_pipeline",
+            "archive_procedure",
+            "archive_professional",
+            "archive_professional_procedure",
             "assign_contact_owner",
             "assign_opportunity",
             "close_opportunity",
@@ -222,6 +235,8 @@ describe("catálogo de autorização e RLS", () => {
             "create_opportunity",
             "create_pipeline",
             "create_pipeline_stage",
+            "create_procedure",
+            "create_professional",
             "create_clinic_with_owner",
             "invite_member",
             "create_support_grant",
@@ -232,6 +247,7 @@ describe("catálogo de autorização e RLS", () => {
             "platform_read_clinic_invitations",
             "platform_read_clinic_members",
             "link_contact_as_patient",
+            "link_professional_user",
             "move_opportunity",
             "remove_member",
             "rename_pipeline",
@@ -242,7 +258,11 @@ describe("catálogo de autorização e RLS", () => {
             "suspend_member",
             "set_primary_contact_method",
             "set_default_pipeline",
+            "set_professional_procedure",
+            "set_professional_specialties",
+            "set_professional_weekly_availability",
             "unlink_contact_as_patient",
+            "unlink_professional_user",
             "update_contact",
             "update_contact_method",
             "update_lead_source",
@@ -250,6 +270,8 @@ describe("catálogo de autorização e RLS", () => {
             "update_member_role",
             "update_opportunity",
             "update_pipeline_stage",
+            "update_procedure",
+            "update_professional",
           ].includes(routine.proname));
       expect(routine.authenticated_execute).toBe(isApprovedPublicRpc);
       expect(routine.identity_arguments).not.toMatch(/\buser_id\b/);
