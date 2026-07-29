@@ -87,6 +87,21 @@ describe("contratos públicos de scheduling", () => {
       effectivePriceCents: 0,
       hasPriceOverride: true,
     });
+    expect(api.setProfessionalProcedureSchema.safeParse({
+      clinicId,
+      professionalId,
+      procedureId,
+      durationMinutesOverride: null,
+      priceCentsOverride: 0,
+      expectedVersion: null,
+    }).success).toBe(true);
+    expect(api.setProfessionalProcedureSchema.safeParse({
+      clinicId,
+      professionalId,
+      procedureId,
+      durationMinutesOverride: null,
+      priceCentsOverride: null,
+    }).success).toBe(false);
   });
 
   it("ordena disponibilidade e aceita adjacência, rejeitando overlap", () => {

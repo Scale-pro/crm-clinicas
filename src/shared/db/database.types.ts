@@ -1663,6 +1663,7 @@ export type Database = {
         Args: {
           clinic_id: string
           duration_minutes_override: number | null
+          expected_version: number | null
           price_cents_override: number | null
           procedure_id: string
           professional_id: string

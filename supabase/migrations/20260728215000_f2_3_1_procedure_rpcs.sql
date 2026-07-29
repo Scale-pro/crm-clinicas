@@ -198,7 +198,8 @@ create function public.set_professional_procedure(
   professional_id uuid,
   procedure_id uuid,
   duration_minutes_override integer,
-  price_cents_override bigint
+  price_cents_override bigint,
+  expected_version integer
 )
 returns uuid
 language plpgsql
@@ -249,12 +250,18 @@ begin
       and v_link.duration_minutes_override is not distinct from duration_minutes_override
       and v_link.price_cents_override is not distinct from price_cents_override
     then return v_link.id; end if;
+    if expected_version is null or v_link.version <> expected_version then
+      raise exception using errcode = 'P4091', message = 'professional procedure version conflict';
+    end if;
     update public.professional_procedures as link set
       duration_minutes_override = duration_minutes_override,
       price_cents_override = price_cents_override,
       status = 'active', archived_at = null, version = link.version + 1
-    where link.id = v_link.id
+    where link.id = v_link.id and link.version = expected_version
     returning link.id into v_id;
+    if not found then
+      raise exception using errcode = 'P4091', message = 'professional procedure version conflict';
+    end if;
     perform app_private.log_audit_event(
       clinic_id, 'professional_procedure.updated', 'professional_procedure', v_id,
       jsonb_build_object(
@@ -273,6 +280,10 @@ begin
     return v_id;
   end if;
 
+  if expected_version is not null then
+    raise exception using errcode = 'P4091', message = 'professional procedure version conflict';
+  end if;
+
   begin
     insert into public.professional_procedures (
       clinic_id, professional_id, procedure_id,
@@ -289,7 +300,7 @@ begin
       and v_link.duration_minutes_override is not distinct from duration_minutes_override
       and v_link.price_cents_override is not distinct from price_cents_override
     then return v_link.id; end if;
-    raise exception using errcode = 'P4308', message = 'professional procedure conflict';
+    raise exception using errcode = 'P4091', message = 'professional procedure version conflict';
   end;
   perform app_private.log_audit_event(
     clinic_id, 'professional_procedure.created', 'professional_procedure', v_id,
@@ -349,7 +360,7 @@ owner to postgres;
 alter function public.update_procedure(uuid, uuid, text, text, text, integer, bigint, text, text, integer)
 owner to postgres;
 alter function public.archive_procedure(uuid, uuid) owner to postgres;
-alter function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint)
+alter function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint, integer)
 owner to postgres;
 alter function public.archive_professional_procedure(uuid, uuid) owner to postgres;
 
@@ -358,7 +369,7 @@ from public, anon;
 revoke all on function public.update_procedure(uuid, uuid, text, text, text, integer, bigint, text, text, integer)
 from public, anon;
 revoke all on function public.archive_procedure(uuid, uuid) from public, anon;
-revoke all on function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint)
+revoke all on function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint, integer)
 from public, anon;
 revoke all on function public.archive_professional_procedure(uuid, uuid) from public, anon;
 
@@ -367,6 +378,6 @@ to authenticated;
 grant execute on function public.update_procedure(uuid, uuid, text, text, text, integer, bigint, text, text, integer)
 to authenticated;
 grant execute on function public.archive_procedure(uuid, uuid) to authenticated;
-grant execute on function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint)
+grant execute on function public.set_professional_procedure(uuid, uuid, uuid, integer, bigint, integer)
 to authenticated;
 grant execute on function public.archive_professional_procedure(uuid, uuid) to authenticated;

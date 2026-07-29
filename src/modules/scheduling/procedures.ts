@@ -46,6 +46,7 @@ export const setProfessionalProcedureSchema = z.object({
   procedureId: z.uuid(),
   durationMinutesOverride: durationSchema.nullable().default(null),
   priceCentsOverride: moneySchema.nullable().default(null),
+  expectedVersion: z.number().int().min(1).nullable(),
 }).strict();
 
 export const archiveProfessionalProcedureSchema = z.object({
@@ -282,6 +283,7 @@ export async function setProfessionalProcedure(input: unknown) {
     procedure_id: parsed.data.procedureId,
     duration_minutes_override: parsed.data.durationMinutesOverride,
     price_cents_override: parsed.data.priceCentsOverride,
+    expected_version: parsed.data.expectedVersion,
   });
   if (result.error) return { ok: false, code: mapSchedulingError(result.error) } as const;
   return { ok: true, professionalProcedureId: result.data } as const;

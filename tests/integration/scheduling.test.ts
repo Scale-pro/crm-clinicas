@@ -291,7 +291,7 @@ describe("scheduling F2.3.1 multi-tenant", () => {
     expect(replay.error).toBeNull();
     expect((await ownerA.client.rpc("set_professional_procedure", {
       clinic_id: clinicA, professional_id: professionalA, procedure_id: created.data!,
-      duration_minutes_override: null, price_cents_override: null,
+      duration_minutes_override: null, price_cents_override: null, expected_version: null,
     })).error?.code).toBe("P4306");
   });
 
@@ -301,11 +301,11 @@ describe("scheduling F2.3.1 multi-tenant", () => {
     const [crossProfessional, crossProcedure] = await Promise.all([
       ownerA.client.rpc("set_professional_procedure", {
         clinic_id: clinicA, professional_id: foreignProfessional.data!, procedure_id: procedureA,
-        duration_minutes_override: null, price_cents_override: null,
+        duration_minutes_override: null, price_cents_override: null, expected_version: null,
       }),
       ownerA.client.rpc("set_professional_procedure", {
         clinic_id: clinicA, professional_id: professionalA, procedure_id: foreignProcedure.data!,
-        duration_minutes_override: null, price_cents_override: null,
+        duration_minutes_override: null, price_cents_override: null, expected_version: null,
       }),
     ]);
     expect(crossProfessional.error?.code).toBe("P4301");
@@ -313,32 +313,72 @@ describe("scheduling F2.3.1 multi-tenant", () => {
     const concurrentFallback = await Promise.all([
       ownerA.client.rpc("set_professional_procedure", {
         clinic_id: clinicA, professional_id: professionalA, procedure_id: procedureA,
-        duration_minutes_override: null, price_cents_override: null,
+        duration_minutes_override: null, price_cents_override: null, expected_version: null,
       }),
       ownerA.client.rpc("set_professional_procedure", {
         clinic_id: clinicA, professional_id: professionalA, procedure_id: procedureA,
-        duration_minutes_override: null, price_cents_override: null,
+        duration_minutes_override: null, price_cents_override: null, expected_version: null,
       }),
     ]);
     expect(concurrentFallback.every((result) => result.error === null)).toBe(true);
     expect(concurrentFallback[0]!.data).toBe(concurrentFallback[1]!.data);
     const fallback = concurrentFallback[0]!;
-    const updated = await ownerA.client.rpc("set_professional_procedure", {
-      clinic_id: clinicA, professional_id: professionalA, procedure_id: procedureA,
-      duration_minutes_override: 45, price_cents_override: 8_000,
+    const current = await pool.query<{ version: number }>(
+      "select version from public.professional_procedures where id = $1",
+      [fallback.data],
+    );
+    const expectedVersion = current.rows[0]!.version;
+    const variants = [
+      { duration_minutes_override: 45, price_cents_override: 8_000 },
+      { duration_minutes_override: 30, price_cents_override: 9_000 },
+    ];
+    const concurrentUpdates = await Promise.all(variants.map((variant) =>
+      ownerA.client.rpc("set_professional_procedure", {
+        clinic_id: clinicA,
+        professional_id: professionalA,
+        procedure_id: procedureA,
+        ...variant,
+        expected_version: expectedVersion,
+      })));
+    expect(concurrentUpdates.filter((result) => result.error === null)).toHaveLength(1);
+    expect(concurrentUpdates.find((result) => result.error)?.error?.code).toBe("P4091");
+    const winnerIndex = concurrentUpdates.findIndex((result) => result.error === null);
+    const winner = variants[winnerIndex]!;
+    const persisted = await pool.query<{
+      duration_minutes_override: number;
+      price_cents_override: string;
+      version: number;
+    }>(
+      `select duration_minutes_override, price_cents_override::text, version
+       from public.professional_procedures where id = $1`,
+      [fallback.data],
+    );
+    expect(persisted.rows).toEqual([{
+      duration_minutes_override: winner.duration_minutes_override,
+      price_cents_override: String(winner.price_cents_override),
+      version: expectedVersion + 1,
+    }]);
+    const replay = await ownerA.client.rpc("set_professional_procedure", {
+      clinic_id: clinicA,
+      professional_id: professionalA,
+      procedure_id: procedureA,
+      ...winner,
+      expected_version: expectedVersion,
     });
-    expect(updated.data).toBe(fallback.data);
+    expect(replay.error).toBeNull();
+    expect(replay.data).toBe(fallback.data);
     const effective = await ownerA.client.rpc("search_professional_procedures", {
       p_clinic_id: clinicA, p_professional_id: professionalA, p_procedure_id: procedureA,
       p_page: 1, p_page_size: 10,
     });
     expect(effective.data?.[0]).toMatchObject({
       default_duration_minutes: 60,
-      effective_duration_minutes: 45,
+      effective_duration_minutes: winner.duration_minutes_override,
       has_duration_override: true,
       base_price_cents: 10_000,
-      effective_price_cents: 8_000,
+      effective_price_cents: winner.price_cents_override,
       has_price_override: true,
+      version: expectedVersion + 1,
     });
     const archived = await ownerA.client.rpc("archive_professional_procedure", {
       clinic_id: clinicA, professional_procedure_id: fallback.data!,
