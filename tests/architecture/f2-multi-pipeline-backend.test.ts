@@ -11,6 +11,10 @@ const management = migration("20260728208000_f2_2_6_pipeline_management.sql");
 const opportunity = migration("20260728209000_f2_2_6_selected_pipeline_opportunities.sql");
 const search = migration("20260728210000_f2_2_6_all_pipeline_search.sql");
 const stages = migration("20260728211000_f2_2_6_multi_pipeline_stage_configuration.sql");
+const reopenGuard = migration("20260728211500_f2_2_6_archived_pipeline_reopen_guard.sql");
+const paginationGuard = migration(
+  "20260728211600_f2_2_6_opportunity_search_pagination_guard.sql",
+);
 
 const managementRpcs = [
   "create_pipeline",
@@ -86,6 +90,42 @@ describe("backend de múltiplas pipelines F2.2.6", () => {
     expect(search).toContain("p.archived_at as pipeline_archived_at");
     expect(search).toContain("order by p.name, p.id, ps.position, o.board_position, o.id");
     expect(search).not.toMatch(/security definer|execute format|dynamic/);
+  });
+
+  it("serializa reabertura com arquivamento pela linha da pipeline", () => {
+    expect(reopenGuard).toContain("create or replace function public.reopen_opportunity");
+    expect(reopenGuard).toContain("security definer");
+    expect(reopenGuard).toContain("set search_path = ''");
+    expect(reopenGuard).toContain("opportunity.reopen");
+    expect(reopenGuard).toContain("require_aal2");
+    expect(reopenGuard).toContain("p.id = v_opportunity.pipeline_id");
+    expect(reopenGuard).toContain("from public.pipelines as p");
+    expect(reopenGuard).toContain("for update");
+    expect(reopenGuard).toContain("v_pipeline.archived_at is not null");
+    expect(reopenGuard).toContain("errcode = 'p4201'");
+    expect(reopenGuard).toContain("owner to postgres");
+    expect(reopenGuard).toContain("from public, anon, authenticated");
+    expect(reopenGuard).toContain("to authenticated");
+  });
+
+  it("limita paginação inválida dentro da RPC invoker", () => {
+    expect(paginationGuard).toContain(
+      "create or replace function public.search_opportunity_board",
+    );
+    expect(paginationGuard).toContain("stable");
+    expect(paginationGuard).toContain("security invoker");
+    expect(paginationGuard).toContain("p_page between 1 and 1000000");
+    expect(paginationGuard).toContain("p_page_size between 1 and 100");
+    expect(paginationGuard).toContain("then p_page_size + 1");
+    expect(paginationGuard).toContain("else 0");
+    expect(paginationGuard).not.toMatch(/security definer|execute format|dynamic/);
+  });
+
+  it("substitui somente as duas RPCs existentes, sem ampliar a allowlist", () => {
+    const replacements = [...`${reopenGuard}\n${paginationGuard}`
+      .matchAll(/create or replace function public\.([a-z_]+)/g)]
+      .map((match) => match[1]);
+    expect(replacements).toEqual(["reopen_opportunity", "search_opportunity_board"]);
   });
 
   it("configura qualquer pipeline ativa e serializa com duplicação", () => {
