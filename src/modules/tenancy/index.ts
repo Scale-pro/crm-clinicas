@@ -8,6 +8,10 @@ export {
   selectActiveClinic,
 } from "./active-clinic";
 export type { ActiveClinicContextResult } from "./active-clinic";
+export {
+  listActiveClinicMembers,
+  listActiveClinicMembersSchema,
+} from "./clinic-members";
 export { updateClinicSettings } from "./clinic-settings";
 export { acceptClinicInvitation, inviteClinicMember } from "./invitations";
 export { createInitialClinic } from "./onboarding";
