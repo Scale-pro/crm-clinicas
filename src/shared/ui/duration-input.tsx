@@ -6,14 +6,21 @@ import { formatMinutesAsDuration, parseDurationMinutes } from "@/shared/lib/dura
 import { cn } from "@/shared/lib/utils";
 
 import { Button } from "./button";
+import { resolveSyncedText } from "./controlled-field";
 
 /** Durações mais usadas em uma agenda de estética. */
 export const DEFAULT_DURATION_PRESETS: readonly number[] = [30, 45, 60, 90];
+
+const formatMinutesText = (minutes: number) => String(minutes);
 
 /**
  * Campo de duração em minutos com atalhos das durações mais comuns. Os atalhos
  * são botões reais (alcançáveis por teclado) e o valor efetivo é sempre lido em
  * texto — o botão marcado não depende só de cor.
+ *
+ * Mudanças externas de `valueMinutes` (ex.: "voltar à duração padrão", que zera
+ * o override para `null`) refletem no texto assim que o campo perde o foco de
+ * edição — sem apagar a digitação em andamento.
  */
 export function DurationInput({
   id,
@@ -40,10 +47,21 @@ export function DurationInput({
   max?: number;
   className?: string;
 }) {
+  const [editing, setEditing] = useState(false);
   const [text, setText] = useState(() => valueMinutes === null ? "" : String(valueMinutes));
+  const [synced, setSynced] = useState<number | null>(valueMinutes);
+
+  // Ajuste de estado durante a renderização: adota a prop externa fora de
+  // edição. Não dispara em uma montagem nova (incoming === synced).
+  const sync = resolveSyncedText({ editing, format: formatMinutesText, incoming: valueMinutes, synced });
+  if (sync) {
+    setText(sync.text);
+    setSynced(sync.synced);
+  }
 
   function apply(minutes: number) {
     setText(String(minutes));
+    setSynced(minutes);
     onChange(minutes, String(minutes));
   }
 
@@ -60,11 +78,24 @@ export function DurationInput({
         max={max}
         min={min}
         name={name}
+        onBlur={() => {
+          setEditing(false);
+          const minutes = parseDurationMinutes(text);
+          if (minutes === null) {
+            // Vazio ou inválido: reflete a prop comprometida (limpa quando `null`).
+            setText(valueMinutes === null ? "" : String(valueMinutes));
+            setSynced(valueMinutes);
+          } else {
+            setText(String(minutes));
+            setSynced(minutes);
+          }
+        }}
         onChange={(event) => {
           const next = event.target.value.replace(/\D/g, "");
           setText(next);
           onChange(next === "" ? null : parseDurationMinutes(next), next);
         }}
+        onFocus={() => setEditing(true)}
         step={5}
         type="number"
         value={text}

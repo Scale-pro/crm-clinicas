@@ -5,6 +5,8 @@ import { useState } from "react";
 import { formatCentsAsAmount, parseAmountToCents } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
 
+import { resolveSyncedText } from "./controlled-field";
+
 /** Somente o que pode compor um valor em pt-BR — o sinal negativo nunca entra. */
 const ALLOWED_CHARACTERS = /[^\d.,]/g;
 
@@ -13,6 +15,10 @@ const ALLOWED_CHARACTERS = /[^\d.,]/g;
  * reescreve enquanto se digita, então apagar ou colar nunca corrompe o valor.
  * A normalização acontece ao sair do campo. O valor de trabalho para o
  * chamador é sempre em centavos (`null` enquanto o texto não é válido).
+ *
+ * Mudanças externas de `valueCents` (ex.: "voltar ao preço-base", que zera o
+ * override para `null`) refletem no texto assim que o campo perde o foco de
+ * edição — sem apagar a digitação em andamento.
  */
 export function MoneyInput({
   id,
@@ -33,7 +39,18 @@ export function MoneyInput({
   disabled?: boolean;
   className?: string;
 }) {
+  const [editing, setEditing] = useState(false);
   const [text, setText] = useState(() => valueCents === null ? "" : formatCentsAsAmount(valueCents));
+  const [synced, setSynced] = useState<number | null>(valueCents);
+
+  // Ajuste de estado durante a renderização (padrão recomendado do React):
+  // adota a prop externa somente fora de edição. Nunca dispara em uma montagem
+  // nova (incoming === synced), então a renderização estática não é afetada.
+  const sync = resolveSyncedText({ editing, format: formatCentsAsAmount, incoming: valueCents, synced });
+  if (sync) {
+    setText(sync.text);
+    setSynced(sync.synced);
+  }
 
   return <div className={cn("relative", className)}>
     <span
@@ -52,14 +69,24 @@ export function MoneyInput({
       inputMode="decimal"
       name={name}
       onBlur={() => {
+        setEditing(false);
         const cents = parseAmountToCents(text);
-        if (cents !== null) setText(formatCentsAsAmount(cents));
+        if (cents === null) {
+          // Texto vazio ou temporariamente inválido: o campo passa a refletir a
+          // prop comprometida (limpa quando `null`) — nunca vira zero.
+          setText(valueCents === null ? "" : formatCentsAsAmount(valueCents));
+          setSynced(valueCents);
+        } else {
+          setText(formatCentsAsAmount(cents));
+          setSynced(cents);
+        }
       }}
       onChange={(event) => {
         const next = event.target.value.replace(ALLOWED_CHARACTERS, "");
         setText(next);
         onChange(next.trim() === "" ? null : parseAmountToCents(next), next);
       }}
+      onFocus={() => setEditing(true)}
       placeholder="0,00"
       type="text"
       value={text}

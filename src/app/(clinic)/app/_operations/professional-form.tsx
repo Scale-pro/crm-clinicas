@@ -17,6 +17,7 @@ import {
 import { Input } from "@/shared/ui/input";
 
 import { FormPanel } from "./form-panel";
+import { shouldResetForm, type FormResetKey } from "./form-sync";
 import {
   MAX_NOTES_LENGTH,
   emptyWeek,
@@ -130,6 +131,22 @@ export function ProfessionalForm({
     if (!focusRequest) return;
     document.getElementById(focusRequest.fieldId)?.focus();
   }, [focusRequest]);
+
+  // Reinicia o formulário em transições reais (reabertura, troca de
+  // profissional, create/edit), preservando a digitação quando o pai apenas
+  // recria `initialValues` com o mesmo conteúdo.
+  const signature = JSON.stringify(initial);
+  const [syncKey, setSyncKey] = useState<FormResetKey>({ mode, open, signature });
+  if (syncKey.open !== open || syncKey.mode !== mode || syncKey.signature !== signature) {
+    const reset = shouldResetForm(syncKey, { mode, open, signature });
+    setSyncKey({ mode, open, signature });
+    if (reset) {
+      setValues(initial);
+      setErrors({});
+      setAttempted(0);
+      setFocusRequest(null);
+    }
+  }
 
   function patch(next: Partial<ProfessionalFormValues>) {
     setValues((current) => {

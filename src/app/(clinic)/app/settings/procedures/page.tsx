@@ -14,8 +14,9 @@ import { ProcedureList } from "../../_operations/procedure-list";
  * Procedimentos da clínica.
  *
  * Mesmo contrato da tela de profissionais: tenant e permissão são resolvidos de
- * verdade, mas o carregamento e a gravação só existem quando o backend
- * correspondente for entregue. Até lá a página declara o estado real de
+ * verdade. O backend correspondente já existe na main (`@/modules/scheduling`),
+ * mas **não é conectado neste PR de propósito** — o carregamento e a gravação
+ * entram no PR de integração posterior. Até lá a página declara o estado real de
  * indisponibilidade em vez de exibir dados fictícios.
  */
 export default async function ProceduresSettingsPage() {

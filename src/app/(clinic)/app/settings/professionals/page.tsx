@@ -14,12 +14,14 @@ import { ProfessionalList } from "../../_operations/professional-list";
  * Profissionais da clínica.
  *
  * A fundação visual está pronta (listagem, filtros, formulário, especialidades e
- * disponibilidade semanal em `../../_operations`), mas o contrato de backend
- * correspondente ainda não existe. Por isso a página resolve tenant e permissão
- * de verdade e declara o estado real de indisponibilidade — sem dados
- * fictícios, sem persistência simulada e sem ação que aparente salvar.
+ * disponibilidade semanal em `../../_operations`). O backend correspondente já
+ * existe na main (`@/modules/scheduling`), mas **não é conectado neste PR de
+ * propósito** — a integração ponta a ponta fica para um PR posterior. Por isso a
+ * página resolve tenant e permissão de verdade e declara o estado real de
+ * indisponibilidade — sem dados fictícios, sem persistência simulada e sem ação
+ * que aparente salvar.
  *
- * Quando as consultas existirem, esta página passa a mapear os registros para
+ * Ao conectar, esta página passa a mapear os registros para
  * `ProfessionalSummaryView` e troca o estado por `ready`; os componentes não
  * mudam.
  */

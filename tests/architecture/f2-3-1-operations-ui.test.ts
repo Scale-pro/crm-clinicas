@@ -718,4 +718,27 @@ describe("acessibilidade e responsividade", () => {
     expect(form).toContain("document.getElementById(focusRequest.fieldId)?.focus()");
     expect(form).toContain("<ErrorSummary");
   });
+
+  it("os campos de valor sincronizam mudanças externas da prop fora de edição", () => {
+    // MoneyInput e DurationInput não podem exibir um valor antigo quando a prop
+    // muda (ex.: 'voltar ao preço-base'/'à duração padrão' zeram o override).
+    for (const file of ["src/shared/ui/money-input.tsx", "src/shared/ui/duration-input.tsx"]) {
+      const source = read(file);
+      expect(source).toContain("resolveSyncedText");
+      expect(source).toContain("setEditing(true)");
+      expect(source).toContain("setEditing(false)");
+    }
+  });
+
+  it("os formulários reiniciam em transições reais, limpando erros e foco", () => {
+    for (const file of ["professional-form.tsx", "procedure-form.tsx"]) {
+      const source = read(`${operationsDirectory}/${file}`);
+      expect(source).toContain("shouldResetForm");
+      // Reiniciar zera valores, erros, tentativa e pedido de foco da edição anterior.
+      expect(source).toContain("setValues(initial)");
+      expect(source).toContain("setErrors({})");
+      expect(source).toContain("setAttempted(0)");
+      expect(source).toContain("setFocusRequest(null)");
+    }
+  });
 });
