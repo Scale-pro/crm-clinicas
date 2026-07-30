@@ -350,6 +350,65 @@ describe("especialidades, disponibilidade e vínculo de usuário", () => {
     expect(mocked.setProfessionalWeeklyAvailability).not.toHaveBeenCalled();
   });
 
+  it("disponibilidade não informada não apaga os horários existentes", async () => {
+    // Regressão do HIGH: quando a tela não consegue ler a semana, ela envia
+    // `null` — "não altere" — e não uma semana vazia, que significaria "apague
+    // tudo". Salvar só o nome não pode destruir a agenda do profissional.
+    mocked.getProfessionalWeeklyAvailability.mockResolvedValue({
+      intervals: [{ endMinute: 720, id: "x", startMinute: 480, weekday: 1 }],
+      ok: true,
+      timezone: "America/Sao_Paulo",
+      version: 8,
+    });
+    const result = await updateProfessionalAction({
+      ...professionalInput({ displayName: "Ana Ribeiro Souza" }),
+      availability: null,
+      expectedVersion: 7,
+      professionalId: PROFESSIONAL_ID,
+    });
+    expect(result.ok).toBe(true);
+    expect(mocked.updateProfessional).toHaveBeenCalled();
+    expect(mocked.setProfessionalWeeklyAvailability).not.toHaveBeenCalled();
+  });
+
+  it("semana vazia informada de propósito continua limpando a agenda", async () => {
+    // O contrário do caso acima: a semana vazia veio de uma leitura que deu
+    // certo e de uma escolha explícita, então ela é gravada.
+    mocked.getProfessionalWeeklyAvailability.mockResolvedValue({
+      intervals: [{ endMinute: 720, id: "x", startMinute: 480, weekday: 1 }],
+      ok: true,
+      timezone: "America/Sao_Paulo",
+      version: 8,
+    });
+    await updateProfessionalAction({
+      ...professionalInput({ availability: emptyWeek() }),
+      expectedVersion: 7,
+      professionalId: PROFESSIONAL_ID,
+    });
+    expect(mocked.setProfessionalWeeklyAvailability).toHaveBeenCalledWith(expect.objectContaining({
+      intervals: [],
+    }));
+  });
+
+  it("não grava a semana quando a leitura atual falha — sem comparação, sem escrita", async () => {
+    mocked.getProfessionalWeeklyAvailability.mockResolvedValue({ code: "unavailable", ok: false });
+    const result = await updateProfessionalAction({
+      ...professionalInput({
+        availability: {
+          ...emptyWeek(),
+          monday: { enabled: true, ranges: [{ end: "12:00", id: "a", start: "08:00" }] },
+        },
+      }),
+      expectedVersion: 7,
+      professionalId: PROFESSIONAL_ID,
+    });
+    expect(mocked.setProfessionalWeeklyAvailability).not.toHaveBeenCalled();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warning).toBeDefined();
+    expect(result.warning).not.toMatch(/SQLSTATE|P4\d{3}|unavailable/i);
+  });
+
   it("semana inválida não é enviada e o cadastro avisa o que faltou", async () => {
     const result = await createProfessionalAction(professionalInput({
       availability: {

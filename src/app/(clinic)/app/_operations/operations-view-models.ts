@@ -82,20 +82,23 @@ export type ProfessionalSummaryView = {
 };
 
 /**
- * No detalhe todos os dados estão resolvidos — por isso os campos que a
- * listagem pode não conhecer voltam a ser obrigatórios aqui.
+ * No detalhe o cadastro em si está sempre resolvido — por isso o usuário
+ * vinculado volta a ser obrigatório.
+ *
+ * A disponibilidade é a exceção deliberada: ela vem de uma leitura própria, que
+ * pode falhar. `undefined` significa **não carregada** e é diferente de uma
+ * semana vazia, que significa **sem atendimento cadastrado**. Confundir as duas
+ * faria a interface anunciar "sem horários" para quem tem horários — e, pior,
+ * ofereceria um rascunho vazio como base de gravação.
  */
 export type ProfessionalDetailView = ProfessionalSummaryView & {
   readonly linkedUserName: string | null;
-  readonly weekdaysLabel: string;
-  readonly availabilityLabel: string;
-  readonly enabledProcedureCount: number;
   readonly email: string | null;
   readonly phoneLabel: string | null;
   readonly registrationType: string | null;
   readonly registrationNumber: string | null;
   readonly notes: string | null;
-  readonly availability: WeeklyAvailabilityDraft;
+  readonly availability?: WeeklyAvailabilityDraft;
 };
 
 /** Procedimento habilitado para um profissional, já com os valores efetivos. */

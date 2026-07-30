@@ -699,6 +699,99 @@ describe("editor de profissionais habilitados no procedimento", () => {
   });
 });
 
+describe("disponibilidade não carregada nunca vira semana vazia", () => {
+  const detailPage = read(`${clinicApp}/settings/professionals/[professionalId]/page.tsx`);
+  const detailScreen = read(
+    `${clinicApp}/settings/professionals/[professionalId]/professional-detail-screen.tsx`,
+  );
+
+  /** Detalhe cuja semana não pôde ser lida — `undefined`, nunca semana vazia. */
+  const withoutAvailability = (): ProfessionalDetailView => ({
+    ...professionalDetail(),
+    availability: undefined,
+  });
+
+  it("leitura bem-sucedida com zero intervalos produz semana vazia legítima", () => {
+    // Zero intervalo é uma resposta válida do servidor: significa "sem
+    // atendimento cadastrado", e é isso que a tela deve dizer.
+    const html = renderToStaticMarkup(createElement(ProfessionalDetail, {
+      defaultTabKey: "availability",
+      professional: { ...professionalDetail(), availability: emptyWeek() },
+    }));
+    expect(html).toContain("Sem atendimento");
+    expect(html).toContain("Nenhum horário definido");
+    expect(html).not.toContain("Não foi possível carregar os horários");
+  });
+
+  it("leitura com erro mostra falha, e nunca “sem horários cadastrados”", () => {
+    const html = renderToStaticMarkup(createElement(ProfessionalDetail, {
+      defaultTabKey: "availability",
+      professional: withoutAvailability(),
+    }));
+    expect(html).toContain("Não foi possível carregar os horários");
+    expect(html).toContain("Nada foi alterado");
+    // A falha não pode se disfarçar de ausência de atendimento.
+    expect(html).not.toContain("Sem atendimento");
+    expect(html).not.toContain("Nenhum horário definido");
+  });
+
+  it("o estado de erro não expõe mensagem técnica do backend", () => {
+    for (const tab of ["availability", "procedures"]) {
+      const html = renderToStaticMarkup(createElement(ProfessionalDetail, {
+        defaultTabKey: tab,
+        procedures: null,
+        professional: withoutAvailability(),
+      }));
+      expect(html).not.toMatch(/SQLSTATE|PGRST|P4\d{3}|42501|unavailable|stale_version|supabase|rpc/i);
+    }
+  });
+
+  it("vínculos não carregados também não viram “nenhum habilitado”", () => {
+    const failed = renderToStaticMarkup(createElement(ProfessionalDetail, {
+      defaultTabKey: "procedures",
+      procedures: null,
+      professional: professionalDetail(),
+    }));
+    expect(failed).toContain("Não foi possível carregar os procedimentos habilitados");
+    expect(failed).toContain("Procedimentos habilitados não carregados");
+    expect(failed).not.toContain("Nenhum procedimento habilitado");
+
+    const empty = renderToStaticMarkup(createElement(ProfessionalDetail, {
+      defaultTabKey: "procedures",
+      procedures: [],
+      professional: professionalDetail(),
+    }));
+    expect(empty).toContain("Nenhum procedimento habilitado");
+    expect(empty).toContain("0 procedimento(s) habilitado(s)");
+  });
+
+  it("a página não usa semana vazia como reserva de uma leitura com erro", () => {
+    // A regressão que este teste tranca: `availabilityDraftFromIntervals([])`
+    // como fallback de falha alimentava um formulário editável com semana em
+    // branco, e salvar qualquer outro campo apagava os horários reais.
+    expect(detailPage).not.toContain("availabilityDraftFromIntervals([])");
+    expect(detailPage).toContain("availabilityResult.ok");
+    expect(detailPage).toContain(": undefined");
+    // Sem disponibilidade não há valores de formulário.
+    expect(detailPage).toMatch(/formValues:\s*ProfessionalFormValues\s*\|\s*null/);
+    expect(detailPage).toContain("availability === undefined");
+  });
+
+  it("a tela não monta formulário editável sem disponibilidade carregada", () => {
+    expect(detailScreen).toContain("formValues: ProfessionalFormValues | null");
+    // O formulário e o botão de editar dependem de `formValues`.
+    expect(detailScreen).toContain("canManage && !archived && formValues ? <ProfessionalForm");
+    expect(detailScreen).toContain("{formValues ? <Button");
+    // O caminho de erro explica e oferece nova tentativa.
+    expect(detailScreen).toContain("Não foi possível carregar os horários deste profissional");
+    expect(detailScreen).toContain("Tentar novamente");
+    expect(detailScreen).toContain("router.refresh()");
+    // Situação e arquivamento não dependem do rascunho e continuam disponíveis.
+    expect(detailScreen).toContain("onClick={toggleStatus}");
+    expect(detailScreen).toContain("setConfirmingArchive(true)");
+  });
+});
+
 describe("detalhe do profissional e do procedimento", () => {
   it("organiza o profissional em abas acessíveis, com histórico apenas estrutural", () => {
     const html = renderToStaticMarkup(createElement(ProfessionalDetail, {

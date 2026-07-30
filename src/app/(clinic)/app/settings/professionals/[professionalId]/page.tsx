@@ -94,13 +94,16 @@ export default async function ProfessionalDetailPage({ params }: {
       : Promise.resolve({ ok: false as const, code: "forbidden" as const }),
   ]);
 
+  // Leitura que falhou **não** vira semana vazia. `undefined` significa "não
+  // carregada": a tela mostra o erro e bloqueia a edição do cadastro, porque um
+  // rascunho vazio salvo por engano apagaria os horários reais.
   const availability = availabilityResult.ok
     ? availabilityDraftFromIntervals(availabilityResult.intervals)
-    : availabilityDraftFromIntervals([]);
-  const labels = availabilityLabels(availability);
+    : undefined;
+  const labels = availability ? availabilityLabels(availability) : null;
   const timezoneLabel = availabilityResult.ok ? availabilityResult.timezone : context.clinic.timezone;
 
-  const procedures: readonly ProfessionalProcedureView[] = links.ok
+  const procedures: readonly ProfessionalProcedureView[] | null = links.ok
     ? links.items.map((item) => ({
       // `search_professional_procedures` não devolve a categoria do
       // procedimento; ela aparece na tela do procedimento, e aqui fica ausente
@@ -113,7 +116,7 @@ export default async function ProfessionalDetailPage({ params }: {
       priceOverrideCents: item.hasPriceOverride ? item.effectivePriceCents : null,
       procedureId: item.procedureId,
     }))
-    : [];
+    : null;
 
   const teamMembers = members.ok
     ? members.items.map((member) => ({ id: member.userId, name: member.fullName }))
@@ -126,19 +129,23 @@ export default async function ProfessionalDetailPage({ params }: {
   const phone = nationalPhoneDigits(professional.phone);
   const status = operationsStatus(professional.status);
 
-  const formValues: ProfessionalFormValues = {
-    availability,
-    colorToken,
-    displayName: professional.displayName,
-    email: professional.email ?? "",
-    linkedUserId: professional.userId,
-    notes: professional.notes ?? "",
-    phone,
-    registrationNumber: professional.professionalRegistrationNumber ?? "",
-    registrationType: professional.professionalRegistrationType ?? "",
-    specialties: professional.specialties,
-    status,
-  };
+  // Sem disponibilidade carregada não existe formulário: editar o cadastro
+  // completo exige conhecer a semana atual para não sobrescrevê-la.
+  const formValues: ProfessionalFormValues | null = availability === undefined
+    ? null
+    : {
+      availability,
+      colorToken,
+      displayName: professional.displayName,
+      email: professional.email ?? "",
+      linkedUserId: professional.userId,
+      notes: professional.notes ?? "",
+      phone,
+      registrationNumber: professional.professionalRegistrationNumber ?? "",
+      registrationType: professional.professionalRegistrationType ?? "",
+      specialties: professional.specialties,
+      status,
+    };
 
   return <div className="flex min-h-0 flex-1 flex-col">
     {toolbar}
@@ -150,12 +157,14 @@ export default async function ProfessionalDetailPage({ params }: {
         formValues={formValues}
         procedures={procedures}
         professional={{
-          availability,
-          availabilityLabel: labels.availabilityLabel,
+          ...(availability === undefined ? {} : { availability }),
+          ...(labels === null ? {} : {
+            availabilityLabel: labels.availabilityLabel,
+            weekdaysLabel: labels.weekdaysLabel,
+          }),
           colorToken,
           displayName: professional.displayName,
           email: professional.email,
-          enabledProcedureCount: procedures.length,
           href: `${PROFESSIONALS_PATH}/${professional.id}`,
           id: professional.id,
           linkedUserName,
@@ -165,7 +174,6 @@ export default async function ProfessionalDetailPage({ params }: {
           registrationType: professional.professionalRegistrationType,
           specialties: professional.specialties,
           status,
-          weekdaysLabel: labels.weekdaysLabel,
         }}
         teamMembers={teamMembers}
         timezoneLabel={timezoneLabel}

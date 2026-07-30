@@ -4,6 +4,7 @@ import { formatBrlFromCents } from "@/shared/lib/currency";
 import { formatMinutesAsDuration } from "@/shared/lib/duration";
 import { ColorIndicator } from "@/shared/ui/color-indicator";
 import { EmptyState } from "@/shared/ui/empty-state";
+import { ErrorState } from "@/shared/ui/error-state";
 import { StatusBadge } from "@/shared/ui/status-badge";
 import { Tabs, type TabDefinition } from "@/shared/ui/tabs";
 
@@ -12,6 +13,7 @@ import {
   effectiveDurationMinutes,
   effectivePriceCents,
   hasAnyOverride,
+  optionalText,
   statusLabel,
   statusTone,
   type ProfessionalDetailView,
@@ -38,11 +40,15 @@ export function ProfessionalDetail({
   procedures = [],
   actions,
   showHistoryTab = true,
+  defaultTabKey,
 }: {
   professional: ProfessionalDetailView;
-  procedures?: readonly ProfessionalProcedureView[];
+  /** `null` quando a leitura falhou — diferente de `[]`, que é "nenhum habilitado". */
+  procedures?: readonly ProfessionalProcedureView[] | null;
   actions?: ReactNode;
   showHistoryTab?: boolean;
+  /** Aba aberta ao montar. Sem valor, abre a primeira. */
+  defaultTabKey?: string;
 }) {
   const color = agendaColor(professional.colorToken);
 
@@ -78,7 +84,12 @@ export function ProfessionalDetail({
       </li>)}
     </ul>;
 
-  const proceduresTab = procedures.length === 0
+  const proceduresTab = procedures === null
+    ? <ErrorState
+      description="Tente novamente em alguns instantes. Nada foi alterado."
+      title="Não foi possível carregar os procedimentos habilitados"
+    />
+    : procedures.length === 0
     ? <EmptyState
       description="Habilite o profissional nos procedimentos que ele realiza para liberar o agendamento."
       title="Nenhum procedimento habilitado"
@@ -104,15 +115,25 @@ export function ProfessionalDetail({
     title="Histórico ainda não disponível"
   />;
 
+  // Semana ausente é leitura que falhou, nunca "sem atendimento": o resumo dá
+  // lugar a um estado de erro que diz o que aconteceu e o que fazer.
+  const availabilityTab = professional.availability === undefined
+    ? <ErrorState
+      description="Os horários deste profissional não puderam ser lidos agora. Atualize a página para tentar de novo. Nada foi alterado."
+      title="Não foi possível carregar os horários"
+    />
+    : <WeeklyAvailabilitySummary availability={professional.availability} />;
+
   const tabs: readonly TabDefinition[] = [
     { content: informationTab, key: "info", label: "Informações" },
     { content: specialtiesTab, count: professional.specialties.length, key: "specialties", label: "Especialidades" },
+    { content: availabilityTab, key: "availability", label: "Disponibilidade" },
     {
-      content: <WeeklyAvailabilitySummary availability={professional.availability} />,
-      key: "availability",
-      label: "Disponibilidade",
+      content: proceduresTab,
+      ...(procedures === null ? {} : { count: procedures.length }),
+      key: "procedures",
+      label: "Procedimentos",
     },
-    { content: proceduresTab, count: procedures.length, key: "procedures", label: "Procedimentos" },
     ...(showHistoryTab ? [{ content: historyTab, key: "history", label: "Histórico" } as const] : []),
   ];
 
@@ -121,13 +142,17 @@ export function ProfessionalDetail({
       <div className="min-w-0">
         <h2 className="truncate text-lg font-semibold tracking-tight">{professional.displayName}</h2>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span>{professional.availabilityLabel}</span>
+          <span>{optionalText(professional.availabilityLabel, "Nenhum horário definido")}</span>
           <span aria-hidden="true">•</span>
-          <span>{professional.enabledProcedureCount} procedimento(s) habilitado(s)</span>
+          <span>
+            {procedures === null
+              ? "Procedimentos habilitados não carregados"
+              : `${procedures.length} procedimento(s) habilitado(s)`}
+          </span>
         </p>
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
-    <Tabs label="Seções do profissional" tabs={tabs} />
+    <Tabs defaultTabKey={defaultTabKey} label="Seções do profissional" tabs={tabs} />
   </div>;
 }

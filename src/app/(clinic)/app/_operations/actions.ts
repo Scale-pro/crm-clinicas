@@ -118,7 +118,13 @@ const availabilitySchema = z.object(
 ).strict();
 
 const professionalInputSchema = z.object({
-  availability: availabilitySchema,
+  /**
+   * `null` significa **não informar** a disponibilidade — usado quando a tela
+   * não conseguiu carregá-la. Semana vazia é uma instrução legítima ("sem
+   * atendimento"); ausência de leitura não pode virar essa instrução, sob pena
+   * de apagar horários reais em um salvamento que só pretendia mudar o nome.
+   */
+  availability: availabilitySchema.nullable(),
   colorToken: z.string().max(40),
   displayName: z.string().max(200),
   email: z.string().max(320),
@@ -214,12 +220,34 @@ async function applyProfessionalDetails(
   });
   if (!specialties.ok) return schedulingErrorMessage(specialties.code);
 
-  const desired = intervalsFromAvailabilityDraft(input.availability as WeeklyAvailabilityDraft);
+  const availabilityWarning = input.availability === null
+    ? null
+    : await applyProfessionalAvailability(clinicId, professionalId, input.availability);
+  if (availabilityWarning) return availabilityWarning;
+
+  if (input.linkedUserId === currentUserId) return null;
+  const link = input.linkedUserId === null
+    ? await unlinkProfessionalUser({ clinicId, professionalId })
+    : await linkProfessionalUser({ clinicId, professionalId, userId: input.linkedUserId });
+  return link.ok ? null : schedulingErrorMessage(link.code);
+}
+
+/**
+ * Grava a semana pedida, quando ela de fato foi informada.
+ *
+ * A versão vem de uma leitura fresca porque o núcleo do cadastro acabou de
+ * incrementá-la; a concorrência otimista do registro já foi verificada no passo
+ * anterior. Se essa leitura falhar, a gravação é abandonada — sem leitura não
+ * há como comparar, e escrever às cegas destruiria os horários existentes.
+ */
+async function applyProfessionalAvailability(
+  clinicId: string,
+  professionalId: string,
+  draft: WeeklyAvailabilityDraft,
+): Promise<string | null> {
+  const desired = intervalsFromAvailabilityDraft(draft);
   if (desired === null) return schedulingErrorMessage("invalid_availability");
 
-  // A versão vem de uma leitura fresca porque o próprio núcleo do cadastro
-  // acabou de incrementá-la; a concorrência otimista do registro já foi
-  // verificada no passo anterior.
   const current = await getProfessionalWeeklyAvailability({ clinicId, professionalId });
   if (!current.ok) return schedulingErrorMessage(current.code);
   const currentIntervals: readonly WeeklyInterval[] = current.intervals.map((interval) => ({
@@ -227,21 +255,15 @@ async function applyProfessionalDetails(
     startMinute: interval.startMinute,
     weekday: interval.weekday,
   }));
-  if (!sameIntervals(desired, currentIntervals)) {
-    const saved = await setProfessionalWeeklyAvailability({
-      clinicId,
-      expectedVersion: current.version,
-      intervals: desired,
-      professionalId,
-    });
-    if (!saved.ok) return schedulingErrorMessage(saved.code);
-  }
+  if (sameIntervals(desired, currentIntervals)) return null;
 
-  if (input.linkedUserId === currentUserId) return null;
-  const link = input.linkedUserId === null
-    ? await unlinkProfessionalUser({ clinicId, professionalId })
-    : await linkProfessionalUser({ clinicId, professionalId, userId: input.linkedUserId });
-  return link.ok ? null : schedulingErrorMessage(link.code);
+  const saved = await setProfessionalWeeklyAvailability({
+    clinicId,
+    expectedVersion: current.version,
+    intervals: desired,
+    professionalId,
+  });
+  return saved.ok ? null : schedulingErrorMessage(saved.code);
 }
 
 export async function createProfessionalAction(input: unknown): Promise<OperationsActionResult> {
