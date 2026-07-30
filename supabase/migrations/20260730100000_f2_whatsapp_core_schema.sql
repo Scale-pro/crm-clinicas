@@ -307,6 +307,11 @@ for select to authenticated using (
     or (owner_user_id = (select auth.uid())
       and public.current_user_has_permission(clinic_id, 'contact.view_own'))
     or exists (
+      select 1 from public.opportunities visible_opportunity
+      where visible_opportunity.clinic_id = contacts.clinic_id
+        and visible_opportunity.contact_id = contacts.id
+    )
+    or exists (
       select 1 from public.conversations visible_conversation
       where visible_conversation.clinic_id = contacts.clinic_id
         and visible_conversation.contact_id = contacts.id

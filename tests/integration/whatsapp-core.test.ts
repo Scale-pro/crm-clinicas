@@ -241,12 +241,12 @@ describe("núcleo WhatsApp em banco real", () => {
 
     const invalidEvent = await ingest("account-a");
     const invalid = await processMessage(invalidEvent.event_id, { phone: "123" });
-    expect(invalid.error_code).toBe("processing_failed");
+    expect(invalid.error_code).toBe("invalid_message");
     const failed = await pool.query<{ last_error_code: string; processing_status: string }>(
       "select processing_status, last_error_code from public.whatsapp_webhook_events where id = $1",
       [invalidEvent.event_id],
     );
-    expect(failed.rows).toEqual([{ last_error_code: "processing_failed", processing_status: "failed" }]);
+    expect(failed.rows).toEqual([{ last_error_code: "invalid_message", processing_status: "failed" }]);
     const retried = await asServiceRole<{ retry_whatsapp_event: boolean }>(
       "select public.retry_whatsapp_event($1)", [invalidEvent.event_id],
     );

@@ -279,6 +279,7 @@ declare
   v_conversation_id uuid;
   v_message_id uuid;
   v_initial_status text;
+  v_error_code text;
 begin
   select we.* into v_event
   from public.whatsapp_webhook_events we
@@ -390,12 +391,21 @@ begin
     return query select v_event.id, v_message_id, v_contact_id,
       v_opportunity_id, v_conversation_id, false, null::text;
   exception when others then
+    v_error_code := case
+      when sqlstate in ('22023', '23502', '23514') then 'invalid_message'
+      when sqlstate = '23503' then 'referential_conflict'
+      when sqlstate = '23505' then 'idempotency_conflict'
+      when sqlstate = '42501' then 'authorization_failed'
+      when sqlstate = 'P0002' then 'dependency_not_found'
+      when sqlstate like '42%' then 'persistence_contract_failed'
+      else 'processing_failed'
+    end;
     update public.whatsapp_webhook_events we
-    set processing_status = 'failed', last_error_code = 'processing_failed',
+    set processing_status = 'failed', last_error_code = v_error_code,
         next_retry_at = statement_timestamp()
     where we.id = v_event.id;
     return query select v_event.id, null::uuid, null::uuid, null::uuid,
-      null::uuid, false, 'processing_failed'::text;
+      null::uuid, false, v_error_code;
   end;
 end;
 $$;
