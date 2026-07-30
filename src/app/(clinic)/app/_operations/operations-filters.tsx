@@ -21,7 +21,7 @@ export function OperationsFilterBar({
   status,
   facetLabel,
   facetName,
-  facetValue,
+  facetValue = "",
   facetOptions,
 }: {
   basePath: string;
@@ -30,13 +30,18 @@ export function OperationsFilterBar({
   searchPlaceholder: string;
   search: string;
   status: StatusFilter;
-  /** Segundo filtro da tela: especialidade (profissionais) ou categoria. */
-  facetLabel: string;
-  facetName: string;
-  facetValue: string;
-  facetOptions: readonly string[];
+  /**
+   * Segundo filtro da tela: especialidade (profissionais) ou categoria. Só é
+   * oferecido quando o carregamento sabe filtrar por ele no servidor — um
+   * filtro que a listagem ignorasse seria pior do que nenhum.
+   */
+  facetLabel?: string;
+  facetName?: string;
+  facetValue?: string;
+  facetOptions?: readonly string[];
 }) {
-  const activeCount = activeFilterCount({ category: facetValue, status });
+  const hasFacet = facetName !== undefined && facetLabel !== undefined && facetOptions !== undefined;
+  const activeCount = activeFilterCount({ category: hasFacet ? facetValue : "", status });
 
   return <form action={basePath} className="flex flex-wrap items-center gap-2" method="get">
     <SearchField
@@ -60,13 +65,13 @@ export function OperationsFilterBar({
           <option value="inactive">Inativos</option>
         </select>
       </label>
-      <label className="grid gap-1 text-xs font-medium" htmlFor={`${idPrefix}-facet`}>
+      {hasFacet ? <label className="grid gap-1 text-xs font-medium" htmlFor={`${idPrefix}-facet`}>
         {facetLabel}
         <select className={formSelectClassName} defaultValue={facetValue} id={`${idPrefix}-facet`} name={facetName}>
           <option value="">Todas</option>
           {facetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
-      </label>
+      </label> : null}
     </FilterPopover>
     {activeCount > 0 || search
       ? <p className="text-xs text-muted-foreground" role="status">

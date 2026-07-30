@@ -18,6 +18,7 @@ import { StatusBadge } from "@/shared/ui/status-badge";
 import { IntegrationPendingState } from "./operations-states";
 import {
   agendaColor,
+  optionalCount,
   statusLabel,
   statusTone,
   type OperationsListState,
@@ -77,6 +78,10 @@ export function ProcedureList({
       />;
   }
 
+  // `listProcedures` não conta vínculos: o número real de profissionais
+  // habilitados aparece no detalhe do procedimento, e aqui fica "—".
+  const hasUnknownColumns = rows.some((row) => row.enabledProfessionalCount === undefined);
+
   return <div className="flex min-h-0 flex-col gap-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-xs text-muted-foreground" role="status">
@@ -84,6 +89,11 @@ export function ProcedureList({
       </p>
       {canCreate ? createSlot : null}
     </div>
+    {hasUnknownColumns
+      ? <p className="text-xs text-muted-foreground">
+        Os campos marcados com “—” aparecem no detalhe de cada procedimento.
+      </p>
+      : null}
 
     <div className="hidden min-h-0 md:flex md:flex-col">
       <DataTable label={label}>
@@ -119,7 +129,7 @@ export function ProcedureList({
               <DataTableCell className="whitespace-nowrap text-right tabular-nums">{formatMinutesAsDuration(row.durationMinutes)}</DataTableCell>
               <DataTableCell className="whitespace-nowrap text-right font-medium tabular-nums">{formatBrlFromCents(row.basePriceCents)}</DataTableCell>
               <DataTableCell><ColorIndicator color={color.cssValue} label={color.label} /></DataTableCell>
-              <DataTableCell className="text-right tabular-nums">{row.enabledProfessionalCount}</DataTableCell>
+              <DataTableCell className="text-right tabular-nums">{optionalCount(row.enabledProfessionalCount)}</DataTableCell>
               <DataTableCell><StatusBadge tone={statusTone(row.status)}>{statusLabel(row.status)}</StatusBadge></DataTableCell>
               {rowActions ? <DataTableCell className="text-right">{rowActions(row)}</DataTableCell> : null}
             </tr>;
@@ -148,7 +158,7 @@ export function ProcedureList({
           <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
             <div><dt className="inline font-medium">Duração: </dt><dd className="inline tabular-nums">{formatMinutesAsDuration(row.durationMinutes)}</dd></div>
             <div><dt className="inline font-medium">Cor: </dt><dd className="inline">{color.label}</dd></div>
-            <div><dt className="inline font-medium">Profissionais habilitados: </dt><dd className="inline tabular-nums">{row.enabledProfessionalCount}</dd></div>
+            <div><dt className="inline font-medium">Profissionais habilitados: </dt><dd className="inline tabular-nums">{optionalCount(row.enabledProfessionalCount)}</dd></div>
           </dl>
           {rowActions ? <div className="mt-2 flex flex-wrap justify-end gap-2">{rowActions(row)}</div> : null}
         </li>;
