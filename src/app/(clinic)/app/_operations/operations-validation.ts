@@ -261,11 +261,18 @@ export function copyDayTo(
 
 export const MAX_SPECIALTIES = 12;
 export const MAX_SPECIALTY_LENGTH = 40;
+/**
+ * Espelha o mínimo exigido pelo servidor (`setProfessionalSpecialtiesSchema`).
+ * Recusar aqui evita que o cadastro inteiro falhe por causa de uma sigla de uma
+ * letra digitada sem querer.
+ */
+export const MIN_SPECIALTY_LENGTH = 2;
 
 export type SpecialtyAddStatus =
   | "added"
   | "empty"
   | "duplicate"
+  | "too_short"
   | "too_long"
   | "limit_reached";
 
@@ -294,6 +301,13 @@ export function addSpecialty(current: readonly string[], value: string): Special
   const normalized = normalizeSpecialty(value);
   if (normalized === "") {
     return { message: "Escreva a especialidade antes de adicionar.", specialties: current, status: "empty" };
+  }
+  if (normalized.length < MIN_SPECIALTY_LENGTH) {
+    return {
+      message: `Use ao menos ${MIN_SPECIALTY_LENGTH} caracteres por especialidade.`,
+      specialties: current,
+      status: "too_short",
+    };
   }
   if (normalized.length > MAX_SPECIALTY_LENGTH) {
     return {

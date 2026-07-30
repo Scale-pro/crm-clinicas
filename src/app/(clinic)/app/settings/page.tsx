@@ -1,4 +1,4 @@
-import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, SlidersHorizontal, Stethoscope, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -8,10 +8,45 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { updateClinicSettingsFormAction } from "../../actions";
 
+/**
+ * Cada entrada avançada aparece só para quem tem a permissão correspondente:
+ * um link para uma tela que responderia "acesso negado" seria ruído.
+ */
+type SettingsLink = {
+  readonly href: string;
+  readonly title: string;
+  readonly description: string;
+  readonly icon: typeof SlidersHorizontal;
+};
+
 export default async function ClinicSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const [context, query] = await Promise.all([resolveActiveClinicContext(), searchParams]);
   if (context.status !== "ready") redirect("/app");
-  const manageAccess = await requirePermission(context.clinic.id, "pipeline.manage");
+  const [manageAccess, professionalAccess, procedureAccess] = await Promise.all([
+    requirePermission(context.clinic.id, "pipeline.manage"),
+    requirePermission(context.clinic.id, "professional.view"),
+    requirePermission(context.clinic.id, "procedure.view"),
+  ]);
+  const advancedLinks: readonly SettingsLink[] = [
+    ...(manageAccess.allowed ? [{
+      description: "Renomeie, reordene e adicione etapas abertas do pipeline padrão.",
+      href: "/app/settings/pipeline",
+      icon: SlidersHorizontal,
+      title: "Etapas do pipeline",
+    }] : []),
+    ...(professionalAccess.allowed ? [{
+      description: "Quem atende na clínica, especialidades e disponibilidade semanal.",
+      href: "/app/settings/professionals",
+      icon: Users,
+      title: "Profissionais",
+    }] : []),
+    ...(procedureAccess.allowed ? [{
+      description: "O que a clínica oferece, com duração padrão e preço-base.",
+      href: "/app/settings/procedures",
+      icon: Stethoscope,
+      title: "Procedimentos",
+    }] : []),
+  ];
   return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-5" aria-labelledby="settings-title">
     <div><h1 id="settings-title" className="text-2xl font-semibold">Configurações da clínica</h1><p className="mt-1 text-sm text-muted-foreground">Alterações sensíveis exigem permissão e MFA no servidor.</p></div>
     {query.status === "updated" ? <p role="status" className="rounded-md bg-muted p-3 text-sm">Configurações atualizadas.</p> : null}
@@ -22,18 +57,19 @@ export default async function ClinicSettingsPage({ searchParams }: { searchParam
       <label className="grid gap-2 text-sm" htmlFor="clinic-timezone">Fuso horário<select id="clinic-timezone" name="timezone" defaultValue={context.clinic.timezone} className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><option value="America/Sao_Paulo">Brasília (America/Sao_Paulo)</option><option value="America/Manaus">Manaus (America/Manaus)</option><option value="America/Recife">Recife (America/Recife)</option></select></label>
       <Button type="submit">Salvar configurações</Button>
     </form>
-    {manageAccess.allowed ? <nav aria-label="Configurações avançadas" className="rounded-lg border border-border bg-surface">
-      <Link
+    {advancedLinks.length > 0 ? <nav aria-label="Configurações avançadas" className="divide-y divide-border rounded-lg border border-border bg-surface">
+      {advancedLinks.map(({ href, title, description, icon: Icon }) => <Link
         className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        href="/app/settings/pipeline"
+        href={href}
+        key={href}
       >
-        <SlidersHorizontal aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+        <Icon aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium">Etapas do pipeline</span>
-          <span className="block text-xs text-muted-foreground">Renomeie, reordene e adicione etapas abertas do pipeline padrão.</span>
+          <span className="block text-sm font-medium">{title}</span>
+          <span className="block text-xs text-muted-foreground">{description}</span>
         </span>
         <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-      </Link>
+      </Link>)}
     </nav> : null}
   </section>;
 }

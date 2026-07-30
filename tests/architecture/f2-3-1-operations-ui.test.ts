@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { schedulingErrorMessage } from "@/app/(clinic)/app/_operations/operations-errors";
 import { OperationsFilterBar } from "@/app/(clinic)/app/_operations/operations-filters";
 import { emptyWeek } from "@/app/(clinic)/app/_operations/operations-validation";
 import type {
@@ -67,11 +68,17 @@ function professionalDetail(): ProfessionalDetailView {
   return {
     ...professional(),
     availability: emptyWeek(),
+    // No detalhe tudo está resolvido: os campos que a listagem pode desconhecer
+    // voltam a ser obrigatórios, e a fixture reflete isso.
+    availabilityLabel: "5 dias • 45h por semana",
     email: "ana@clinica.example",
+    enabledProcedureCount: 4,
+    linkedUserName: "Ana Ribeiro",
     notes: null,
     phoneLabel: "(11) 91234-5678",
     registrationNumber: "12345",
     registrationType: "CRM",
+    weekdaysLabel: "Seg, Ter, Qua, Qui, Sex",
   };
 }
 
@@ -103,30 +110,42 @@ function link(overrides: Partial<ProcedureProfessionalLinkView> = {}): Procedure
   };
 }
 
-describe("fundação de operações da clínica F2.3.1 — rotas", () => {
-  it("entrega as rotas preparadas dentro de configurações", () => {
-    expect(existsSync(path.join(root, `${clinicApp}/settings/professionals/page.tsx`))).toBe(true);
-    expect(existsSync(path.join(root, `${clinicApp}/settings/procedures/page.tsx`))).toBe(true);
-    // O trabalho vive em componentes reutilizáveis, não nas páginas.
-    expect(professionalsPage.split("\n").length).toBeLessThan(70);
-    expect(proceduresPage.split("\n").length).toBeLessThan(70);
+describe("operações da clínica F2.3.1 — rotas", () => {
+  it("entrega listagem e detalhe de profissionais e procedimentos", () => {
+    for (const route of [
+      `${clinicApp}/settings/professionals/page.tsx`,
+      `${clinicApp}/settings/professionals/[professionalId]/page.tsx`,
+      `${clinicApp}/settings/procedures/page.tsx`,
+      `${clinicApp}/settings/procedures/[procedureId]/page.tsx`,
+    ]) {
+      expect(existsSync(path.join(root, route))).toBe(true);
+    }
+    // O trabalho continua vivendo em componentes reutilizáveis.
     expect(operationsSurfaceFiles.length).toBeGreaterThan(10);
   });
 
-  it("não anuncia a área na navegação principal enquanto o fluxo não é ponta a ponta", () => {
-    const layout = read(`${clinicApp}/layout.tsx`);
+  it("anuncia as duas telas nas configurações, cada uma atrás da própria permissão", () => {
     const settingsIndex = read(`${clinicApp}/settings/page.tsx`);
-    for (const source of [layout, settingsIndex]) {
-      expect(source).not.toContain("/app/settings/professionals");
-      expect(source).not.toContain("/app/settings/procedures");
-    }
+    expect(settingsIndex).toContain("/app/settings/professionals");
+    expect(settingsIndex).toContain("/app/settings/procedures");
+    expect(settingsIndex).toContain('requirePermission(context.clinic.id, "professional.view")');
+    expect(settingsIndex).toContain('requirePermission(context.clinic.id, "procedure.view")');
+    // A navegação principal continua enxuta: a área vive em configurações.
+    const layout = read(`${clinicApp}/layout.tsx`);
+    expect(layout).not.toContain("/app/settings/professionals");
+    expect(layout).not.toContain("/app/settings/procedures");
   });
 
-  it("resolve tenant e permissão de verdade, sem comparação de cargo", () => {
+  it("resolve tenant e permissões por ação, sem comparação de cargo", () => {
+    expect(professionalsPage).toContain('requirePermission(clinicId, "professional.view")');
+    expect(professionalsPage).toContain('requirePermission(clinicId, "professional.manage")');
+    expect(proceduresPage).toContain('requirePermission(clinicId, "procedure.view")');
+    expect(proceduresPage).toContain('requirePermission(clinicId, "procedure.manage")');
     for (const page of [professionalsPage, proceduresPage]) {
       expect(page).toContain('from "@/modules/tenancy"');
-      expect(page).toContain('requirePermission(context.clinic.id, "clinic.manage")');
       expect(page).toContain("<AccessDeniedState");
+      // A permissão genérica de gestão da clínica deixou de ser usada aqui.
+      expect(page).not.toContain("clinic.manage");
     }
     const sources = `${pages}\n${operationsSurface}`;
     expect(sources).not.toMatch(/role\s*===\s*["'`]/);
@@ -134,16 +153,21 @@ describe("fundação de operações da clínica F2.3.1 — rotas", () => {
     expect(sources).not.toMatch(/\brole\b\s*(?:!==|\.includes\()/);
   });
 
-  it("declara o estado real de integração pendente em vez de dados ou ações falsas", () => {
-    expect(professionalsPage).toContain('state="unavailable"');
-    expect(proceduresPage).toContain('state="unavailable"');
-    expect(professionalsPage).toContain("rows={[]}");
-    expect(proceduresPage).toContain("rows={[]}");
-    // Nenhuma página monta formulário sem ação real por trás.
-    expect(pages).not.toContain("<ProfessionalForm");
-    expect(pages).not.toContain("<ProcedureForm");
-    const state = read(`${operationsDirectory}/operations-states.tsx`);
-    expect(state).toContain("Cadastro ainda não disponível");
+  it("carrega dados reais pelos contratos públicos e nunca confia no clinicId do navegador", () => {
+    expect(professionalsPage).toContain("listProfessionals(");
+    expect(proceduresPage).toContain("listProcedures(");
+    // O tenant vem sempre do contexto ativo resolvido no servidor.
+    for (const page of [professionalsPage, proceduresPage]) {
+      expect(page).toContain("resolveActiveClinicContext()");
+      expect(page).toContain("const clinicId = context.clinic.id");
+    }
+    // Nenhuma página passa o estado de "cadastro ainda não disponível".
+    expect(pages).not.toContain('state="unavailable"');
+    const actions = read(`${operationsDirectory}/actions.ts`);
+    expect(actions).toContain('"use server"');
+    expect(actions).toContain("resolveActiveClinicContext()");
+    // O identificador da clínica nunca é aceito como entrada das ações.
+    expect(actions).not.toMatch(/clinicId:\s*(?:uuidSchema|z\.uuid\(\))/);
   });
 });
 
@@ -168,15 +192,57 @@ describe("fundação de operações da clínica F2.3.1 — fronteiras", () => {
     expect(pages).not.toMatch(/@\/modules\/[a-z-]+\//);
   });
 
-  it("não cria Server Action nem simula persistência", () => {
-    expect(operationsTree).not.toContain('"use server"');
+  it("concentra as Server Actions em um único arquivo e mantém os componentes puros", () => {
+    // `actions.ts` é o único ponto de escrita; nenhum componente visual vira
+    // servidor por conta própria.
+    const serverModules = operationsSurfaceFiles.filter((file) => read(file).includes('"use server"'));
+    expect(serverModules).toEqual([`${operationsDirectory}/actions.ts`]);
     expect(pages).not.toContain('"use server"');
     for (const forbidden of ["localStorage", "sessionStorage", "Math.random", "setTimeout("]) {
       expect(operationsSurface).not.toContain(forbidden);
     }
-    // A ação de salvar sempre chega por prop — nunca é inventada no componente.
+    // A ação de salvar continua chegando por prop — nunca é inventada dentro do
+    // componente de formulário.
     expect(read(`${operationsDirectory}/professional-form.tsx`)).toContain("onSubmit: (values: ProfessionalFormValues)");
     expect(read(`${operationsDirectory}/procedure-form.tsx`)).toContain("onSubmit: (values: ProcedureFormValues)");
+    for (const form of ["professional-form.tsx", "procedure-form.tsx", "professional-procedure-editor.tsx"]) {
+      expect(read(`${operationsDirectory}/${form}`)).not.toContain("@/modules/");
+    }
+  });
+
+  it("toda criação leva idempotência e toda atualização leva versão esperada", () => {
+    const actions = read(`${operationsDirectory}/actions.ts`);
+    expect(actions).toContain("idempotencyKey: randomUUID()");
+    expect(actions.match(/idempotencyKey: randomUUID\(\)/g)).toHaveLength(2);
+    expect(actions).toContain("expectedVersion");
+    expect(actions).toContain("revalidatePath");
+  });
+
+  it("não devolve mensagem técnica ao navegador", () => {
+    const actions = read(`${operationsDirectory}/actions.ts`);
+    // O texto exibido vem sempre do dicionário; o erro cru nunca é ecoado.
+    expect(actions).toContain("schedulingErrorMessage(");
+    expect(actions).not.toMatch(/message:\s*\w+\.(?:error|details|hint|message)/);
+
+    // Todo código do vocabulário de scheduling — e também um código inventado —
+    // produz texto escrito para pessoas, sem vestígio técnico.
+    const codes = [
+      "availability_overlap", "forbidden", "invalid_availability", "invalid_input",
+      "mfa_required", "professional_archived", "professional_not_found",
+      "professional_procedure_conflict", "professional_user_already_linked",
+      "professional_user_not_member", "procedure_archived", "procedure_name_conflict",
+      "procedure_not_found", "stale_version", "unauthenticated", "unavailable",
+      "codigo_desconhecido_do_futuro",
+    ];
+    for (const code of codes) {
+      const message = schedulingErrorMessage(code);
+      expect(message.length).toBeGreaterThan(20);
+      expect(message).not.toMatch(/SQLSTATE|PGRST|P4\d{3}|42501|constraint|pg_|rpc|supabase/i);
+      // O próprio código também não vaza para a tela.
+      expect(message).not.toContain(code);
+    }
+    expect(schedulingErrorMessage("codigo_desconhecido_do_futuro"))
+      .toBe(schedulingErrorMessage("unavailable"));
   });
 
   it("não leva dados fictícios para produção — fixtures só em teste", () => {
@@ -661,7 +727,7 @@ describe("detalhe do profissional e do procedimento", () => {
   it("o detalhe do procedimento resume sem métricas financeiras", () => {
     const html = renderToStaticMarkup(createElement(ProcedureDetail, {
       links: [link(), link({ displayName: "Bruno Lima", enabled: false, professionalId: "professional-2" })],
-      procedure: { ...procedure(), description: "Higienização profunda." },
+      procedure: { ...procedure(), description: "Higienização profunda.", enabledProfessionalCount: 1 },
     }));
     expect(html).toContain("Limpeza de pele");
     expect(html).toContain("Duração padrão");
