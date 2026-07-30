@@ -30,13 +30,20 @@ const TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "whatsapp_accounts",
+  "whatsapp_webhook_events",
+  "conversations",
+  "messages",
+  "message_status_events",
+  "conversation_assignments",
+  "message_delivery_attempts",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema F2.3.1", () => {
-  it("contém exatamente as 26 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema com núcleo WhatsApp", () => {
+  it("contém exatamente as 33 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -46,7 +53,7 @@ describe("catálogo do schema F2.3.1", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 26 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 33 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -60,7 +67,7 @@ describe("catálogo do schema F2.3.1", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(26);
+    expect(rows).toHaveLength(33);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -96,6 +103,16 @@ describe("catálogo do schema F2.3.1", () => {
       "professional_procedures_clinic_professional_idx",
       "professional_procedures_clinic_procedure_idx",
       "professional_weekly_availability_clinic_professional_idx",
+      "whatsapp_accounts_clinic_status_idx",
+      "whatsapp_webhook_events_clinic_status_retry_idx",
+      "conversations_clinic_state_last_idx",
+      "conversations_clinic_assignee_state_idx",
+      "conversations_clinic_unread_idx",
+      "messages_clinic_conversation_occurred_idx",
+      "messages_clinic_contact_occurred_idx",
+      "message_status_events_clinic_message_occurred_idx",
+      "conversation_assignments_clinic_conversation_created_idx",
+      "message_delivery_attempts_clinic_message_attempt_idx",
     ];
     const { rows } = await pool.query<{ first_column: string; index_name: string }>(
       `select index_class.relname as index_name,
@@ -145,6 +162,11 @@ describe("catálogo do schema F2.3.1", () => {
         "contact.edit_own",
         "contact.view_all",
         "contact.view_own",
+        "conversation.assign",
+        "conversation.manage",
+        "conversation.send",
+        "conversation.view_all",
+        "conversation.view_own",
         "lead_source.manage",
         "member.invite",
         "member.manage",
@@ -165,8 +187,8 @@ describe("catálogo do schema F2.3.1", () => {
         "professional.view",
       ],
     );
-    expect(permissions.rows).toHaveLength(26);
-    expect(matrix.rows).toHaveLength(94);
+    expect(permissions.rows).toHaveLength(31);
+    expect(matrix.rows).toHaveLength(116);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {
