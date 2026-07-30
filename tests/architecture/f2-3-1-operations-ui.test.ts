@@ -193,7 +193,17 @@ describe("fundação de operações da clínica F2.3.1 — fronteiras", () => {
   });
 
   it("não altera o backend nem adiciona dependências", () => {
-    expect(filesUnder("supabase/migrations").length).toBe(18);
+    // A contagem acompanha o backend já mesclado na main. As quatro migrations
+    // `f2_3_1_*` existentes são do **backend** de agenda (schema, permissões e
+    // RPCs de profissionais/procedimentos), entregues pela main — não desta
+    // entrega, que é exclusivamente visual e não contribui com nenhuma.
+    const migrations = filesUnder("supabase/migrations");
+    expect(migrations.length).toBe(28);
+    expect(migrations.every((file) => file.endsWith(".sql"))).toBe(true);
+    // A superfície de operações não carrega SQL nem esquema próprio.
+    expect(operationsFiles.some((file) => file.endsWith(".sql"))).toBe(false);
+    expect(operationsTree).not.toMatch(/create\s+(?:table|policy|function|index)\b/i);
+    expect(operationsTree).not.toContain("supabase/migrations");
     const packageJson = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;

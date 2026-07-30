@@ -4,21 +4,29 @@ import { z } from "zod";
 
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
+import { normalizeContactMethod } from "@/shared/lib/contact-method";
 
-import { normalizeContactMethod } from "./phone";
 
 type DatabaseError = { code?: string; details?: string; message?: string };
 export type CrmErrorCode =
   | "conflict"
+  | "default_pipeline"
   | "duplicate"
   | "forbidden"
   | "invalid_input"
+  | "last_active_pipeline"
   | "not_found"
+  | "pipeline_archived"
+  | "pipeline_has_open_opportunities"
   | "unavailable";
 
 export function mapCrmError(error: DatabaseError): CrmErrorCode {
   if (error.code === "23505") return "duplicate";
   if (error.code === "P4091") return "conflict";
+  if (error.code === "P4201") return "pipeline_archived";
+  if (error.code === "P4202") return "default_pipeline";
+  if (error.code === "P4203") return "last_active_pipeline";
+  if (error.code === "P4204") return "pipeline_has_open_opportunities";
   if (error.code === "42501") return "forbidden";
   if (error.code === "22023" || error.code === "23514") return "invalid_input";
   if (error.code === "P0002") return "not_found";
