@@ -53,7 +53,10 @@ const USER_ID = "33333333-3333-4333-8333-333333333333";
 const LINK_ID = "44444444-4444-4444-8444-444444444444";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const mocked = scheduling as unknown as Record<string, ReturnType<typeof vi.fn>>;
+/** Cada export do módulo vira um dublê já definido — sem indexação opcional. */
+type SchedulingMocks = { [Key in keyof typeof scheduling]: ReturnType<typeof vi.fn> };
+
+const mocked = scheduling as unknown as SchedulingMocks;
 const clinicContext = resolveActiveClinicContext as unknown as ReturnType<typeof vi.fn>;
 
 const professionalRecord = {
