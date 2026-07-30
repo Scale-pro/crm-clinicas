@@ -354,6 +354,63 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          assigned_to_user_id: string | null
+          clinic_id: string
+          closed_at: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_id: string | null
+          last_read_at: string | null
+          needs_reply_from: string
+          opportunity_id: string | null
+          state: string
+          unread_count: number
+          updated_at: string
+          version: number
+          whatsapp_account_id: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          clinic_id: string
+          closed_at?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_id?: string | null
+          last_read_at?: string | null
+          needs_reply_from?: string
+          opportunity_id?: string | null
+          state?: string
+          unread_count?: number
+          updated_at?: string
+          version?: number
+          whatsapp_account_id: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          clinic_id?: string
+          closed_at?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_id?: string | null
+          last_read_at?: string | null
+          needs_reply_from?: string
+          opportunity_id?: string | null
+          state?: string
+          unread_count?: number
+          updated_at?: string
+          version?: number
+          whatsapp_account_id?: string
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           clinic_id: string
@@ -1303,6 +1360,14 @@ export type Database = {
         Args: { clinic_id: string; contact_id: string; owner_user_id: string }
         Returns: boolean
       }
+      assign_conversation: {
+        Args: {
+          p_clinic_id: string
+          p_conversation_id: string
+          p_to_user_id: string
+        }
+        Returns: number
+      }
       assign_opportunity: {
         Args: {
           assigned_to_user_id: string
@@ -1509,6 +1574,42 @@ export type Database = {
           user_id: string
         }[]
       }
+      create_whatsapp_outbound_message: {
+        Args: {
+          p_attachment_metadata: Json
+          p_clinic_id: string
+          p_conversation_id: string
+          p_idempotency_key: string
+          p_message_type: string
+          p_text_content: string | null
+        }
+        Returns: {
+          attempt_id: string
+          message_id: string
+        }[]
+      }
+      list_conversation_messages: {
+        Args: {
+          p_before_occurred_at: string | null
+          p_clinic_id: string
+          p_conversation_id: string
+          p_page_size: number
+        }
+        Returns: {
+          attachment_metadata: Json
+          created_at: string
+          delivery_status: string
+          direction: string
+          id: string
+          message_type: string
+          occurred_at: string
+          text_content: string
+        }[]
+      }
+      mark_conversation_read: {
+        Args: { p_clinic_id: string; p_conversation_id: string }
+        Returns: number
+      }
       remove_member: {
         Args: { clinic_id: string; member_id: string }
         Returns: boolean
@@ -1553,6 +1654,29 @@ export type Database = {
           notes: string
           owner_user_id: string
           version: number
+        }[]
+      }
+      search_conversations: {
+        Args: {
+          p_assigned_to_user_id: string | null
+          p_clinic_id: string
+          p_page: number
+          p_page_size: number
+          p_search: string
+          p_state: string | null
+          p_unread_only: boolean
+        }
+        Returns: {
+          assigned_to_user_id: string
+          contact_id: string
+          contact_name: string
+          id: string
+          last_message_at: string
+          needs_reply_from: string
+          opportunity_id: string
+          phone_e164: string
+          state: string
+          unread_count: number
         }[]
       }
       search_opportunity_board: {
@@ -1654,6 +1778,14 @@ export type Database = {
       set_default_pipeline: {
         Args: { clinic_id: string; pipeline_id: string }
         Returns: boolean
+      }
+      set_conversation_state: {
+        Args: {
+          p_clinic_id: string
+          p_conversation_id: string
+          p_state: string
+        }
+        Returns: number
       }
       set_primary_contact_method: {
         Args: { clinic_id: string; contact_method_id: string }
