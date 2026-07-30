@@ -70,3 +70,7 @@ export {
   listPipelineStages,
   listPipelineStagesSchema,
 } from "./pipeline-stages";
+export {
+  prepareWhatsAppLeadCandidate,
+  whatsappLeadCandidateSchema,
+} from "./whatsapp-leads";

@@ -1,6 +1,17 @@
 const E164_PATTERN = /^\+[1-9][0-9]{7,14}$/;
 const PHONE_VISUAL_PATTERN = /^[0-9\s()+.\-]+$/;
 
+/** Normaliza E.164 já internacional ou aplica o país padrão brasileiro. */
+export function normalizeE164Phone(rawValue: string): string | null {
+  if (!PHONE_VISUAL_PATTERN.test(rawValue)) return null;
+  const trimmed = rawValue.trim();
+  if (trimmed.startsWith("+")) {
+    const international = `+${trimmed.slice(1).replace(/\D/g, "")}`;
+    return E164_PATTERN.test(international) ? international : null;
+  }
+  return normalizeBrazilianPhone(rawValue);
+}
+
 export function normalizeBrazilianPhone(rawValue: string): string | null {
   if (!PHONE_VISUAL_PATTERN.test(rawValue)) return null;
   const digits = rawValue.replace(/\D/g, "");
