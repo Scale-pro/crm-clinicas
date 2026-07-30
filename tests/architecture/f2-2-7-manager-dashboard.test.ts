@@ -359,7 +359,13 @@ describe("visão geral do gestor F2.2.7", () => {
   });
 
   it("não altera o backend nem adiciona dependências", () => {
-    expect(filesUnder("supabase/migrations").length).toBe(18);
+    // A contagem acompanha o backend já mesclado na main (F2.2.6 multi-pipeline
+    // e F2.3.1 profissionais/procedimentos). O que esta entrega garante é não
+    // contribuir com nenhuma migration própria: a F2.2.7 é exclusivamente
+    // frontend/UX.
+    const migrations = filesUnder("supabase/migrations");
+    expect(migrations.length).toBe(28);
+    expect(migrations.some((file) => file.includes("f2_2_7"))).toBe(false);
     const packageJson = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
