@@ -200,9 +200,20 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     expect(table).toContain("showPipelineColumn");
     expect(read(`${clinicApp}/_components/opportunity-view.ts`)).toContain("pipelineName");
     expect(leadsPage).not.toContain("showPipelineColumn");
-    for (const forbidden of ["duplicatePipeline", "archivePipeline", "setDefaultPipeline", "movePipeline", "createPipelineFormAction"]) {
-      expect(readTree(clinicApp)).not.toContain(forbidden);
+    // A lista de leads continua sendo só leitura: a gestão de pipelines vive na
+    // área dedicada de configurações, nunca embutida na listagem.
+    const leadsSurface = [
+      leadsPage,
+      read(`${clinicApp}/_components/opportunity-table.tsx`),
+      read(`${clinicApp}/_components/opportunity-view.ts`),
+      read(`${clinicApp}/_components/opportunity-filters.tsx`),
+    ].join("\n");
+    for (const forbidden of ["duplicatePipeline", "archivePipeline", "setDefaultPipeline", "movePipeline", "createPipeline"]) {
+      expect(leadsSurface).not.toContain(forbidden);
     }
+    // E nenhuma dessas operações é inventada: `movePipeline` não existe no
+    // contrato público e não pode aparecer em lugar nenhum da aplicação.
+    expect(readTree(clinicApp)).not.toContain("movePipeline");
   });
 
   it("não introduz superfícies de fases futuras nem dados simulados", () => {
