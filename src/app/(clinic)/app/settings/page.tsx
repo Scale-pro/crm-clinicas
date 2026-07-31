@@ -1,4 +1,4 @@
-import { ChevronRight, SlidersHorizontal, Stethoscope, Users } from "lucide-react";
+import { ChevronRight, KanbanSquare, SlidersHorizontal, Stethoscope, UsersRound, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -27,7 +27,21 @@ export default async function ClinicSettingsPage({ searchParams }: { searchParam
     requirePermission(context.clinic.id, "professional.view"),
     requirePermission(context.clinic.id, "procedure.view"),
   ]);
+  // A equipe é legível por qualquer membro da clínica — o contrato de leitura
+  // exige apenas o vínculo, não uma permissão específica.
   const advancedLinks: readonly SettingsLink[] = [
+    {
+      description: "Pipelines da clínica, etapas e ordem do funil.",
+      href: "/app/settings/pipelines",
+      icon: KanbanSquare,
+      title: "Pipelines",
+    },
+    {
+      description: "Quem tem acesso a esta clínica e com qual cargo.",
+      href: "/app/settings/team",
+      icon: UsersRound,
+      title: "Equipe",
+    },
     ...(manageAccess.allowed ? [{
       description: "Renomeie, reordene e adicione etapas abertas do pipeline padrão.",
       href: "/app/settings/pipeline",

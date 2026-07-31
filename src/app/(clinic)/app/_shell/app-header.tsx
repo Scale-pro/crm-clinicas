@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const sectionLabels: ReadonlyArray<readonly [string, string]> = [
+  // Rotas mais específicas primeiro: a primeira correspondência vence.
+  ["/app/settings/pipelines", "Configurações · Pipelines"],
+  ["/app/settings/team", "Configurações · Equipe"],
   ["/app/settings/pipeline", "Configurações · Etapas do pipeline"],
   ["/app/opportunities", "Oportunidade"],
   ["/app/pipeline", "Pipeline"],
