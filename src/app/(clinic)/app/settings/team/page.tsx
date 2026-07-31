@@ -27,14 +27,14 @@ import { ownerCount, type MemberRowView } from "../../_team/team-view-models";
  * convite têm permissão no catálogo (`member.manage`, `member.remove`) mas
  * **não** têm função exportada por `@/modules/tenancy` — então esta tela é de
  * leitura nesses pontos, sem botão morto.
+ *
+ * O resultado do convite — inclusive o link de aceite — vive no estado da
+ * própria ação, dentro do painel. Nada dele passa por esta rota: o token não
+ * entra em query string nem em redirecionamento.
  */
 
 const TEAM_PATH = "/app/settings/team";
 const PAGE_SIZE = 25;
-
-const SUCCESS_MESSAGES: Readonly<Record<string, string>> = {
-  member_invited: "Convite enviado. A pessoa recebe o acesso ao aceitar.",
-};
 
 function stringParam(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : "";
@@ -62,7 +62,6 @@ export default async function TeamSettingsPage({ searchParams }: {
 
   const search = stringParam(params.q);
   const page = pageParam(params.page);
-  const status = stringParam(params.status);
   const error = stringParam(params.error);
 
   const [result, invitePermission, session] = await Promise.all([
@@ -111,9 +110,6 @@ export default async function TeamSettingsPage({ searchParams }: {
         <SearchField defaultValue={search} id="team-q" label="Buscar membro" placeholder="Nome do membro" />
       </form>
 
-      {status && SUCCESS_MESSAGES[status]
-        ? <FeedbackBanner tone="success">{SUCCESS_MESSAGES[status]}</FeedbackBanner>
-        : null}
       {error ? <FeedbackBanner tone={requiresMfa(error) ? "warning" : "error"}>
         {crmErrorMessage(error)}
         {requiresMfa(error) ? <>

@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { inviteClinicMember, resolveActiveClinicContext } from "@/modules/tenancy";
+
+import { crmErrorMessage } from "../_crm/crm-errors";
+import { INVITE_EXPIRES_IN_HOURS, type InviteState } from "./invite-state";
 
 /**
  * Server Actions da equipe da clínica.
@@ -15,14 +17,25 @@ import { inviteClinicMember, resolveActiveClinicContext } from "@/modules/tenanc
  * (`member.manage`, `member.remove`) mas **não** como função exportada por
  * `@/modules/tenancy` — e a interface não cria botão para o que não persiste.
  *
- * Invariantes:
+ * ## Por que o resultado volta como estado, e não como redirecionamento
+ *
+ * `inviteClinicMember` **não envia e-mail**: ele cria o convite e devolve um
+ * link contendo o token de aceite. Sem esse link ninguém consegue entrar — o
+ * convite existiria só no banco. Então o link precisa chegar à tela.
+ *
+ * Ele volta no **estado da ação**, nunca em redirecionamento, nunca em query
+ * string, nunca em log. Um token em URL entra no histórico do navegador, no
+ * `Referer` e em qualquer proxy no caminho; no estado ele vive apenas no
+ * resultado imediato daquela submissão, para a pessoa copiar e repassar.
+ *
+ * Demais invariantes:
  *
  * - o `clinicId` é resolvido no servidor e não existe como campo de formulário;
  * - a entrada passa por Zod `.strict()` antes de chegar ao módulo;
- * - `owner` não é um cargo convidável: o contrato recusa, e o esquema aqui
- *   também — nenhuma autoelevação passa pela borda;
+ * - `owner` não é convidável: o contrato recusa, e o esquema aqui também —
+ *   nenhuma autoelevação passa pela borda;
  * - o contrato exige AAL2, verificado no módulo e novamente no banco;
- * - o link do convite é devolvido pelo módulo e **não** é registrado em log.
+ * - a mensagem de erro é escrita por nós; código do banco não atravessa.
  */
 
 const TEAM_PATH = "/app/settings/team";
@@ -32,13 +45,16 @@ function field(formData: FormData, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
-function back(key: "error" | "status", code: string): never {
-  redirect(`${TEAM_PATH}?${key}=${encodeURIComponent(code)}`);
+function failure(code: string): InviteState {
+  return { message: crmErrorMessage(code), status: "error" };
 }
 
-export async function inviteMemberAction(formData: FormData) {
+export async function inviteMemberAction(
+  _previous: InviteState,
+  formData: FormData,
+): Promise<InviteState> {
   const context = await resolveActiveClinicContext();
-  if (context.status !== "ready") back("error", "forbidden");
+  if (context.status !== "ready") return failure("forbidden");
 
   const payload = z.object({
     clinicId: z.uuid(),
@@ -49,13 +65,20 @@ export async function inviteMemberAction(formData: FormData) {
   }).strict().safeParse({
     clinicId: context.clinic.id,
     email: field(formData, "email"),
-    expiresInHours: 72,
+    expiresInHours: INVITE_EXPIRES_IN_HOURS,
     role: field(formData, "role"),
   });
-  if (!payload.success) back("error", "invalid_input");
+  if (!payload.success) return failure("invalid_input");
 
   const result = await inviteClinicMember(payload.data);
-  if (!result.ok) back("error", result.code);
+  if (!result.ok) return failure(result.code);
+
   revalidatePath(TEAM_PATH);
-  back("status", "member_invited");
+  // O link vai só para quem acabou de criar o convite. Nada dele é registrado.
+  return {
+    email: payload.data.email,
+    expiresInHours: INVITE_EXPIRES_IN_HOURS,
+    link: result.link,
+    status: "created",
+  };
 }

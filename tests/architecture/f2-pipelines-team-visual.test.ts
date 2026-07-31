@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { PipelineList } from "@/app/(clinic)/app/_pipelines/pipeline-list";
 import type { PipelineView } from "@/app/(clinic)/app/_pipelines/pipeline-view-models";
+import { INVITE_IDLE, type InviteState } from "@/app/(clinic)/app/_team/invite-state";
 import { InviteMemberPanel } from "@/app/(clinic)/app/_team/invite-member-panel";
 import { MemberList } from "@/app/(clinic)/app/_team/member-list";
 import type { MemberRowView } from "@/app/(clinic)/app/_team/team-view-models";
@@ -43,7 +44,7 @@ const pipeline = (over: Partial<PipelineView> & { id: string }): PipelineView =>
 });
 
 /** Ação inerte: o painel recebe a Server Action por prop. */
-const noopAction = () => {};
+const noopAction = async (): Promise<InviteState> => INVITE_IDLE;
 
 const member = (over: Partial<MemberRowView> & { userId: string }): MemberRowView => ({
   fullName: "Ana Ribeiro",
@@ -91,7 +92,9 @@ describe("pipelines e equipe — rotas e fronteiras", () => {
   });
 
   it("concentra as Server Actions em um arquivo por área", () => {
-    const serverModules = areaSurfaceFiles.filter((file) => read(file).includes('"use server"'));
+    // A diretiva só vale na primeira linha do arquivo — mencionar `"use server"`
+    // em um comentário não torna o módulo um servidor.
+    const serverModules = areaSurfaceFiles.filter((file) => read(file).startsWith('"use server"'));
     expect(serverModules.sort()).toEqual([
       `${pipelinesDirectory}/actions.ts`,
       `${teamDirectory}/actions.ts`,
@@ -280,6 +283,76 @@ describe("equipe da clínica", () => {
     expect(html).toContain("não pode ser concedido por convite");
     // O tenant não é campo do formulário.
     expect(html).not.toContain('name="clinicId"');
+  });
+
+  it("o link do convite chega à interface pelo estado da ação", async () => {
+    // O contrato não envia e-mail: sem o link na tela, o convite fica inacessível.
+    const link = "https://app.example.com/accept-invitation?token=token-de-teste";
+    const created = async (): Promise<InviteState> => ({
+      email: "novo@clinica.example",
+      expiresInHours: 72,
+      link,
+      status: "created",
+    });
+    const html = renderToStaticMarkup(createElement(InviteMemberPanel, {
+      action: created,
+      canInvite: true,
+      initialState: {
+        email: "novo@clinica.example",
+        expiresInHours: 72,
+        link,
+        status: "created",
+      },
+    }));
+    expect(html).toContain(link);
+    expect(html).toContain("novo@clinica.example");
+    expect(html).toContain("Copiar link");
+    // O texto não afirma envio automático — diz o contrário.
+    expect(html).toContain("ainda não envia esse convite");
+    expect(html).not.toContain("Convite enviado");
+    expect(html).toContain("72 horas");
+    expect(html).toContain("compartilhe somente");
+    // Fallback selecionável quando a área de transferência não estiver disponível.
+    expect(html).toContain("select-all");
+  });
+
+  it("o estado de erro não mostra link e não vaza mensagem técnica", () => {
+    const html = renderToStaticMarkup(createElement(InviteMemberPanel, {
+      action: noopAction,
+      canInvite: true,
+      initialState: { message: "Você não tem permissão para esta ação nesta clínica.", status: "error" },
+    }));
+    expect(html).toContain("não tem permissão");
+    expect(html).not.toContain("accept-invitation");
+    expect(html).not.toContain("token");
+    expect(html).not.toMatch(/SQLSTATE|PGRST|42501|P4\d{3}/i);
+  });
+
+  it("o token nunca entra em redirect, query string ou log", () => {
+    // A ação devolve estado; não redireciona e não escreve em lugar nenhum.
+    expect(teamActions).not.toContain("redirect(");
+    expect(teamActions).not.toMatch(/console\./);
+    expect(teamActions).not.toMatch(/link=|token=|searchParams|URLSearchParams/);
+    // O link só existe no estado `created`.
+    expect(teamActions).toMatch(/link:\s*result\.link/);
+    expect(teamActions).toMatch(/status:\s*"created"/);
+    // A rota de equipe não carrega nada do convite na URL nem toca no link.
+    expect(teamPage).not.toContain("member_invited");
+    expect(teamPage).not.toContain("accept-invitation");
+    expect(teamPage).not.toMatch(/\blink\s*[:=]/);
+    const panel = read(`${teamDirectory}/invite-member-panel.tsx`);
+    expect(panel).not.toMatch(/console\./);
+  });
+
+  it("sem permissão o contrato de convite nem é chamado", () => {
+    const html = renderToStaticMarkup(createElement(InviteMemberPanel, {
+      action: noopAction,
+      canInvite: false,
+    }));
+    expect(html).not.toContain("<form");
+    // A permissão é resolvida no servidor antes de renderizar o painel.
+    expect(teamPage).toContain('requirePermission(clinicId, "member.invite")');
+    expect(teamPage).toContain("canInvite={invitePermission.allowed}");
   });
 
   it("sem permissão de convite não existe botão de convite", () => {
