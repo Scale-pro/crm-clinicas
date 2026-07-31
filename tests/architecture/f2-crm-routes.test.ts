@@ -44,8 +44,17 @@ describe("rotas e fronteiras de CRM F2.2", () => {
   });
 
   it("mantém estados de erro, vazio, pending e conflito identificável", () => {
-    expect(read("src/app/(clinic)/app/contacts/page.tsx")).toContain("<EmptyState");
-    expect(read("src/app/(clinic)/app/contacts/page.tsx")).toContain("<ErrorState");
+    // Os estados da listagem de contatos passaram a viver no componente de
+    // apresentação; a rota continua obrigada a distinguir erro de vazio.
+    const contactList = read("src/app/(clinic)/app/_crm/contact-list.tsx");
+    expect(contactList).toContain("<EmptyState");
+    expect(contactList).toContain("<ErrorState");
+    expect(contactList).toContain("Nenhum contato cadastrado");
+    expect(contactList).toContain("Nenhum contato para estes filtros");
+    const contactsPage = read("src/app/(clinic)/app/contacts/page.tsx");
+    expect(contactsPage).toContain("<ContactList");
+    expect(contactsPage).toContain('state="error"');
+    expect(contactsPage).toContain("<AccessDeniedState");
     expect(read("src/app/(clinic)/app/contacts/new/contact-form.tsx")).toContain("pending");
     expect(read("src/app/(clinic)/app/contacts/[contactId]/edit/page.tsx")).toContain(
       "Este contato foi alterado em outra sessão",
