@@ -140,6 +140,9 @@ beforeAll(async () => {
 afterAll(async () => {
   if (clinicIds.length) {
     await pool.query("delete from public.audit_logs where clinic_id = any($1::uuid[])", [clinicIds]);
+    // `create_contact` registra uma activity: ela referencia o contato e precisa
+    // sair antes dele.
+    await pool.query("delete from public.activities where clinic_id = any($1::uuid[])", [clinicIds]);
     await pool.query("delete from public.appointments where clinic_id = any($1::uuid[])", [clinicIds]);
     await pool.query("delete from public.professional_procedures where clinic_id = any($1::uuid[])", [clinicIds]);
     await pool.query("delete from public.professionals where clinic_id = any($1::uuid[])", [clinicIds]);
