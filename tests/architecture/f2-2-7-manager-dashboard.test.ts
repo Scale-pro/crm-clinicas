@@ -364,7 +364,7 @@ describe("visão geral do gestor F2.2.7", () => {
     // contribuir com nenhuma migration própria: a F2.2.7 é exclusivamente
     // frontend/UX.
     const migrations = filesUnder("supabase/migrations");
-    expect(migrations.length).toBe(28);
+    expect(migrations.length).toBe(31);
     expect(migrations.some((file) => file.includes("f2_2_7"))).toBe(false);
     const packageJson = JSON.parse(read("package.json")) as {
       dependencies: Record<string, string>;

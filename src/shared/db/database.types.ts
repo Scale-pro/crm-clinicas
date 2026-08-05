@@ -34,6 +34,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          clinic_id: string
+          contact_id: string
+          created_at: string
+          created_by: string
+          creation_idempotency_key: string
+          custom_procedure_name: string | null
+          duration_minutes: number
+          id: string
+          notes: string | null
+          price_cents: number
+          procedure_id: string | null
+          professional_id: string
+          start_at: string
+          status: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          clinic_id: string
+          contact_id: string
+          created_at?: string
+          created_by: string
+          creation_idempotency_key: string
+          custom_procedure_name?: string | null
+          duration_minutes: number
+          id?: string
+          notes?: string | null
+          price_cents: number
+          procedure_id?: string | null
+          professional_id: string
+          start_at: string
+          status?: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          clinic_id?: string
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          creation_idempotency_key?: string
+          custom_procedure_name?: string | null
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          price_cents?: number
+          procedure_id?: string | null
+          professional_id?: string
+          start_at?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_contact_fk"
+            columns: ["clinic_id", "contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_fk"
+            columns: ["clinic_id", "professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "appointments_procedure_fk"
+            columns: ["clinic_id", "procedure_id"]
+            isOneToOne: false
+            referencedRelation: "procedures"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
+      }
       activities: {
         Row: {
           actor_id: string | null
@@ -1322,6 +1411,21 @@ export type Database = {
         }
         Returns: number
       }
+      create_appointment: {
+        Args: {
+          clinic_id: string
+          contact_id: string
+          custom_procedure_name: string | null
+          duration_minutes: number | null
+          idempotency_key: string
+          notes: string | null
+          price_cents: number | null
+          procedure_id: string | null
+          professional_id: string
+          start_at: string
+        }
+        Returns: string
+      }
       create_clinic_with_owner: {
         Args: {
           clinic_name: string
@@ -1536,6 +1640,46 @@ export type Database = {
         Returns: boolean
       }
       revoke_support_grant: { Args: { grant_id: string }; Returns: boolean }
+      reschedule_appointment: {
+        Args: {
+          appointment_id: string
+          clinic_id: string
+          duration_minutes: number
+          expected_version: number
+          professional_id: string
+          start_at: string
+        }
+        Returns: number
+      }
+      search_appointments: {
+        Args: {
+          p_clinic_id: string
+          p_contact_id: string | null
+          p_from: string
+          p_page: number
+          p_page_size: number
+          p_professional_id: string | null
+          p_status: string | null
+          p_to: string
+        }
+        Returns: {
+          contact_id: string
+          contact_name: string | null
+          duration_minutes: number
+          id: string
+          notes: string | null
+          price_cents: number
+          procedure_id: string | null
+          procedure_name: string
+          professional_color: string
+          professional_id: string
+          professional_name: string
+          start_at: string
+          status: string
+          total_count: number
+          version: number
+        }[]
+      }
       search_contacts: {
         Args: {
           p_clinic_id: string
@@ -1694,6 +1838,15 @@ export type Database = {
       unlink_professional_user: {
         Args: { clinic_id: string; professional_id: string }
         Returns: boolean
+      }
+      update_appointment_status: {
+        Args: {
+          appointment_id: string
+          clinic_id: string
+          expected_version: number
+          new_status: string
+        }
+        Returns: number
       }
       update_clinic_settings: {
         Args: {

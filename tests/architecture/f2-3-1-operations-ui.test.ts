@@ -264,7 +264,7 @@ describe("fundação de operações da clínica F2.3.1 — fronteiras", () => {
     // RPCs de profissionais/procedimentos), entregues pela main — não desta
     // entrega, que é exclusivamente visual e não contribui com nenhuma.
     const migrations = filesUnder("supabase/migrations");
-    expect(migrations.length).toBe(28);
+    expect(migrations.length).toBe(31);
     expect(migrations.every((file) => file.endsWith(".sql"))).toBe(true);
     // A superfície de operações não carrega SQL nem esquema próprio.
     expect(operationsFiles.some((file) => file.endsWith(".sql"))).toBe(false);

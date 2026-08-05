@@ -2,13 +2,16 @@
 
 import {
   Building2,
+  CalendarDays,
   KanbanSquare,
   LayoutDashboard,
   ListChecks,
   Settings,
   ShieldCheck,
+  Sun,
   Users,
   UserRound,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +23,9 @@ import type { NavIconName, NavItem, PipelineNavItem } from "./navigation";
 
 const icons: Record<NavIconName, LucideIcon> = {
   overview: LayoutDashboard,
+  today: Sun,
+  agenda: CalendarDays,
+  financeiro: Wallet,
   pipeline: KanbanSquare,
   leads: ListChecks,
   contacts: Users,

@@ -4,6 +4,9 @@
  */
 export type NavIconName =
   | "overview"
+  | "today"
+  | "agenda"
+  | "financeiro"
   | "pipeline"
   | "leads"
   | "contacts"
