@@ -35,7 +35,12 @@ substituem essa origem.
 ## 2. Regras de variáveis
 
 - **Server-side:** lidas apenas via `src/shared/config` (protegido por
-  `server-only` — importar no client quebra o build).
+  `server-only` — importar no client quebra o build). A validação é
+  **preguiçosa e memoizada**: roda na primeira leitura de uma variável, não no
+  import do módulo. Assim `next build` compila sem os segredos de execução
+  (secreto é insumo de execução, não de compilação) e nenhuma requisição é
+  atendida com configuração inválida — a primeira leitura em um processo mal
+  configurado falha alto, citando só os nomes das variáveis.
 - **Client-side:** apenas variáveis com prefixo `NEXT_PUBLIC_`, declaradas no
   schema de client em `src/shared/config/env-schema.ts`. Nunca colocar segredo
   em variável pública.
