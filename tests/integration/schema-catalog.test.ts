@@ -30,13 +30,14 @@ const TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "appointments",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema F2.3.1", () => {
-  it("contém exatamente as 26 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema F4", () => {
+  it("contém exatamente as 27 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -46,7 +47,7 @@ describe("catálogo do schema F2.3.1", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 26 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 27 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -60,7 +61,7 @@ describe("catálogo do schema F2.3.1", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(26);
+    expect(rows).toHaveLength(27);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -96,6 +97,9 @@ describe("catálogo do schema F2.3.1", () => {
       "professional_procedures_clinic_professional_idx",
       "professional_procedures_clinic_procedure_idx",
       "professional_weekly_availability_clinic_professional_idx",
+      "appointments_clinic_start_idx",
+      "appointments_clinic_professional_start_idx",
+      "appointments_clinic_contact_start_idx",
     ];
     const { rows } = await pool.query<{ first_column: string; index_name: string }>(
       `select index_class.relname as index_name,
@@ -121,7 +125,7 @@ describe("catálogo do schema F2.3.1", () => {
     );
   });
 
-  it("semeia exatamente a matriz de papéis e permissões até a F2.3.1", async () => {
+  it("semeia exatamente a matriz de papéis e permissões até a F4", async () => {
     const roles = await pool.query<{ key: string }>(
       "select key from public.roles order by key",
     );
@@ -137,6 +141,8 @@ describe("catálogo do schema F2.3.1", () => {
     );
     expect(permissions.rows.map((row) => row.key)).toEqual(
       [
+        "appointment.manage",
+        "appointment.view",
         "audit.view",
         "clinic.manage",
         "contact.archive",
@@ -165,8 +171,10 @@ describe("catálogo do schema F2.3.1", () => {
         "professional.view",
       ],
     );
-    expect(permissions.rows).toHaveLength(26);
-    expect(matrix.rows).toHaveLength(94);
+    expect(permissions.rows).toHaveLength(28);
+    // 94 da F2.3.1 + 12 da agenda: view+manage para owner, admin, manager,
+    // recepção e SDR; só view para profissional e viewer.
+    expect(matrix.rows).toHaveLength(106);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {
