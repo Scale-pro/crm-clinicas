@@ -498,7 +498,445 @@ export type Database = {
           version?: number
           whatsapp_account_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_account_fkey"
+            columns: ["clinic_id", "whatsapp_account_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_accounts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "conversations_contact_fkey"
+            columns: ["clinic_id", "contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "conversations_opportunity_fkey"
+            columns: ["clinic_id", "opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "conversations_assignee_fkey"
+            columns: ["clinic_id", "assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["clinic_id", "user_id"]
+          },
+          {
+            foreignKeyName: "conversations_last_message_fkey"
+            columns: ["clinic_id", "last_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
+      }
+      whatsapp_accounts: {
+        Row: {
+          id: string
+          clinic_id: string
+          provider: string
+          external_account_id: string
+          account_key: string | null
+          display_phone_e164: string | null
+          status: string
+          configured_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          provider: string
+          external_account_id: string
+          display_phone_e164?: string | null
+          status?: string
+          configured_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          provider?: string
+          external_account_id?: string
+          display_phone_e164?: string | null
+          status?: string
+          configured_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_accounts_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_accounts_configured_by_fkey"
+            columns: ["clinic_id", "configured_by"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["clinic_id", "user_id"]
+          },
+        ]
+      }
+      whatsapp_webhook_events: {
+        Row: {
+          id: string
+          clinic_id: string
+          whatsapp_account_id: string
+          provider: string
+          external_event_id: string
+          event_key: string | null
+          event_type: string
+          raw_payload: Json
+          processing_status: string
+          attempt_count: number
+          queued_at: string | null
+          processed_at: string | null
+          next_retry_at: string | null
+          last_error_code: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          whatsapp_account_id: string
+          provider: string
+          external_event_id: string
+          event_type: string
+          raw_payload: Json
+          processing_status?: string
+          attempt_count?: number
+          queued_at?: string | null
+          processed_at?: string | null
+          next_retry_at?: string | null
+          last_error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          whatsapp_account_id?: string
+          provider?: string
+          external_event_id?: string
+          event_type?: string
+          raw_payload?: Json
+          processing_status?: string
+          attempt_count?: number
+          queued_at?: string | null
+          processed_at?: string | null
+          next_retry_at?: string | null
+          last_error_code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_webhook_events_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_webhook_events_account_fkey"
+            columns: ["clinic_id", "whatsapp_account_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_accounts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          id: string
+          clinic_id: string
+          conversation_id: string
+          whatsapp_account_id: string
+          contact_id: string
+          opportunity_id: string | null
+          webhook_event_id: string | null
+          direction: string
+          external_message_id: string | null
+          external_message_key: string | null
+          idempotency_key: string | null
+          message_type: string
+          text_content: string | null
+          attachment_metadata: Json
+          provider_payload_type: string | null
+          occurred_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          conversation_id: string
+          whatsapp_account_id: string
+          contact_id: string
+          opportunity_id?: string | null
+          webhook_event_id?: string | null
+          direction: string
+          external_message_id?: string | null
+          idempotency_key?: string | null
+          message_type: string
+          text_content?: string | null
+          attachment_metadata?: Json
+          provider_payload_type?: string | null
+          occurred_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          conversation_id?: string
+          whatsapp_account_id?: string
+          contact_id?: string
+          opportunity_id?: string | null
+          webhook_event_id?: string | null
+          direction?: string
+          external_message_id?: string | null
+          idempotency_key?: string | null
+          message_type?: string
+          text_content?: string | null
+          attachment_metadata?: Json
+          provider_payload_type?: string | null
+          occurred_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_fkey"
+            columns: ["clinic_id", "conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "messages_account_fkey"
+            columns: ["clinic_id", "whatsapp_account_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_accounts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "messages_contact_fkey"
+            columns: ["clinic_id", "contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "messages_opportunity_fkey"
+            columns: ["clinic_id", "opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "messages_webhook_event_fkey"
+            columns: ["clinic_id", "webhook_event_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_webhook_events"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
+      }
+      message_status_events: {
+        Row: {
+          id: string
+          clinic_id: string
+          message_id: string
+          webhook_event_id: string | null
+          status: string
+          applied: boolean
+          occurred_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          message_id: string
+          webhook_event_id?: string | null
+          status: string
+          applied: boolean
+          occurred_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          message_id?: string
+          webhook_event_id?: string | null
+          status?: string
+          applied?: boolean
+          occurred_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_status_events_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_status_events_message_fkey"
+            columns: ["clinic_id", "message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "message_status_events_webhook_fkey"
+            columns: ["clinic_id", "webhook_event_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_webhook_events"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
+      }
+      conversation_assignments: {
+        Row: {
+          id: string
+          clinic_id: string
+          conversation_id: string
+          from_user_id: string | null
+          to_user_id: string | null
+          assigned_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          conversation_id: string
+          from_user_id?: string | null
+          to_user_id?: string | null
+          assigned_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          conversation_id?: string
+          from_user_id?: string | null
+          to_user_id?: string | null
+          assigned_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_assignments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_conversation_fkey"
+            columns: ["clinic_id", "conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["clinic_id", "id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_from_fkey"
+            columns: ["clinic_id", "from_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["clinic_id", "user_id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_to_fkey"
+            columns: ["clinic_id", "to_user_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["clinic_id", "user_id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_actor_fkey"
+            columns: ["clinic_id", "assigned_by"]
+            isOneToOne: false
+            referencedRelation: "clinic_members"
+            referencedColumns: ["clinic_id", "user_id"]
+          },
+        ]
+      }
+      message_delivery_attempts: {
+        Row: {
+          id: string
+          clinic_id: string
+          message_id: string
+          attempt_number: number
+          status: string
+          error_code: string | null
+          attempted_at: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          message_id: string
+          attempt_number: number
+          status: string
+          error_code?: string | null
+          attempted_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          message_id?: string
+          attempt_number?: number
+          status?: string
+          error_code?: string | null
+          attempted_at?: string
+          completed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_delivery_attempts_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_delivery_attempts_message_fkey"
+            columns: ["clinic_id", "message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["clinic_id", "id"]
+          },
+        ]
       }
       invitations: {
         Row: {
@@ -1700,6 +2138,61 @@ export type Database = {
           attempt_id: string
           message_id: string
         }[]
+      }
+      ingest_whatsapp_event: {
+        Args: {
+          p_account_external_id: string
+          p_event_type: string
+          p_external_event_id: string
+          p_provider: string
+          p_raw_payload: Json
+        }
+        Returns: {
+          duplicate: boolean
+          event_id: string
+        }[]
+      }
+      process_whatsapp_message: {
+        Args: {
+          p_attachment_metadata: Json
+          p_contact_name: string
+          p_direction: string
+          p_event_id: string
+          p_external_message_id: string
+          p_message_type: string
+          p_occurred_at: string
+          p_phone: string
+          p_provider_payload_type: string | null
+          p_text_content: string | null
+        }
+        Returns: {
+          contact_id: string | null
+          conversation_id: string | null
+          duplicate: boolean
+          error_code: string | null
+          event_id: string
+          message_id: string | null
+          opportunity_id: string | null
+        }[]
+      }
+      record_whatsapp_message_status: {
+        Args: {
+          p_external_message_id: string
+          p_occurred_at: string
+          p_status: string
+          p_webhook_event_id: string
+        }
+        Returns: {
+          applied: boolean
+          current_status: string | null
+          message_id: string
+        }[]
+      }
+      retry_whatsapp_event: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: boolean
       }
       list_conversation_messages: {
         Args: {
