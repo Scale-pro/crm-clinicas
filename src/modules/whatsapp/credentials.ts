@@ -21,6 +21,7 @@ import { serverEnv } from "@/shared/config";
 const VERSION = "v1";
 const KEY_BYTES = 32;
 const IV_BYTES = 12;
+const AUTH_TAG_BYTES = 16;
 
 function credentialKey(): Buffer {
   const raw = serverEnv.WHATSAPP_CREDENTIAL_KEY;
@@ -42,7 +43,9 @@ function credentialKey(): Buffer {
 
 export function encryptProviderToken(token: string): string {
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv("aes-256-gcm", credentialKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", credentialKey(), iv, {
+    authTagLength: AUTH_TAG_BYTES,
+  });
   const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
   return [
     VERSION,
@@ -61,13 +64,19 @@ export function encryptProviderToken(token: string): string {
 export function decryptProviderToken(value: string): string | null {
   const [version, iv, tag, payload] = value.split(".");
   if (version !== VERSION || !iv || !tag || !payload) return null;
+  const tagBuffer = Buffer.from(tag, "base64url");
+  // Comprimento da tag fixado nos dois lados: sem isto, um valor gravado com
+  // tag truncada poderia ser aceito por `setAuthTag`, enfraquecendo a
+  // autenticação que o GCM existe para garantir.
+  if (tagBuffer.length !== AUTH_TAG_BYTES) return null;
   try {
     const decipher = createDecipheriv(
       "aes-256-gcm",
       credentialKey(),
       Buffer.from(iv, "base64url"),
+      { authTagLength: AUTH_TAG_BYTES },
     );
-    decipher.setAuthTag(Buffer.from(tag, "base64url"));
+    decipher.setAuthTag(tagBuffer);
     return Buffer.concat([
       decipher.update(Buffer.from(payload, "base64url")),
       decipher.final(),
