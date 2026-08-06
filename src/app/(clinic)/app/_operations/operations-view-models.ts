@@ -65,24 +65,40 @@ export type ProfessionalSummaryView = {
   /** Token da paleta de agenda (ver `AGENDA_COLORS`). */
   readonly colorToken: string;
   readonly status: OperationsStatus;
-  /** Nome do usuário da equipe vinculado, ou `null` para profissional sem conta. */
-  readonly linkedUserName: string | null;
+  /**
+   * Nome do usuário da equipe vinculado, `null` para profissional sem conta e
+   * **ausente** quando a origem dos dados não informa o vínculo. Ausente é
+   * diferente de `null`: a interface mostra "—" em vez de afirmar que não há
+   * conta vinculada.
+   */
+  readonly linkedUserName?: string | null;
   /** Resumo já formatado dos dias atendidos (ex.: "Seg, Ter, Qua"). */
-  readonly weekdaysLabel: string;
+  readonly weekdaysLabel?: string;
   /** Resumo já formatado da carga semanal (ex.: "5 dias • 40h por semana"). */
-  readonly availabilityLabel: string;
-  readonly enabledProcedureCount: number;
+  readonly availabilityLabel?: string;
+  readonly enabledProcedureCount?: number;
   /** Rota de detalhe. Nunca expomos o identificador cru na interface. */
   readonly href: string;
 };
 
+/**
+ * No detalhe o cadastro em si está sempre resolvido — por isso o usuário
+ * vinculado volta a ser obrigatório.
+ *
+ * A disponibilidade é a exceção deliberada: ela vem de uma leitura própria, que
+ * pode falhar. `undefined` significa **não carregada** e é diferente de uma
+ * semana vazia, que significa **sem atendimento cadastrado**. Confundir as duas
+ * faria a interface anunciar "sem horários" para quem tem horários — e, pior,
+ * ofereceria um rascunho vazio como base de gravação.
+ */
 export type ProfessionalDetailView = ProfessionalSummaryView & {
+  readonly linkedUserName: string | null;
   readonly email: string | null;
   readonly phoneLabel: string | null;
   readonly registrationType: string | null;
   readonly registrationNumber: string | null;
   readonly notes: string | null;
-  readonly availability: WeeklyAvailabilityDraft;
+  readonly availability?: WeeklyAvailabilityDraft;
 };
 
 /** Procedimento habilitado para um profissional, já com os valores efetivos. */
@@ -108,11 +124,13 @@ export type ProcedureSummaryView = {
   readonly basePriceCents: number;
   readonly colorToken: string;
   readonly status: OperationsStatus;
-  readonly enabledProfessionalCount: number;
+  /** Ausente quando a origem dos dados não conta vínculos — a interface mostra "—". */
+  readonly enabledProfessionalCount?: number;
   readonly href: string;
 };
 
 export type ProcedureDetailView = ProcedureSummaryView & {
+  readonly enabledProfessionalCount: number;
   readonly description: string | null;
 };
 
@@ -130,6 +148,22 @@ export type ProcedureProfessionalLinkView = {
 // ---------------------------------------------------------------------------
 // Rótulos e tons
 // ---------------------------------------------------------------------------
+
+/** Marca de "não carregado nesta origem" — nunca de "não existe". */
+export const UNKNOWN_FIELD_LABEL = "—";
+
+/**
+ * `undefined` (o dado não veio) vira "—"; `null` (o dado veio e está vazio) usa
+ * o texto explícito. A distinção evita afirmar ausência sem ter perguntado.
+ */
+export function optionalText(value: string | null | undefined, whenEmpty: string): string {
+  if (value === undefined) return UNKNOWN_FIELD_LABEL;
+  return value ?? whenEmpty;
+}
+
+export function optionalCount(value: number | undefined): string {
+  return value === undefined ? UNKNOWN_FIELD_LABEL : String(value);
+}
 
 export function statusLabel(status: OperationsStatus): string {
   return status === "active" ? "Ativo" : "Inativo";
@@ -216,7 +250,7 @@ export function filterProfessionals(
     if (filters.specialty !== "" && !row.specialties.includes(filters.specialty)) return false;
     return matchesTerm(filters.search, [
       row.displayName,
-      row.linkedUserName,
+      row.linkedUserName ?? null,
       ...row.specialties,
     ]);
   });

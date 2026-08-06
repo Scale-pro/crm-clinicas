@@ -16,6 +16,8 @@ import { StatusBadge } from "@/shared/ui/status-badge";
 import { IntegrationPendingState } from "./operations-states";
 import {
   agendaColor,
+  optionalCount,
+  optionalText,
   statusLabel,
   statusTone,
   type OperationsListState,
@@ -92,6 +94,13 @@ export function ProfessionalList({
       />;
   }
 
+  // A listagem do backend traz identificação, especialidades, cor e situação.
+  // Usuário vinculado, horários e procedimentos habilitados vivem no detalhe;
+  // aqui aparecem como "—" em vez de um valor que não foi consultado.
+  const hasUnknownColumns = rows.some((row) => row.linkedUserName === undefined
+    || row.weekdaysLabel === undefined
+    || row.enabledProcedureCount === undefined);
+
   return <div className="flex min-h-0 flex-col gap-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-xs text-muted-foreground" role="status">
@@ -99,6 +108,11 @@ export function ProfessionalList({
       </p>
       {canCreate ? createSlot : null}
     </div>
+    {hasUnknownColumns
+      ? <p className="text-xs text-muted-foreground">
+        Os campos marcados com “—” aparecem no detalhe de cada profissional.
+      </p>
+      : null}
 
     <div className="hidden min-h-0 md:flex md:flex-col">
       <DataTable label={label}>
@@ -132,12 +146,12 @@ export function ProfessionalList({
               </DataTableHeaderCell>
               <DataTableCell className="max-w-[18rem]"><SpecialtyList specialties={row.specialties} /></DataTableCell>
               <DataTableCell className="max-w-[12rem] truncate text-muted-foreground">
-                {row.linkedUserName ?? "Sem conta vinculada"}
+                {optionalText(row.linkedUserName, "Sem conta vinculada")}
               </DataTableCell>
               <DataTableCell><ColorIndicator color={color.cssValue} label={color.label} /></DataTableCell>
               <DataTableCell><StatusBadge tone={statusTone(row.status)}>{statusLabel(row.status)}</StatusBadge></DataTableCell>
-              <DataTableCell className="whitespace-nowrap text-muted-foreground">{row.weekdaysLabel}</DataTableCell>
-              <DataTableCell className="text-right tabular-nums">{row.enabledProcedureCount}</DataTableCell>
+              <DataTableCell className="whitespace-nowrap text-muted-foreground">{optionalText(row.weekdaysLabel, "Sem horários")}</DataTableCell>
+              <DataTableCell className="text-right tabular-nums">{optionalCount(row.enabledProcedureCount)}</DataTableCell>
               {rowActions ? <DataTableCell className="text-right">{rowActions(row)}</DataTableCell> : null}
             </tr>;
           })}
@@ -160,10 +174,10 @@ export function ProfessionalList({
           </div>
           <div className="mt-2"><SpecialtyList specialties={row.specialties} /></div>
           <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-            <div><dt className="inline font-medium">Usuário: </dt><dd className="inline">{row.linkedUserName ?? "sem conta vinculada"}</dd></div>
+            <div><dt className="inline font-medium">Usuário: </dt><dd className="inline">{optionalText(row.linkedUserName, "sem conta vinculada")}</dd></div>
             <div><dt className="inline font-medium">Cor da agenda: </dt><dd className="inline">{color.label}</dd></div>
-            <div><dt className="inline font-medium">Horários: </dt><dd className="inline">{row.weekdaysLabel}</dd></div>
-            <div><dt className="inline font-medium">Procedimentos: </dt><dd className="inline tabular-nums">{row.enabledProcedureCount}</dd></div>
+            <div><dt className="inline font-medium">Horários: </dt><dd className="inline">{optionalText(row.weekdaysLabel, "Sem horários")}</dd></div>
+            <div><dt className="inline font-medium">Procedimentos: </dt><dd className="inline tabular-nums">{optionalCount(row.enabledProcedureCount)}</dd></div>
           </dl>
           {rowActions ? <div className="mt-2 flex flex-wrap justify-end gap-2">{rowActions(row)}</div> : null}
         </li>;
