@@ -71,7 +71,12 @@ export default async function AgendaPage({ searchParams }: {
         </Link>
       </Button>
     </div>}
-    description={`${longDayLabel(dayKey)} · fuso ${timezone}`}
+    description={<>
+      {longDayLabel(dayKey)}
+      {/* O fuso é contexto, não o assunto da linha: abaixo de `sm` ele sai
+          inteiro em vez de truncar no meio da palavra. */}
+      <span className="hidden sm:inline">{` · fuso ${timezone}`}</span>
+    </>}
     title="Agenda"
   />;
 

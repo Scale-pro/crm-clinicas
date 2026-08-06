@@ -39,6 +39,32 @@ for (const viewport of VIEWPORTS) {
       await page.screenshot({ path: file, fullPage: true });
       console.log(`ok ${file}`);
 
+      // Camadas sobrepostas: abertas por interação real, não por prop, para
+      // que a captura mostre o que o usuário veria.
+      if (scenario === "grid") {
+        const block = page.locator("ul[aria-label^='Agendamentos'] li > button").first();
+        if (await block.count() > 0) {
+          await block.click();
+          await page.waitForTimeout(400);
+          const file = `${OUT}/drawer-${theme}-${viewport.name}.png`;
+          await page.screenshot({ path: file });
+          console.log(`ok ${file}`);
+          await page.keyboard.press("Escape");
+          await page.waitForTimeout(300);
+        }
+
+        const create = page.getByRole("button", { name: "Novo agendamento" }).first();
+        if (await create.count() > 0) {
+          await create.click();
+          await page.waitForTimeout(400);
+          const file = `${OUT}/modal-${theme}-${viewport.name}.png`;
+          await page.screenshot({ path: file });
+          console.log(`ok ${file}`);
+          await page.keyboard.press("Escape");
+          await page.waitForTimeout(300);
+        }
+      }
+
       // No celular, prova que a régua de horas fica fixa ao rolar a grade.
       if (viewport.name === "mobile" && scenario === "grid") {
         const scrolled = await page.evaluate(() => {

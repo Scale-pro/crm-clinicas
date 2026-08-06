@@ -179,8 +179,11 @@ export function AgendaScreen({
               className="pointer-events-none absolute inset-x-0 z-[8] flex items-center"
               style={{ top: `${(nowOffset / spanMinutes) * 100}%` }}
             >
-              <span className="sticky left-0 flex shrink-0 items-center gap-1 bg-surface pr-1 text-[0.625rem] font-medium tabular-nums text-destructive">
-                <span className="w-[3.25rem] text-right">{nowLabel}</span>
+              {/* Largura EXATA da régua (4rem): sem isso o grupo vaza sobre a
+                  primeira coluna e, com a grade rolada, o rótulo cobre o texto
+                  do bloco que passa por baixo. */}
+              <span className="sticky left-0 flex w-16 shrink-0 items-center justify-end gap-1 overflow-hidden bg-surface pr-1.5 text-[0.625rem] font-medium tabular-nums text-destructive">
+                {nowLabel}
                 <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
               </span>
             </div>

@@ -40,7 +40,10 @@ export default async function FinanceiroPage() {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 
   const toolbar = <PageToolbar
-    description={`${periodLabel} · derivado dos agendamentos, no fuso ${timezone}`}
+    description={<>
+      {periodLabel}
+      <span className="hidden sm:inline">{` · derivado dos agendamentos, no fuso ${timezone}`}</span>
+    </>}
     title="Financeiro"
   />;
 

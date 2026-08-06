@@ -52,4 +52,7 @@ export const CONTEXT_OPTIONS = {
   reducedMotion: "reduce",
 };
 
-export const BASE_URL = process.env.HARNESS_URL ?? "http://127.0.0.1:3000/harness";
+// `localhost`, não `127.0.0.1`: o Next dev trata os dois como origens
+// distintas e bloqueia os recursos de dev na origem "errada" — a página até
+// renderiza, mas nunca hidrata, e nenhuma interação funciona.
+export const BASE_URL = process.env.HARNESS_URL ?? "http://localhost:3000/harness";

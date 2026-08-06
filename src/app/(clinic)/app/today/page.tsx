@@ -25,7 +25,10 @@ export default async function TodayPage() {
   });
 
   const toolbar = <PageToolbar
-    description={`Operação do dia no fuso da clínica (${context.clinic.timezone}).`}
+    description={<>
+      Operação do dia no fuso da clínica
+      <span className="hidden sm:inline">{` (${context.clinic.timezone})`}</span>
+    </>}
     title="Hoje"
   />;
 
