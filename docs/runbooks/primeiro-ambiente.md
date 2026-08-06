@@ -202,6 +202,132 @@ Para conceder acesso de plataforma (superadmin), siga
 [bootstrap-platform-admin](bootstrap-platform-admin.md) — é procedimento manual,
 de duas pessoas, e nunca sai de migration ou seed.
 
+## Banco existente: diagnóstico e caminhos
+
+As seções 1–6 assumem um projeto **novo**. Antes de rodá-las contra um projeto
+que já existe, confirme isso: **ausência de configuração neste repositório não
+prova ausência de ambiente.** Supabase e Vercel se conectam pelo painel, não
+por arquivo — não há `supabase/.temp/project-ref` versionado, nenhuma variável
+de hospedagem no repositório, e mesmo assim um projeto pode estar de pé há
+tempo. A única forma confiável de saber é perguntar a quem tem acesso ao
+painel, ou consultar o próprio painel.
+
+### Diagnóstico
+
+Rode contra a URI de conexão do projeto (**Project Settings → Database →
+Connection string**; mesma URI do passo 3, usada só para consulta):
+
+```bash
+# Visão nativa da CLI: compara migrations locais com as já aplicadas.
+supabase link --project-ref <ref>
+supabase migration list --linked
+```
+
+Ou por SQL direto, se preferir ver os dados também:
+
+```sql
+-- Migrations aplicadas, na ordem em que foram aplicadas (não a de arquivo).
+select version, name from supabase_migrations.schema_migrations order by version;
+
+-- Tabelas existentes em public — compare com o que cada PR pendente cria.
+select table_name from information_schema.tables
+where table_schema = 'public' order by table_name;
+
+-- Sinal de dado de teste "pendurado".
+select 'clinics' t, count(*) from public.clinics
+union all select 'clinic_members', count(*) from public.clinic_members
+union all select 'contacts', count(*) from public.contacts
+union all select 'auth.users', count(*) from auth.users;
+```
+
+O sintoma que motivou esta seção: `version` mais recente em
+`schema_migrations` correspondendo a um arquivo `20260805_*` (agendamentos,
+PR #21) enquanto um arquivo `20260730_*` (WhatsApp, PR #18) — de nome
+**anterior** — não aparece na lista. Isso acontece quando PRs são aplicados na
+ordem em que ficam prontos no painel de quem opera, não na ordem de nome de
+arquivo. `supabase db push` (sem flag) **recusa** aplicar um arquivo mais
+antigo que o último já aplicado — é essa recusa que expõe o desalinhamento.
+
+### Caminho A — resetar do zero (recomendado quando o dado é descartável)
+
+Só se **todo** o conteúdo do banco for fictício e descartável — confirme por
+uma leitura, não por suposição (ver diagnóstico acima). Se houver qualquer
+dado que importe, use o Caminho B.
+
+```bash
+supabase link --project-ref <ref>
+supabase db reset --help        # confirma que --linked existe nesta versão da CLI antes de rodar
+supabase db reset --linked
+```
+
+O que isso faz: derruba e recria os schemas que as migrations possuem
+(`public`, `app_private`), zera `supabase_migrations.schema_migrations` e
+reaplica **todo** arquivo de `supabase/migrations/` em ordem de nome, do zero
+— depois roda `supabase/seed.sql` (vazio, então nada é semeado). Ao final, a
+ordem de aplicação no banco volta a bater com a ordem de arquivo do
+repositório, e o problema de timestamp deixa de existir — não só para este
+caso, para qualquer PR futuro.
+
+O que **não** é afetado: configuração de Auth do painel (Site URL, redirects,
+MFA/TOTP habilitado, política de senha, confirmação de e-mail — seção 4 deste
+runbook) vive fora dos schemas `public`/`app_private`, então sobrevive ao
+reset. Storage e Realtime também não são tocados — nenhuma migration deste
+repositório os usa.
+
+O que **não** é afetado automaticamente, e precisa de passo à parte:
+`auth.users`. GoTrue (o serviço de Auth) não é gerido pelas migrations deste
+repositório — `db reset --linked` não os apaga. Com poucos usuários de teste, é
+mais simples apagar pelo painel (**Authentication → Users**, um a um) do que
+por SQL direto na tabela.
+
+Se `--linked` não existir na versão instalada da CLI, o caminho alternativo é
+manual — e mais arriscado, porque recriar o schema `public` derruba os grants
+padrão que a plataforma espera até as migrations rodarem de novo:
+
+```sql
+drop schema if exists app_private cascade;
+drop schema public cascade;
+create schema public;
+delete from supabase_migrations.schema_migrations;
+```
+
+seguido de:
+
+```bash
+supabase db push --db-url "$SUPABASE_DB_URL"
+```
+
+(sem `--include-all`: com a tabela de histórico vazia, todo arquivo local já
+conta como novo e é aplicado em ordem de nome.)
+
+**Antes:** confirme o `project-ref` contra o Project URL do painel (nunca
+rode isto sem essa confirmação); anote os e-mails dos usuários de teste, se
+quiser recriá-los rápido depois.
+
+**Depois:** `supabase migration list --linked` sem pendência dos dois lados;
+`conversations` e `appointments` presentes em `information_schema.tables`
+(prova que #18 e #21 aplicaram); contagens de tabela de tenant zeradas;
+`select count(*) from auth.users` conforme o passo de limpeza escolhido.
+
+### Caminho B — aplicar por cima, sem resetar (`--include-all`)
+
+Use quando há dado que precisa sobreviver.
+
+```bash
+supabase db push --db-url "$SUPABASE_DB_URL" --include-all
+```
+
+Aplica todo arquivo local ainda não registrado como aplicado, **ignorando** a
+checagem de ordem. Funciona porque as migrations do PR #18 não compartilham
+tabela, política nem permissão com as do PR #21 (verificado por leitura antes
+de recomendar isto). O dado existente permanece.
+
+O que este caminho **não resolve**: a ordem registrada em
+`schema_migrations` continua divergente da ordem de arquivo — o
+`20260805_*` fica marcado como aplicado antes do `20260730_*`. Um PR futuro
+com arquivo datado antes de ambos reproduziria o mesmo impasse. É o
+contorno, não a correção — use só quando resetar não for opção.
+
 ## 7. Verificar
 
 - [ ] `<APP_URL>/login` responde e o CSS carrega.

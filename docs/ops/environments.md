@@ -16,26 +16,46 @@
 
 ## 0. Estado atual e estado alvo
 
-**Hoje nenhum serviço real está conectado.** Não existe projeto Supabase
-hospedado, nem deploy, nem fila, nem provedor de observabilidade. A aplicação só
-roda contra a stack local do Supabase (`pnpm supabase start`), e é assim que o
-CI a valida.
+> **Lição registrada (2026-08-06):** este documento afirmava, até esta revisão,
+> que "hoje nenhum serviço real está conectado" — com base em não haver nenhum
+> `supabase/.temp/project-ref`, nenhuma variável de hospedagem versionada e
+> nenhuma menção em PR. Um projeto Supabase hospedado **já existia**, criado e
+> configurado direto pelo painel. **Ausência de configuração no repositório não
+> prova ausência de ambiente** — Supabase e Vercel se conectam por painel, não
+> por arquivo. Nenhum grep, nenhuma migration lida e nenhum ADR revelam isso;
+> só perguntar, ou consultar o próprio painel, prova.
 
-O **estado alvo do primeiro ambiente** (`staging`) é:
+**Existe um projeto Supabase hospedado**, com dados de teste (descartáveis, sem
+paciente real): clínicas, membros, contato e usuários de `auth` fictícios. Ele
+foi provisionado fora deste repositório — não há deploy Vercel confirmado, nem
+fila, nem provedor de observabilidade.
+
+Consequência prática já observada: as migrations foram aplicadas **fora da
+ordem de nome de arquivo** — um PR mesclado depois (`20260805`, agendamentos)
+foi aplicado nesse projeto antes de um PR mesclado antes dele (`20260730`,
+WhatsApp), porque a aplicação seguiu a ordem de disponibilidade dos PRs no
+painel de quem operou, não a ordem de arquivo. O procedimento de diagnóstico e
+os dois caminhos de correção (resetar do zero, ou aplicar o que falta por
+cima) estão em
+[runbooks/primeiro-ambiente §Banco existente](../runbooks/primeiro-ambiente.md#banco-existente-diagnóstico-e-caminhos).
+
+O **estado alvo** (`staging`) é:
 
 | Peça | Estado alvo | O que falta |
 |---|---|---|
-| Banco + Auth | projeto Supabase hospedado, migrations aplicadas por `db push` | criar o projeto e rodar o push |
-| Hospedagem | projeto Vercel com as cinco variáveis da seção 3 | criar o projeto e cadastrar as variáveis |
-| MFA | TOTP habilitado no painel do Supabase | habilitar — sem isso a configuração da operação fica inacessível (ver seção 4) |
-| Configuração de Auth | Site URL e Redirect URLs apontando para `APP_URL` | configurar no painel; hoje não é versionado (ver seção 5) |
+| Banco + Auth | projeto Supabase hospedado, migrations aplicadas por `db push`, em ordem de arquivo | reconciliar a ordem — ver runbook |
+| Hospedagem | projeto Vercel com as cinco variáveis da seção 3 | confirmar se existe; não verificado a partir do repositório |
+| MFA | TOTP habilitado no painel do Supabase | confirmar no painel (ver seção 4) |
+| Configuração de Auth | Site URL e Redirect URLs apontando para `APP_URL` | confirmar no painel; não é versionado (ver seção 5) |
 | Fila | — | nada a fazer: não há fila nem variável até a F3 |
 | Observabilidade | — | provedor ainda não decidido ([ADR-012](../adr/ADR-012-seguranca-por-fase-e-governanca.md)) |
-| Dados | somente fictícios | vale até o gate F7 |
+| Dados | somente fictícios | confirmado — nada real observado |
 
 O passo a passo executável está em
 [runbooks/primeiro-ambiente](../runbooks/primeiro-ambiente.md), que também lista
-os **bloqueios conhecidos** para rodar hospedado.
+os **bloqueios conhecidos** para rodar hospedado e o procedimento de
+diagnóstico para descobrir em que estado um banco hospedado está antes de
+mexer nele.
 
 ## 1. Ambientes
 
