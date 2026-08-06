@@ -56,7 +56,10 @@ marcados como *pendente* serão criados em commits posteriores, após revisão.
 - `ssdlc.md`, `deploy-checklist.md`, `data-classification.md`,
   `shared-responsibility.md`, `pentest-scope.md`, `dr.md`.
 
-### Runbooks (`runbooks/`) — *pendente (Commit 3)*
+### Runbooks (`runbooks/`)
+- `primeiro-ambiente.md` — provisionar o primeiro ambiente real (Supabase
+  hospedado + Vercel), do zero, sem Docker.
+- `bootstrap-platform-admin.md` — conceder o primeiro acesso de plataforma.
 - `webhook-dlq.md`, `webhook-reconciliation.md`, `security-incident.md`,
   `backup-restore.md`, `provider-outage.md`.
 

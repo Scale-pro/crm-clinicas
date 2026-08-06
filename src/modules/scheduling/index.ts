@@ -1,6 +1,20 @@
 import "server-only";
 
 export {
+  APPOINTMENT_STATUSES,
+  appointmentIdSchema,
+  createAppointment,
+  createAppointmentSchema,
+  listAppointments,
+  listAppointmentsSchema,
+  rescheduleAppointment,
+  rescheduleAppointmentSchema,
+  updateAppointmentStatus,
+  updateAppointmentStatusSchema,
+  type AppointmentListItem,
+  type AppointmentStatus,
+} from "./appointments";
+export {
   getProfessionalWeeklyAvailability,
   getProfessionalWeeklyAvailabilitySchema,
   setProfessionalWeeklyAvailability,

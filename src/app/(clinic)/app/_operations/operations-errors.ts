@@ -13,7 +13,13 @@
 const FALLBACK_MESSAGE = "Não foi possível concluir a operação. Tente novamente em alguns instantes.";
 
 const MESSAGES: Readonly<Record<string, string>> = {
+  appointment_canceled: "Este agendamento foi cancelado. Crie um novo para reagendar.",
+  appointment_contact_not_found: "Este cliente não está mais disponível. Atualize a página.",
+  appointment_not_found: "Este agendamento não existe mais. Atualize a página.",
+  appointment_overlap: "Este profissional já tem outro atendimento neste horário. Escolha outro horário.",
   availability_overlap: "Há horários sobrepostos na semana. Revise os intervalos e salve novamente.",
+  clinic_unavailable: "Não foi possível identificar a clínica ativa. Atualize a página e tente novamente.",
+  contact_duplicate: "Já existe um cliente com estes dados. Selecione-o na busca em vez de criar outro.",
   forbidden: "Você não tem permissão para esta ação nesta clínica.",
   invalid_availability: "Os horários informados não são válidos. Revise início e fim de cada intervalo.",
   invalid_input: "Revise os campos: algum valor não é aceito.",

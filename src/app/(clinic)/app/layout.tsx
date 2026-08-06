@@ -13,6 +13,9 @@ import type { NavItem } from "./_shell/navigation";
  * entram na navegação junto com a implementação de cada uma. */
 const navigation: readonly NavItem[] = [
   { label: "Visão geral", href: "/app", icon: "overview" },
+  { label: "Hoje", href: "/app/today", icon: "today" },
+  { label: "Agenda", href: "/app/agenda", icon: "agenda" },
+  { label: "Financeiro", href: "/app/financeiro", icon: "financeiro" },
   { label: "Pipeline", href: "/app/pipeline", icon: "pipeline" },
   { label: "Todos os leads", href: "/app/leads", icon: "leads" },
   { label: "Contatos", href: "/app/contacts", icon: "contacts" },

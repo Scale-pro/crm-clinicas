@@ -3,6 +3,10 @@ import { requireAal2, requirePermission } from "@/shared/auth";
 type DatabaseError = { code?: string };
 
 export type SchedulingErrorCode =
+  | "appointment_canceled"
+  | "appointment_contact_not_found"
+  | "appointment_not_found"
+  | "appointment_overlap"
   | "availability_overlap"
   | "forbidden"
   | "invalid_availability"
@@ -33,6 +37,10 @@ export function mapSchedulingError(error: DatabaseError): SchedulingErrorCode {
     P4308: "professional_procedure_conflict",
     P4309: "availability_overlap",
     P4310: "invalid_availability",
+    P4311: "appointment_not_found",
+    P4312: "appointment_canceled",
+    P4313: "appointment_overlap",
+    P4315: "appointment_contact_not_found",
     "42501": "forbidden",
     "22023": "invalid_input",
     "23514": "invalid_input",
@@ -42,7 +50,13 @@ export function mapSchedulingError(error: DatabaseError): SchedulingErrorCode {
 
 export async function requireSchedulingAccess(
   clinicId: string,
-  permission: "professional.manage" | "professional.view" | "procedure.manage" | "procedure.view",
+  permission:
+    | "appointment.manage"
+    | "appointment.view"
+    | "professional.manage"
+    | "professional.view"
+    | "procedure.manage"
+    | "procedure.view",
   aal2 = false,
 ) {
   const permitted = await requirePermission(clinicId, permission);

@@ -1,0 +1,1806 @@
+<!doctype html>
+<html lang="pt-BR" class="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit de mockup — CRM Clínicas</title>
+
+<!--
+  docs/design/kit.html — base para mockups de tela.
+
+  Arquivo autocontido: sem build, sem dependência externa, sem rede.
+  Abra direto no navegador.
+
+  FONTES DOS VALORES DESTE ARQUIVO (nada aqui foi inventado):
+  - Tokens OKLCH ............ src/app/globals.css (blocos :root e .dark)
+  - Button .................. src/shared/ui/button.tsx
+  - StatusBadge ............. src/shared/ui/status-badge.tsx
+  - EmptyState .............. src/shared/ui/empty-state.tsx
+  - ErrorState .............. src/shared/ui/error-state.tsx
+  - LoadingState ............ src/shared/ui/loading-state.tsx
+  - AccessDeniedState ....... src/shared/ui/access-denied-state.tsx
+  - DataTable ............... src/shared/ui/data-table.tsx
+  - Tabs .................... src/shared/ui/tabs.tsx
+  - SearchField ............. src/shared/ui/search-field.tsx
+  - FormField ............... src/shared/ui/form-field.tsx
+  - FilterPopover ........... src/shared/ui/filter-popover.tsx
+  - Drawer ("SidePanel") .... src/shared/ui/drawer.tsx
+  - Skeleton / Input ........ src/shared/ui/skeleton.tsx, src/shared/ui/input.tsx
+  - PageToolbar ............. src/shared/ui/page-toolbar.tsx
+  - MetricCard / MetricGrid . src/app/(clinic)/app/_dashboard/metric-card.tsx
+  - Shell (sidebar/header) .. src/app/(clinic)/app/layout.tsx e _shell/*
+
+  As classes CSS abaixo são a tradução literal das classes Tailwind usadas
+  nesses arquivos. Ao mudar um componente no código, atualize este arquivo.
+  Divergências conhecidas estão registradas na seção final "Registro".
+-->
+
+<style>
+/* ------------------------------------------------------------------ */
+/* 1. TOKENS — cópia literal de src/app/globals.css                    */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.017 259);
+  --canvas: oklch(0.972 0.004 258);
+  --surface: oklch(1 0 0);
+  --surface-subtle: oklch(0.985 0.003 258);
+  --muted: oklch(0.966 0.005 258);
+  --muted-foreground: oklch(0.518 0.017 258);
+  --border: oklch(0.912 0.007 258);
+  --input: oklch(0.912 0.007 258);
+  --primary: oklch(0.318 0.048 259);
+  --primary-foreground: oklch(0.985 0.002 258);
+  --secondary: oklch(0.966 0.005 258);
+  --secondary-foreground: oklch(0.318 0.048 259);
+  --accent: oklch(0.556 0.136 254);
+  --accent-foreground: oklch(0.985 0.002 258);
+  --accent-strong: oklch(0.446 0.136 254);
+  --success: oklch(0.602 0.114 155);
+  --success-strong: oklch(0.452 0.101 155);
+  --warning: oklch(0.746 0.129 78);
+  --warning-strong: oklch(0.508 0.109 62);
+  /*
+   * Fundo de superfície em tom de atenção, opaco em vez de `--warning` com
+   * alfa. Alfa sobre a superfície mistura os matizes: no tema escuro o âmbar
+   * (h 78) misturado à superfície azulada (h 259) cai em oliva. Os demais tons
+   * não têm esse problema porque seus matizes são vizinhos do da superfície
+   * (accent h 254) ou toleram a mistura (success h 155) — só o âmbar precisa
+   * de valor próprio.
+   */
+  --warning-surface: oklch(0.963 0.029 82);
+  --destructive: oklch(0.577 0.198 25);
+  --destructive-foreground: oklch(0.985 0.002 258);
+  --ring: oklch(0.556 0.136 254);
+  --radius: 0.5rem;
+
+  --sidebar: oklch(0.242 0.031 259);
+  --sidebar-foreground: oklch(0.937 0.008 258);
+  --sidebar-muted-foreground: oklch(0.688 0.018 258);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-hover: oklch(1 0 0 / 8%);
+  --sidebar-active: oklch(1 0 0 / 14%);
+  --sidebar-ring: oklch(0.732 0.093 254);
+
+  --stage-1: oklch(0.606 0.132 254);
+  --stage-2: oklch(0.632 0.104 216);
+  --stage-3: oklch(0.648 0.099 182);
+  --stage-4: oklch(0.688 0.116 138);
+  --stage-5: oklch(0.744 0.126 84);
+  --stage-6: oklch(0.668 0.146 48);
+  --stage-7: oklch(0.606 0.136 316);
+  --stage-won: oklch(0.602 0.114 155);
+  --stage-lost: oklch(0.607 0.166 25);
+
+  --app-header-height: 3.25rem;
+}
+
+.dark {
+  --background: oklch(0.192 0.018 259);
+  --foreground: oklch(0.968 0.005 258);
+  --canvas: oklch(0.163 0.017 259);
+  --surface: oklch(0.222 0.02 259);
+  --surface-subtle: oklch(0.248 0.021 259);
+  --muted: oklch(0.278 0.021 259);
+  --muted-foreground: oklch(0.712 0.016 258);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --primary: oklch(0.918 0.008 258);
+  --primary-foreground: oklch(0.222 0.02 259);
+  --secondary: oklch(0.278 0.021 259);
+  --secondary-foreground: oklch(0.968 0.005 258);
+  --accent: oklch(0.652 0.132 254);
+  --accent-foreground: oklch(0.192 0.018 259);
+  --accent-strong: oklch(0.788 0.096 254);
+  --success: oklch(0.688 0.108 155);
+  --success-strong: oklch(0.808 0.086 155);
+  --warning: oklch(0.788 0.122 78);
+  --warning-strong: oklch(0.858 0.096 84);
+  /* Âmbar escuro sobre a superfície do tema escuro. Luminosidade e croma
+     alinhados ao que `accent/10` e `success/10` produzem por mistura (L~0.27,
+     C~0.03), para que o bloco de atenção pese o mesmo que os vizinhos em vez
+     de saltar. Ver a nota no bloco claro sobre por que não pode sair de alfa. */
+  --warning-surface: oklch(0.272 0.036 78);
+  --destructive: oklch(0.688 0.166 25);
+  --destructive-foreground: oklch(0.192 0.018 259);
+  --ring: oklch(0.652 0.132 254);
+
+  --sidebar: oklch(0.182 0.018 259);
+  --sidebar-foreground: oklch(0.937 0.008 258);
+  --sidebar-muted-foreground: oklch(0.678 0.018 258);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-hover: oklch(1 0 0 / 7%);
+  --sidebar-active: oklch(1 0 0 / 13%);
+  --sidebar-ring: oklch(0.732 0.093 254);
+}
+
+/* Escalas derivadas do @theme inline de globals.css. */
+:root {
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 1px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. BASE — @layer base de globals.css + reset mínimo do Tailwind     */
+/* ------------------------------------------------------------------ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border: 0 solid var(--border);
+  outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+}
+* { margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background-color: var(--canvas);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  /* O projeto não carrega fonte própria (src/app/layout.tsx não usa
+     next/font); vale a pilha padrão do Tailwind. */
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background-color: transparent;
+}
+button { cursor: pointer; }
+svg { display: block; }
+table { border-collapse: collapse; }
+h1, h2, h3, h4 { font-size: inherit; font-weight: inherit; }
+p { text-wrap: pretty; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
+}
+
+/* Trilhos de rolagem discretos — @layer components de globals.css. */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+}
+.scroll-slim::-webkit-scrollbar { height: 0.5rem; width: 0.5rem; }
+.scroll-slim::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  border-radius: 9999px;
+}
+.scroll-slim::-webkit-scrollbar-track { background-color: transparent; }
+
+/* Foco visível — focus-visible:outline-2 outline-offset-2 outline-ring. */
+.k-focus:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. COMPONENTES — tradução literal das classes de src/shared/ui      */
+/* ------------------------------------------------------------------ */
+
+/* --- Button (src/shared/ui/button.tsx) --- */
+.k-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.k-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.k-btn:disabled { pointer-events: none; opacity: 0.5; }
+.k-btn svg { width: 1rem; height: 1rem; flex-shrink: 0; pointer-events: none; }
+
+.k-btn--default { background-color: var(--primary); color: var(--primary-foreground); }
+.k-btn--default:hover { background-color: color-mix(in oklab, var(--primary) 90%, transparent); }
+
+.k-btn--destructive { background-color: var(--destructive); color: var(--destructive-foreground); }
+.k-btn--destructive:hover { background-color: color-mix(in oklab, var(--destructive) 90%, transparent); }
+
+.k-btn--outline {
+  border-width: 1px; border-color: var(--input);
+  background-color: var(--background);
+}
+.k-btn--outline:hover { background-color: var(--muted); color: var(--foreground); }
+
+.k-btn--secondary { background-color: var(--secondary); color: var(--secondary-foreground); }
+.k-btn--secondary:hover { background-color: color-mix(in oklab, var(--secondary) 80%, transparent); }
+
+.k-btn--ghost:hover { background-color: var(--muted); color: var(--foreground); }
+
+.k-btn--link { color: var(--primary); text-underline-offset: 4px; }
+.k-btn--link:hover { text-decoration-line: underline; }
+
+.k-btn--size-default { height: 2.25rem; padding: 0.5rem 1rem; }
+.k-btn--size-sm { height: 2rem; border-radius: var(--radius-md); padding-inline: 0.75rem; font-size: 0.75rem; line-height: 1rem; }
+.k-btn--size-lg { height: 2.5rem; border-radius: var(--radius-md); padding-inline: 2rem; }
+.k-btn--size-icon { width: 2.25rem; height: 2.25rem; padding: 0; }
+
+/* --- StatusBadge (src/shared/ui/status-badge.tsx) --- */
+.k-badge {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  border-width: 1px;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+}
+.k-badge > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-badge__dot { width: 0.375rem; height: 0.375rem; flex-shrink: 0; border-radius: 9999px; }
+
+.k-badge--neutral { border-color: var(--border); background-color: var(--muted); color: var(--muted-foreground); }
+.k-badge--accent {
+  border-color: color-mix(in oklab, var(--accent) 35%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 10%, transparent);
+  color: var(--accent-strong);
+}
+.k-badge--success {
+  border-color: color-mix(in oklab, var(--success) 35%, transparent);
+  background-color: color-mix(in oklab, var(--success) 10%, transparent);
+  color: var(--success-strong);
+}
+.k-badge--warning {
+  border-color: color-mix(in oklab, var(--warning) 40%, transparent);
+  background-color: color-mix(in oklab, var(--warning) 15%, transparent);
+  color: var(--warning-strong);
+}
+.k-badge--danger {
+  border-color: color-mix(in oklab, var(--destructive) 35%, transparent);
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+  color: var(--destructive);
+}
+
+/* --- MetricCard / MetricGrid (_dashboard/metric-card.tsx) --- */
+.k-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 40rem) { .k-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 80rem) { .k-metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.k-metric {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-radius: var(--radius-lg);
+  border-width: 1px;
+  border-color: var(--border);
+  background-color: var(--surface);
+  padding: 0.75rem;
+}
+.k-metric__label {
+  font-size: 0.6875rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.025em; color: var(--muted-foreground);
+}
+.k-metric__value {
+  display: block; overflow-wrap: break-word; font-size: 1.5rem;
+  font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums;
+}
+.k-metric__value--neutral { color: var(--foreground); }
+.k-metric__value--accent { color: var(--accent-strong); }
+.k-metric__value--success { color: var(--success-strong); }
+.k-metric__value--danger { color: var(--destructive); }
+.k-metric__value--warning { color: var(--warning-strong); }
+.k-metric__detail { margin-top: 0.125rem; display: block; font-size: 0.875rem; line-height: 1.25rem; color: var(--muted-foreground); }
+.k-metric__hint { margin-top: 0.25rem; display: block; font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); }
+
+/* --- Estados: EmptyState / ErrorState / AccessDeniedState --- */
+.k-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 0.5rem;
+  border-radius: var(--radius-lg); border-width: 1px;
+  padding: 2rem; text-align: center;
+}
+.k-state--empty { border-style: dashed; border-color: var(--border); }
+.k-state--error {
+  border-color: color-mix(in oklab, var(--destructive) 30%, transparent);
+  background-color: color-mix(in oklab, var(--destructive) 5%, transparent);
+}
+.k-state--denied { border-color: var(--border); background-color: var(--surface); }
+.k-state__title { font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; color: var(--foreground); }
+.k-state__description { max-width: 24rem; font-size: 0.875rem; line-height: 1.25rem; color: var(--muted-foreground); }
+.k-state__action { margin-top: 0.5rem; }
+
+/* --- Skeleton / LoadingState --- */
+.k-skeleton { border-radius: var(--radius-md); background-color: var(--muted); animation: k-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes k-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .k-skeleton { animation: none; } }
+.k-loading > * + * { margin-top: 0.75rem; }
+.k-loading__title { height: 1.75rem; width: 13rem; }
+.k-loading__row { height: 4rem; width: 100%; }
+
+/* --- DataTable (src/shared/ui/data-table.tsx) --- */
+.k-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border-width: 1px;
+  border-color: var(--border);
+  background-color: var(--surface);
+}
+.k-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; line-height: 1.25rem; }
+.k-table thead {
+  position: sticky; top: 0; z-index: 10;
+  background-color: var(--surface-subtle);
+  font-size: 0.75rem; line-height: 1rem;
+  text-transform: uppercase; letter-spacing: 0.025em;
+  color: var(--muted-foreground);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.k-table th { white-space: nowrap; padding: 0.5rem 0.75rem; font-weight: 500; }
+.k-table td { padding: 0.5rem 0.75rem; vertical-align: middle; }
+
+/* --- Tabs (src/shared/ui/tabs.tsx) --- */
+.k-tabs { display: flex; min-height: 0; flex-direction: column; }
+.k-tabs__list {
+  display: flex; gap: 0.25rem; overflow-x: auto;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+  margin-inline: -0.25rem; padding-inline: 0.25rem;
+}
+.k-tabs__tab {
+  margin-bottom: -1px;
+  display: flex; flex-shrink: 0; align-items: center; gap: 0.375rem;
+  border-bottom-width: 2px; border-bottom-color: transparent;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem; line-height: 1.25rem; font-weight: 500;
+  color: var(--muted-foreground);
+  transition: color 150ms, border-color 150ms;
+}
+.k-tabs__tab:hover { border-bottom-color: var(--border); color: var(--foreground); }
+.k-tabs__tab:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.k-tabs__tab[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--foreground); }
+.k-tabs__tab[aria-selected="true"]:hover { border-bottom-color: var(--accent); }
+.k-tabs__count {
+  border-radius: 9999px; background-color: var(--muted);
+  padding-inline: 0.375rem; font-size: 0.6875rem; font-weight: 600;
+  line-height: 1rem; font-variant-numeric: tabular-nums; color: var(--muted-foreground);
+}
+.k-tabs__panel { min-height: 0; flex: 1 1 0%; padding-top: 1rem; }
+
+/* --- SearchField (src/shared/ui/search-field.tsx) --- */
+.k-search { display: flex; min-width: 0; flex: 1 1 0%; align-items: flex-end; gap: 0.5rem; }
+@media (min-width: 40rem) { .k-search { max-width: 24rem; } }
+.k-search__field { min-width: 0; flex: 1 1 0%; }
+.k-search__box { position: relative; }
+.k-search__icon {
+  pointer-events: none; position: absolute; left: 0.625rem; top: 50%;
+  width: 1rem; height: 1rem; transform: translateY(-50%); color: var(--muted-foreground);
+}
+.k-search__input {
+  height: 2.25rem; width: 100%;
+  border-radius: var(--radius-md); border-width: 1px; border-color: var(--input);
+  background-color: var(--background);
+  padding-left: 2rem; padding-right: 0.75rem;
+  font-size: 0.875rem; line-height: 1.25rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.k-search__input::placeholder { color: var(--muted-foreground); }
+.k-search__input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* --- Input (src/shared/ui/input.tsx) --- */
+.k-input {
+  display: flex; height: 2.25rem; width: 100%;
+  border-radius: var(--radius-md); border-width: 1px; border-color: var(--input);
+  background-color: var(--background);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem; line-height: 1.25rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.k-input::placeholder { color: var(--muted-foreground); }
+.k-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.k-input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* --- FormField (src/shared/ui/form-field.tsx) --- */
+.k-field { display: grid; gap: 0.375rem; }
+.k-field__top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.k-field__label { font-size: 0.875rem; font-weight: 500; line-height: 1; }
+.k-field__required { margin-inline-start: 0.125rem; color: var(--destructive); }
+.k-field__hint { font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); }
+.k-field__help { font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); }
+.k-field__error { font-size: 0.75rem; line-height: 1rem; font-weight: 500; color: var(--destructive); }
+.k-fieldset { min-width: 0; border-width: 0; padding: 0; }
+.k-fieldset > legend { margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 500; line-height: 1; }
+.k-fieldset__description { margin-bottom: 0.5rem; font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); }
+.k-select {
+  height: 2.25rem; width: 100%;
+  border-radius: var(--radius-md); border-width: 1px; border-color: var(--input);
+  background-color: var(--background); padding-inline: 0.5rem;
+  font-size: 0.875rem; line-height: 1.25rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.k-select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.k-select:disabled { cursor: not-allowed; opacity: 0.5; }
+.k-textarea {
+  width: 100%;
+  border-radius: var(--radius-md); border-width: 1px; border-color: var(--input);
+  background-color: var(--background); padding: 0.5rem 0.75rem;
+  font-size: 0.875rem; line-height: 1.25rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.k-textarea::placeholder { color: var(--muted-foreground); }
+.k-textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* --- FilterPopover (src/shared/ui/filter-popover.tsx) --- */
+.k-filter { position: relative; }
+.k-filter__count {
+  border-radius: 9999px; background-color: var(--accent);
+  padding-inline: 0.375rem; font-size: 0.6875rem; font-weight: 600;
+  line-height: 1rem; color: var(--accent-foreground);
+}
+.k-filter__panel {
+  position: absolute; right: 0; z-index: 30; margin-top: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  border-radius: var(--radius-lg); border-width: 1px; border-color: var(--border);
+  background-color: var(--surface); padding: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+.k-filter__panel[hidden] { display: none; }
+.k-filter__fields { display: grid; gap: 0.75rem; }
+.k-filter__footer {
+  margin-top: 0.75rem; display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: flex-end; gap: 0.5rem;
+  border-top-width: 1px; border-top-color: var(--border); padding-top: 0.75rem;
+}
+
+/* --- Drawer (src/shared/ui/drawer.tsx) — o "SidePanel" do projeto --- */
+.k-drawer {
+  position: fixed; margin: 0; max-height: none; max-width: none;
+  border-width: 0;
+  background-color: var(--surface); color: var(--foreground); padding: 0;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+.k-drawer::backdrop {
+  background-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+  backdrop-filter: blur(1px);
+}
+.k-drawer--right {
+  inset-block: 0; right: 0; left: auto; height: 100dvh; width: 100%; max-width: 28rem;
+  border-left-width: 1px; border-left-color: var(--border);
+}
+.k-drawer--left {
+  inset-block: 0; left: 0; right: auto; height: 100dvh; width: 17rem;
+  border-right-width: 1px; border-right-color: var(--border);
+}
+.k-drawer__inner { display: flex; height: 100%; flex-direction: column; }
+.k-drawer__header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+  padding: 0.75rem 1rem;
+}
+.k-drawer__title { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; }
+.k-drawer__description { margin-top: 0.125rem; font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); }
+.k-drawer__body { min-height: 0; flex: 1 1 0%; overflow-y: auto; padding: 1rem; }
+
+/* --- PageToolbar (src/shared/ui/page-toolbar.tsx) --- */
+.k-toolbar {
+  position: sticky; top: var(--app-header-height); z-index: 20;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+  background-color: color-mix(in oklab, var(--surface) 95%, transparent);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .k-toolbar { backdrop-filter: blur(8px); background-color: color-mix(in oklab, var(--surface) 80%, transparent); }
+}
+@media (min-width: 64rem) { .k-toolbar { top: 0; } }
+.k-toolbar__row {
+  display: flex; flex-wrap: wrap; align-items: center;
+  column-gap: 0.75rem; row-gap: 0.5rem; padding: 0.625rem 1rem;
+}
+@media (min-width: 40rem) { .k-toolbar__row { padding-inline: 1.25rem; } }
+.k-toolbar__main { min-width: 0; flex: 1 1 0%; }
+.k-toolbar__title-row { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.k-toolbar__title {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 1rem; line-height: 1.5rem; font-weight: 600; letter-spacing: -0.025em;
+}
+.k-toolbar__description {
+  margin-top: 0.125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground);
+}
+.k-toolbar__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+@media (min-width: 40rem) { .k-toolbar__meta { gap: 1rem; } }
+.k-toolbar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.k-toolbar__filters {
+  border-top-width: 1px; border-top-color: var(--border);
+  background-color: var(--surface-subtle); padding: 0.5rem 1rem;
+}
+@media (min-width: 40rem) { .k-toolbar__filters { padding-inline: 1.25rem; } }
+.k-toolbar-metric { display: flex; flex-direction: column; line-height: 1.25; }
+.k-toolbar-metric__label {
+  font-size: 0.6875rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.025em; color: var(--muted-foreground);
+}
+.k-toolbar-metric__value { font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ */
+/* 4. SHELL AUTENTICADO — (clinic)/app/layout.tsx + _shell/*           */
+/* ------------------------------------------------------------------ */
+
+.k-shell { display: flex; min-height: 100svh; flex-direction: column; background-color: var(--canvas); }
+@media (min-width: 64rem) { .k-shell { height: 100svh; flex-direction: row; overflow: hidden; } }
+
+.k-shell__sidebar-slot { display: none; }
+@media (min-width: 64rem) {
+  .k-shell__sidebar-slot { display: block; width: 15rem; flex-shrink: 0; height: 100svh; }
+}
+.k-shell__main-col { display: flex; min-width: 0; flex: 1 1 0%; flex-direction: column; }
+@media (min-width: 64rem) { .k-shell__main-col { height: 100svh; overflow: hidden; } }
+.k-shell__content { display: flex; min-width: 0; flex: 1 1 0%; flex-direction: column; }
+@media (min-width: 64rem) { .k-shell__content { min-height: 0; overflow-y: auto; } }
+
+/* Link "Ir para o conteúdo": sr-only até receber foco. */
+.k-skip {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap;
+  border-radius: var(--radius-md); background-color: var(--primary);
+  color: var(--primary-foreground); font-size: 0.875rem; font-weight: 500;
+}
+.k-skip:focus-visible {
+  position: fixed; top: 0.5rem; left: 0.5rem; z-index: 50;
+  width: auto; height: auto; overflow: visible; clip: auto;
+  padding: 0.5rem 0.75rem;
+  outline: 2px solid var(--ring); outline-offset: 2px;
+}
+
+/* Sidebar (_shell/app-sidebar.tsx + sidebar-nav.tsx) */
+.k-sidebar {
+  display: flex; height: 100%; min-height: 0; width: 100%; flex-direction: column;
+  background-color: var(--sidebar); color: var(--sidebar-foreground);
+}
+.k-sidebar__brand {
+  display: flex; height: var(--app-header-height); flex-shrink: 0;
+  align-items: center; gap: 0.625rem;
+  border-bottom-width: 1px; border-bottom-color: var(--sidebar-border);
+  padding-inline: 1rem;
+}
+.k-sidebar__mark {
+  display: grid; width: 1.5rem; height: 1.5rem; flex-shrink: 0; place-items: center;
+  border-radius: var(--radius-md); background-color: var(--accent);
+  font-size: 0.6875rem; font-weight: 700; color: var(--accent-foreground);
+}
+.k-sidebar__name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.875rem; font-weight: 600; letter-spacing: -0.025em;
+}
+.k-sidebar__nav { padding-inline: 0.5rem; }
+.k-sidebar__nav--main { min-height: 0; flex: 1 1 0%; overflow-y: auto; padding-block: 0.75rem; }
+.k-sidebar__nav--account {
+  border-top-width: 1px; border-top-color: var(--sidebar-border); padding-block: 0.5rem;
+}
+.k-sidebar__list { list-style: none; }
+.k-sidebar__list > li + li { margin-top: 0.125rem; }
+.k-sidebar__item {
+  display: flex; align-items: center; gap: 0.625rem;
+  border-radius: var(--radius-md); padding: 0.5rem 0.625rem;
+  font-size: 0.875rem; line-height: 1.25rem; font-weight: 500;
+  color: var(--sidebar-muted-foreground);
+  text-decoration: none; transition: color 150ms, background-color 150ms;
+}
+.k-sidebar__item:hover { background-color: var(--sidebar-hover); color: var(--sidebar-foreground); }
+.k-sidebar__item:focus-visible { outline: 2px solid var(--sidebar-ring); outline-offset: 2px; }
+.k-sidebar__item[aria-current="page"] { background-color: var(--sidebar-active); color: var(--sidebar-foreground); }
+.k-sidebar__item svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+.k-sidebar__item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-sidebar__sublist {
+  list-style: none; margin-top: 0.125rem;
+  border-left-width: 1px; border-left-color: var(--sidebar-border);
+  padding-left: 0.75rem; margin-inline-start: 1rem;
+}
+.k-sidebar__sublist > li + li { margin-top: 0.125rem; }
+.k-sidebar__subitem { padding-block: 0.375rem; font-size: 0.8125rem; }
+.k-sidebar__footer { flex-shrink: 0; border-top-width: 1px; border-top-color: var(--sidebar-border); }
+.k-sidebar__clinic { padding: 0.75rem 1rem; }
+.k-sidebar__clinic-label {
+  font-size: 0.6875rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.025em; color: var(--sidebar-muted-foreground);
+}
+.k-sidebar__clinic-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.875rem; font-weight: 500;
+}
+.k-sidebar__logout {
+  border-top-width: 1px; border-top-color: var(--sidebar-border); padding: 0.5rem;
+}
+.k-sidebar__logout .k-sidebar__item { width: 100%; }
+
+/* Header (_shell/app-header.tsx) */
+.k-header {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; height: var(--app-header-height); flex-shrink: 0;
+  align-items: center; gap: 0.5rem;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+  background-color: var(--surface); padding-inline: 0.5rem;
+}
+@media (min-width: 40rem) { .k-header { padding-inline: 1rem; } }
+.k-header__crumbs {
+  display: flex; min-width: 0; align-items: center; gap: 0.25rem;
+  font-size: 0.875rem; line-height: 1.25rem;
+}
+.k-header__clinic, .k-header__sep { display: none; }
+@media (min-width: 40rem) {
+  .k-header__clinic {
+    display: inline; max-width: 14rem; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground);
+  }
+  .k-header__sep { display: inline; width: 0.875rem; height: 0.875rem; flex-shrink: 0; color: var(--muted-foreground); }
+}
+.k-header__section { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.k-header__actions { margin-inline-start: auto; display: flex; align-items: center; gap: 0.5rem; }
+/* Gatilho da navegação no mobile (MobileNavigation) */
+.k-header__nav-trigger { display: inline-flex; }
+@media (min-width: 64rem) { .k-header__nav-trigger { display: none; } }
+
+/* ------------------------------------------------------------------ */
+/* 5. CROMO DESTA PÁGINA — só documentação, NÃO use em mockups         */
+/* ------------------------------------------------------------------ */
+
+.doc { max-width: 72rem; margin-inline: auto; padding: 1.5rem 1rem 6rem; }
+.doc__note {
+  border-radius: var(--radius-lg); border-width: 1px;
+  border-color: color-mix(in oklab, var(--warning) 40%, transparent);
+  background-color: color-mix(in oklab, var(--warning) 12%, transparent);
+  padding: 1rem 1.25rem;
+}
+.doc__note h1 { font-size: 1rem; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 0.5rem; }
+.doc__note p { font-size: 0.875rem; line-height: 1.4rem; }
+.doc__note p + p { margin-top: 0.5rem; }
+.doc__note ul { margin: 0.5rem 0 0 1.1rem; font-size: 0.875rem; line-height: 1.4rem; }
+.doc__note code, .doc code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125em;
+  background-color: var(--muted); color: var(--foreground);
+  border-radius: var(--radius-sm); padding: 0.05rem 0.3rem;
+}
+.doc__bar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+  background-color: var(--surface); padding: 0.625rem 1rem;
+}
+.doc__bar strong { font-size: 0.875rem; font-weight: 600; }
+.doc__bar-spacer { margin-inline-start: auto; }
+.doc section { margin-top: 2.5rem; }
+.doc h2 {
+  font-size: 1.125rem; font-weight: 600; letter-spacing: -0.025em;
+  padding-bottom: 0.5rem; margin-bottom: 1rem;
+  border-bottom-width: 1px; border-bottom-color: var(--border);
+}
+.doc h3 { font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground); margin-bottom: 0.625rem; }
+.doc h2 .doc__src, .doc h3 .doc__src { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.doc__src { font-size: 0.75rem; color: var(--muted-foreground); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.doc__block { margin-top: 1.25rem; }
+.doc__row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.doc__panel {
+  border-radius: var(--radius-lg); border-width: 1px; border-color: var(--border);
+  background-color: var(--surface); padding: 1rem;
+}
+.doc__grid2 { display: grid; gap: 1rem; }
+@media (min-width: 56rem) { .doc__grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.doc__swatches { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.doc__swatch {
+  display: flex; align-items: center; gap: 0.625rem;
+  border-radius: var(--radius-md); border-width: 1px; border-color: var(--border);
+  background-color: var(--surface); padding: 0.5rem;
+}
+.doc__chip {
+  width: 2.25rem; height: 2.25rem; flex-shrink: 0;
+  border-radius: var(--radius-sm); border-width: 1px; border-color: var(--border);
+  background-image: linear-gradient(45deg, color-mix(in oklab, var(--muted-foreground) 20%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in oklab, var(--muted-foreground) 20%, transparent) 75%),
+                    linear-gradient(45deg, color-mix(in oklab, var(--muted-foreground) 20%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in oklab, var(--muted-foreground) 20%, transparent) 75%);
+  background-size: 0.5rem 0.5rem;
+  background-position: 0 0, 0.25rem 0.25rem;
+}
+.doc__chip span { display: block; width: 100%; height: 100%; border-radius: calc(var(--radius-sm) - 1px); }
+.doc__swatch-text { min-width: 0; }
+.doc__swatch-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; font-weight: 600; }
+.doc__swatch-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.6875rem; color: var(--muted-foreground); word-break: break-all; }
+.doc__frame {
+  border-radius: var(--radius-lg); border-width: 1px; border-color: var(--border);
+  overflow: hidden; height: 30rem;
+}
+.doc__frame .k-shell { min-height: 100%; height: 100%; }
+@media (min-width: 64rem) { .doc__frame .k-shell, .doc__frame .k-shell__sidebar-slot, .doc__frame .k-shell__main-col { height: 100%; } }
+.doc__list { margin-left: 1.1rem; font-size: 0.875rem; line-height: 1.5rem; }
+.doc__list li + li { margin-top: 0.5rem; }
+.doc__missing {
+  border-radius: var(--radius-lg); border-width: 1px;
+  border-color: color-mix(in oklab, var(--destructive) 30%, transparent);
+  background-color: color-mix(in oklab, var(--destructive) 5%, transparent);
+  padding: 1rem 1.25rem;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ================================================================= -->
+<!-- Barra deste kit (não faz parte do produto)                        -->
+<!-- ================================================================= -->
+<div class="doc__bar">
+  <strong>Kit de mockup — CRM Clínicas</strong>
+  <span class="doc__src">docs/design/kit.html</span>
+  <span class="doc__bar-spacer"></span>
+  <button class="k-btn k-btn--outline k-btn--size-sm" type="button" id="theme-toggle" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    <span id="theme-toggle-label">Tema: claro</span>
+  </button>
+</div>
+
+<div class="doc">
+
+  <!-- =============================================================== -->
+  <!-- Nota de uso                                                     -->
+  <!-- =============================================================== -->
+  <div class="doc__note" role="note">
+    <h1>Como usar este arquivo</h1>
+    <p>
+      Este arquivo é a <strong>base para mockups de tela</strong> do CRM Clínicas.
+      Todo mockup feito a partir dele usa <strong>apenas</strong>:
+    </p>
+    <ul>
+      <li>os <strong>tokens</strong> declarados em <code>src/app/globals.css</code> (as variáveis CSS copiadas na seção 1 do <code>&lt;style&gt;</code>);</li>
+      <li>as <strong>réplicas dos componentes que já existem</strong> em <code>src/shared/ui/</code> e no shell de <code>src/app/(clinic)/app/</code>, reproduzidas abaixo.</li>
+    </ul>
+    <p>
+      <strong>Qualquer coisa fora disso é pedido de componente novo</strong> — não é
+      mockup. Cor literal (<code>#hex</code>, <code>rgb()</code>, um <code>oklch()</code> que
+      não esteja nesta lista), espaçamento ou raio fora das escalas usadas aqui,
+      ícone que não seja lucide, ou um bloco visual que nenhum componente
+      existente produz: tudo isso vira, explicitamente, uma proposta de novo
+      componente ou de novo token — a ser discutida e aprovada antes de virar
+      código, conforme a <a href="../adr/ADR-011-design-system-e-acessibilidade.md">ADR-011</a>.
+    </p>
+    <p>
+      Se um mockup não consegue ser montado só com o que está aqui, isso é um
+      achado — registre a lacuna em vez de aproximar com CSS solto.
+      Ver também a seção <a href="#registro">Registro de divergências e lacunas</a>.
+    </p>
+    <p>
+      Acessibilidade não é opcional no mockup: cor nunca é o único portador de
+      informação, todo campo tem rótulo real vinculado, e todo estado (vazio,
+      erro, carregando, sem acesso) tem texto. Os componentes abaixo já vêm com
+      esses papéis ARIA — mantenha-os ao copiar.
+    </p>
+  </div>
+
+  <!-- =============================================================== -->
+  <!-- Tokens                                                          -->
+  <!-- =============================================================== -->
+  <section id="tokens">
+    <h2>1. Tokens <span class="doc__src">src/app/globals.css</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Os valores exibidos são os do <em>tema atualmente ativo</em> — use o botão
+      “Tema” na barra superior para ver o outro. Ambos os conjuntos estão no
+      <code>&lt;style&gt;</code> deste arquivo (<code>:root</code> e <code>.dark</code>).
+      Em mockup, referencie sempre <code>var(--token)</code>, nunca o valor OKLCH copiado.
+    </p>
+
+    <div class="doc__block">
+      <h3>Superfícies e texto</h3>
+      <div class="doc__swatches" data-tokens="background,foreground,canvas,surface,surface-subtle,muted,muted-foreground,border,input"></div>
+    </div>
+
+    <div class="doc__block">
+      <h3>Ação e marca</h3>
+      <div class="doc__swatches" data-tokens="primary,primary-foreground,secondary,secondary-foreground,accent,accent-foreground,accent-strong,ring"></div>
+    </div>
+
+    <div class="doc__block">
+      <h3>Semântica de estado</h3>
+      <div class="doc__swatches" data-tokens="success,success-strong,warning,warning-strong,destructive,destructive-foreground"></div>
+    </div>
+
+    <div class="doc__block">
+      <h3>Shell (sidebar)</h3>
+      <div class="doc__swatches" data-tokens="sidebar,sidebar-foreground,sidebar-muted-foreground,sidebar-border,sidebar-hover,sidebar-active,sidebar-ring"></div>
+    </div>
+
+    <div class="doc__block">
+      <h3>Etapas do pipeline <span class="doc__src">acento discreto; nunca o único sinal de estado</span></h3>
+      <div class="doc__swatches" data-tokens="stage-1,stage-2,stage-3,stage-4,stage-5,stage-6,stage-7,stage-won,stage-lost"></div>
+    </div>
+
+    <div class="doc__block">
+      <h3>Raio e medidas</h3>
+      <div class="doc__panel" style="font-size:.875rem;line-height:1.6rem">
+        <p><code>--radius: 0.5rem</code> — base.</p>
+        <p><code>--radius-sm: calc(var(--radius) - 3px)</code> · <code>--radius-md: calc(var(--radius) - 1px)</code> · <code>--radius-lg: var(--radius)</code> · <code>--radius-xl: calc(var(--radius) + 4px)</code></p>
+        <p><code>--app-header-height: 3.25rem</code> — altura do header e da faixa de marca da sidebar; também é a origem do <code>sticky</code> do <code>PageToolbar</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Button                                                          -->
+  <!-- =============================================================== -->
+  <section id="button">
+    <h2>2. Button <span class="doc__src">src/shared/ui/button.tsx</span></h2>
+
+    <div class="doc__panel doc__block">
+      <h3>Variantes <span class="doc__src">size=default</span></h3>
+      <div class="doc__row">
+        <button class="k-btn k-btn--default k-btn--size-default" type="button">Salvar</button>
+        <button class="k-btn k-btn--destructive k-btn--size-default" type="button">Excluir</button>
+        <button class="k-btn k-btn--outline k-btn--size-default" type="button">Cancelar</button>
+        <button class="k-btn k-btn--secondary k-btn--size-default" type="button">Duplicar</button>
+        <button class="k-btn k-btn--ghost k-btn--size-default" type="button">Descartar</button>
+        <button class="k-btn k-btn--link k-btn--size-default" type="button">Saiba mais</button>
+      </div>
+    </div>
+
+    <div class="doc__panel doc__block">
+      <h3>Tamanhos <span class="doc__src">variant=default · sm · lg · icon</span></h3>
+      <div class="doc__row">
+        <button class="k-btn k-btn--default k-btn--size-sm" type="button">sm</button>
+        <button class="k-btn k-btn--default k-btn--size-default" type="button">default</button>
+        <button class="k-btn k-btn--default k-btn--size-lg" type="button">lg</button>
+        <button class="k-btn k-btn--default k-btn--size-icon" type="button" aria-label="Fechar painel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+        <button class="k-btn k-btn--outline k-btn--size-icon" type="button" aria-label="Fechar painel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+        <button class="k-btn k-btn--ghost k-btn--size-icon" type="button" aria-label="Fechar painel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="doc__panel doc__block">
+      <h3>Com ícone e desabilitado</h3>
+      <div class="doc__row">
+        <button class="k-btn k-btn--default k-btn--size-sm" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Nova oportunidade
+        </button>
+        <button class="k-btn k-btn--outline k-btn--size-sm" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+          Filtros
+        </button>
+        <button class="k-btn k-btn--default k-btn--size-default" type="button" disabled>Desabilitado</button>
+        <button class="k-btn k-btn--outline k-btn--size-default" type="button" disabled>Desabilitado</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- StatusBadge                                                     -->
+  <!-- =============================================================== -->
+  <section id="status-badge">
+    <h2>3. StatusBadge <span class="doc__src">src/shared/ui/status-badge.tsx</span></h2>
+    <div class="doc__panel doc__block">
+      <h3>Tons</h3>
+      <div class="doc__row">
+        <span class="k-badge k-badge--neutral"><span>Sem responsável</span></span>
+        <span class="k-badge k-badge--accent"><span>Em atendimento</span></span>
+        <span class="k-badge k-badge--success"><span>Ganho</span></span>
+        <span class="k-badge k-badge--warning"><span>Sem resposta</span></span>
+        <span class="k-badge k-badge--danger"><span>Perdido</span></span>
+      </div>
+    </div>
+    <div class="doc__panel doc__block">
+      <h3>Com ponto de acento <span class="doc__src">prop accent — cor de etapa; o texto continua sendo o portador da informação</span></h3>
+      <div class="doc__row">
+        <span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color: var(--stage-1)"></span><span>Novo lead</span></span>
+        <span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color: var(--stage-3)"></span><span>Avaliação agendada</span></span>
+        <span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color: var(--stage-5)"></span><span>Proposta enviada</span></span>
+        <span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color: var(--stage-won)"></span><span>Fechado</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- MetricCard                                                      -->
+  <!-- =============================================================== -->
+  <section id="metric-card">
+    <h2>4. MetricCard / MetricGrid <span class="doc__src">src/app/(clinic)/app/_dashboard/metric-card.tsx</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      A grade é um <code>&lt;dl&gt;</code> com <code>aria-label</code>; cada cartão é um par
+      <code>dt</code>/<code>dd</code>. Quando o dado não existe, o valor é <code>—</code>
+      e o motivo vai em <code>hint</code> — nunca um zero inventado.
+    </p>
+    <dl class="k-metric-grid" aria-label="Indicadores do período">
+      <div class="k-metric">
+        <dt class="k-metric__label">Leads no período</dt>
+        <dd style="min-width:0">
+          <span class="k-metric__value k-metric__value--neutral">128</span>
+          <span class="k-metric__detail">+12 vs. período anterior</span>
+        </dd>
+      </div>
+      <div class="k-metric">
+        <dt class="k-metric__label">Em atendimento</dt>
+        <dd style="min-width:0">
+          <span class="k-metric__value k-metric__value--accent">34</span>
+          <span class="k-metric__detail">8 sem resposta há 48h</span>
+        </dd>
+      </div>
+      <div class="k-metric">
+        <dt class="k-metric__label">Receita ganha</dt>
+        <dd style="min-width:0">
+          <span class="k-metric__value k-metric__value--success">
+            <span aria-hidden="true">R$ 48,2 mil</span>
+            <span class="sr-only">quarenta e oito mil e duzentos reais</span>
+          </span>
+          <span class="k-metric__detail">9 oportunidades</span>
+        </dd>
+      </div>
+      <div class="k-metric">
+        <dt class="k-metric__label">Tempo até 1º contato</dt>
+        <dd style="min-width:0">
+          <span class="k-metric__value k-metric__value--neutral">—</span>
+          <span class="k-metric__hint">Sem dados suficientes no período selecionado.</span>
+        </dd>
+      </div>
+    </dl>
+    <div class="doc__block" style="max-width:20rem">
+      <h3>Tons restantes</h3>
+      <dl class="k-metric-grid" aria-label="Exemplos de tom">
+        <div class="k-metric">
+          <dt class="k-metric__label">Atrasados</dt>
+          <dd style="min-width:0"><span class="k-metric__value k-metric__value--warning">7</span></dd>
+        </div>
+        <div class="k-metric">
+          <dt class="k-metric__label">Perdidos</dt>
+          <dd style="min-width:0"><span class="k-metric__value k-metric__value--danger">3</span></dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Drawer ("SidePanel")                                            -->
+  <!-- =============================================================== -->
+  <section id="drawer">
+    <h2>5. Drawer — o painel lateral do projeto <span class="doc__src">src/shared/ui/drawer.tsx</span></h2>
+    <div class="doc__missing doc__block" role="note">
+      <p style="font-size:.875rem;line-height:1.4rem">
+        <strong>Não existe um componente chamado <code>SidePanel</code> em <code>src/shared/ui/</code>.</strong>
+        O painel lateral do projeto é o <code>Drawer</code>, replicado aqui. Ele é um
+        <code>&lt;dialog&gt;</code> nativo aberto com <code>showModal()</code>: o navegador
+        cuida do foco preso, da pilha de camadas e do Escape; o gatilho recupera o
+        foco ao fechar. Se o pedido de mockup for por um painel <em>não modal</em>
+        (ancorado, sem backdrop, conteúdo da página ainda operável), isso é um
+        <strong>componente novo</strong>, não o <code>Drawer</code>.
+      </p>
+    </div>
+    <div class="doc__panel doc__block">
+      <div class="doc__row">
+        <button class="k-btn k-btn--default k-btn--size-default" type="button" data-drawer-open="drawer-right" aria-haspopup="dialog" aria-expanded="false">
+          Abrir painel (side=right)
+        </button>
+        <button class="k-btn k-btn--outline k-btn--size-default" type="button" data-drawer-open="drawer-left" aria-haspopup="dialog" aria-expanded="false">
+          Abrir painel (side=left)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Estados                                                         -->
+  <!-- =============================================================== -->
+  <section id="estados">
+    <h2>6. Estados de tela</h2>
+    <div class="doc__grid2">
+      <div>
+        <h3>EmptyState <span class="doc__src">empty-state.tsx · role=status</span></h3>
+        <section class="k-state k-state--empty" role="status" aria-live="polite">
+          <h2 class="k-state__title">Nenhuma oportunidade neste filtro</h2>
+          <p class="k-state__description">Ajuste os filtros ou cadastre a primeira oportunidade deste pipeline.</p>
+          <div class="k-state__action">
+            <button class="k-btn k-btn--default k-btn--size-sm" type="button">Nova oportunidade</button>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <h3>ErrorState <span class="doc__src">error-state.tsx · role=alert</span></h3>
+        <section class="k-state k-state--error" role="alert">
+          <h2 class="k-state__title">Não foi possível carregar as oportunidades</h2>
+          <p class="k-state__description">Tente novamente em alguns instantes. Se o problema continuar, fale com o suporte da clínica.</p>
+          <div class="k-state__action">
+            <button class="k-btn k-btn--outline k-btn--size-sm" type="button">Tentar novamente</button>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <h3>AccessDeniedState <span class="doc__src">access-denied-state.tsx · apenas UX</span></h3>
+        <section class="k-state k-state--denied" role="status" aria-live="polite">
+          <h2 class="k-state__title">Você não tem acesso a esta área</h2>
+          <p class="k-state__description">Peça a quem administra a clínica para revisar suas permissões.</p>
+          <div class="k-state__action">
+            <button class="k-btn k-btn--outline k-btn--size-sm" type="button">Voltar à visão geral</button>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <h3>LoadingState <span class="doc__src">loading-state.tsx + skeleton.tsx</span></h3>
+        <div class="k-loading" role="status" aria-busy="true" aria-label="Carregando…">
+          <div class="k-skeleton k-loading__title" aria-hidden="true"></div>
+          <div class="k-skeleton k-loading__row" aria-hidden="true"></div>
+          <div class="k-skeleton k-loading__row" aria-hidden="true"></div>
+          <div class="k-skeleton k-loading__row" aria-hidden="true"></div>
+          <span class="sr-only">Carregando…</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- DataTable                                                       -->
+  <!-- =============================================================== -->
+  <section id="data-table">
+    <h2>7. DataTable <span class="doc__src">src/shared/ui/data-table.tsx</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Cabeçalho fixo, rolagem horizontal contida no próprio bloco — o corpo da
+      página nunca rola na horizontal. Nome acessível via <code>aria-label</code>.
+      Dados abaixo são fictícios, só para dimensionar o layout.
+    </p>
+    <div class="k-table-wrap scroll-slim">
+      <table class="k-table" aria-label="Oportunidades do pipeline">
+        <thead>
+          <tr>
+            <th scope="col">Contato</th>
+            <th scope="col">Etapa</th>
+            <th scope="col">Responsável</th>
+            <th scope="col">Origem</th>
+            <th scope="col">Valor</th>
+            <th scope="col">Atualizado</th>
+            <th scope="col"><span class="sr-only">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top-width:1px;border-top-color:var(--border)">
+            <td>Ana Ribeiro</td>
+            <td><span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color:var(--stage-1)"></span><span>Novo lead</span></span></td>
+            <td>Camila S.</td>
+            <td>WhatsApp</td>
+            <td style="font-variant-numeric:tabular-nums">R$ 3.200,00</td>
+            <td style="color:var(--muted-foreground)">há 12 min</td>
+            <td><button class="k-btn k-btn--ghost k-btn--size-sm" type="button">Abrir</button></td>
+          </tr>
+          <tr style="border-top-width:1px;border-top-color:var(--border)">
+            <td>Bruno Tavares</td>
+            <td><span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color:var(--stage-3)"></span><span>Avaliação agendada</span></span></td>
+            <td>Rafael M.</td>
+            <td>Instagram</td>
+            <td style="font-variant-numeric:tabular-nums">R$ 8.900,00</td>
+            <td style="color:var(--muted-foreground)">há 2 h</td>
+            <td><button class="k-btn k-btn--ghost k-btn--size-sm" type="button">Abrir</button></td>
+          </tr>
+          <tr style="border-top-width:1px;border-top-color:var(--border)">
+            <td>Carla Nogueira</td>
+            <td><span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color:var(--stage-5)"></span><span>Proposta enviada</span></span></td>
+            <td>—</td>
+            <td>Site</td>
+            <td style="font-variant-numeric:tabular-nums">R$ 12.400,00</td>
+            <td style="color:var(--muted-foreground)">ontem</td>
+            <td><button class="k-btn k-btn--ghost k-btn--size-sm" type="button">Abrir</button></td>
+          </tr>
+          <tr style="border-top-width:1px;border-top-color:var(--border)">
+            <td>Diego Farias</td>
+            <td><span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color:var(--stage-lost)"></span><span>Perdido</span></span></td>
+            <td>Camila S.</td>
+            <td>Indicação</td>
+            <td style="font-variant-numeric:tabular-nums">R$ 2.100,00</td>
+            <td style="color:var(--muted-foreground)">3 dias</td>
+            <td><button class="k-btn k-btn--ghost k-btn--size-sm" type="button">Abrir</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Tabs                                                            -->
+  <!-- =============================================================== -->
+  <section id="tabs">
+    <h2>8. Tabs <span class="doc__src">src/shared/ui/tabs.tsx</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Padrão ARIA completo: <code>tablist</code> com foco itinerante (setas,
+      Home/End) e apenas o painel ativo montado. O rótulo do conjunto é
+      obrigatório (<code>label</code>) — nunca fica implícito.
+    </p>
+    <div class="k-tabs" data-tabs>
+      <div class="k-tabs__list scroll-slim" role="tablist" aria-label="Detalhes da oportunidade">
+        <button class="k-tabs__tab" type="button" role="tab" id="t-1" aria-controls="p-1" aria-selected="true" tabindex="0">Resumo</button>
+        <button class="k-tabs__tab" type="button" role="tab" id="t-2" aria-controls="p-2" aria-selected="false" tabindex="-1">
+          Conversas <span class="k-tabs__count">4</span>
+        </button>
+        <button class="k-tabs__tab" type="button" role="tab" id="t-3" aria-controls="p-3" aria-selected="false" tabindex="-1">
+          Tarefas <span class="k-tabs__count">2</span>
+        </button>
+        <button class="k-tabs__tab" type="button" role="tab" id="t-4" aria-controls="p-4" aria-selected="false" tabindex="-1">Histórico</button>
+      </div>
+      <div class="k-tabs__panel" role="tabpanel" id="p-1" aria-labelledby="t-1" tabindex="0">
+        <div class="doc__panel">Conteúdo do painel “Resumo”.</div>
+      </div>
+      <div class="k-tabs__panel" role="tabpanel" id="p-2" aria-labelledby="t-2" tabindex="0" hidden>
+        <div class="doc__panel">Conteúdo do painel “Conversas”.</div>
+      </div>
+      <div class="k-tabs__panel" role="tabpanel" id="p-3" aria-labelledby="t-3" tabindex="0" hidden>
+        <div class="doc__panel">Conteúdo do painel “Tarefas”.</div>
+      </div>
+      <div class="k-tabs__panel" role="tabpanel" id="p-4" aria-labelledby="t-4" tabindex="0" hidden>
+        <div class="doc__panel">Conteúdo do painel “Histórico”.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- SearchField + FilterPopover                                     -->
+  <!-- =============================================================== -->
+  <section id="busca-filtros">
+    <h2>9. SearchField e FilterPopover <span class="doc__src">search-field.tsx · filter-popover.tsx</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Ambos vivem dentro do mesmo <code>form method="get"</code>: a busca e os
+      filtros viram query string e a filtragem acontece no servidor. Os campos do
+      popover ficam sempre montados (apenas ocultos) para continuarem sendo
+      enviados. O rótulo da busca é vinculado, mesmo quando visualmente oculto.
+    </p>
+    <div class="doc__panel">
+      <form method="get" action="#busca-filtros" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem">
+        <div class="k-search">
+          <div class="k-search__field">
+            <label class="sr-only" for="kit-q">Pesquisar</label>
+            <div class="k-search__box">
+              <svg class="k-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input class="k-search__input" id="kit-q" name="q" type="search" maxlength="160" placeholder="Buscar por nome ou telefone">
+            </div>
+          </div>
+          <button class="k-btn k-btn--outline k-btn--size-sm" type="submit">Buscar</button>
+        </div>
+
+        <div class="k-filter" data-filter>
+          <button class="k-btn k-btn--outline k-btn--size-sm" type="button" data-filter-trigger aria-expanded="false" aria-controls="kit-filter-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+            Filtros
+            <span class="k-filter__count">2</span>
+          </button>
+          <div class="k-filter__panel" id="kit-filter-panel" hidden>
+            <div class="k-filter__fields">
+              <div class="k-field">
+                <div class="k-field__top">
+                  <label class="k-field__label" for="kit-stage">Etapa</label>
+                </div>
+                <select class="k-select" id="kit-stage" name="stage">
+                  <option>Todas</option>
+                  <option>Novo lead</option>
+                  <option>Avaliação agendada</option>
+                  <option>Proposta enviada</option>
+                </select>
+              </div>
+              <div class="k-field">
+                <div class="k-field__top">
+                  <label class="k-field__label" for="kit-owner">Responsável</label>
+                </div>
+                <select class="k-select" id="kit-owner" name="owner">
+                  <option>Todos</option>
+                  <option>Camila S.</option>
+                  <option>Rafael M.</option>
+                </select>
+              </div>
+            </div>
+            <div class="k-filter__footer">
+              <button class="k-btn k-btn--ghost k-btn--size-sm" type="button">Limpar</button>
+              <button class="k-btn k-btn--default k-btn--size-sm" type="submit">Aplicar</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- FormField                                                       -->
+  <!-- =============================================================== -->
+  <section id="form-field">
+    <h2>10. FormField <span class="doc__src">src/shared/ui/form-field.tsx</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Rótulo real vinculado ao controle, ajuda contextual e erro anunciado. O erro
+      nunca é comunicado só por cor: há texto, <code>aria-invalid</code> e
+      <code>aria-describedby</code> apontando para <code>{id}-help</code> e
+      <code>{id}-error</code>, nesta ordem.
+    </p>
+    <div class="doc__panel" style="max-width:34rem">
+      <form style="display:grid;gap:1rem" onsubmit="return false">
+        <div class="k-field">
+          <div class="k-field__top">
+            <label class="k-field__label" for="kit-name">
+              Nome do contato<span class="k-field__required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span>
+            </label>
+          </div>
+          <input class="k-input" id="kit-name" name="name" type="text" aria-describedby="kit-name-help" placeholder="Nome completo">
+          <p class="k-field__help" id="kit-name-help">Como o paciente prefere ser chamado.</p>
+        </div>
+
+        <div class="k-field">
+          <div class="k-field__top">
+            <label class="k-field__label" for="kit-phone">Telefone</label>
+            <span class="k-field__hint">formato internacional</span>
+          </div>
+          <input class="k-input" id="kit-phone" name="phone" type="tel" value="+55 11 9" aria-invalid="true" aria-describedby="kit-phone-help kit-phone-error">
+          <p class="k-field__help" id="kit-phone-help">Guardado em E.164; a exibição amigável é da interface.</p>
+          <p class="k-field__error" id="kit-phone-error">Informe o número completo com DDD.</p>
+        </div>
+
+        <div class="k-field">
+          <div class="k-field__top">
+            <label class="k-field__label" for="kit-source">Origem</label>
+          </div>
+          <select class="k-select" id="kit-source" name="source">
+            <option>WhatsApp</option>
+            <option>Instagram</option>
+            <option>Site</option>
+            <option>Indicação</option>
+          </select>
+        </div>
+
+        <div class="k-field">
+          <div class="k-field__top">
+            <label class="k-field__label" for="kit-notes">Observações</label>
+            <span class="k-field__hint">opcional</span>
+          </div>
+          <textarea class="k-textarea" id="kit-notes" name="notes" rows="3" placeholder="Contexto relevante do atendimento"></textarea>
+        </div>
+
+        <fieldset class="k-fieldset">
+          <legend>Preferência de contato</legend>
+          <p class="k-fieldset__description">Usada para escolher o canal do primeiro retorno.</p>
+          <div style="display:grid;gap:.5rem">
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.875rem">
+              <input type="radio" name="pref" checked> WhatsApp
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.875rem">
+              <input type="radio" name="pref"> Ligação
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="k-field">
+          <div class="k-field__top">
+            <label class="k-field__label" for="kit-disabled">Pipeline</label>
+          </div>
+          <input class="k-input" id="kit-disabled" value="Pipeline padrão" disabled>
+        </div>
+
+        <div style="display:flex;gap:.5rem;justify-content:flex-end">
+          <button class="k-btn k-btn--ghost k-btn--size-default" type="button">Cancelar</button>
+          <button class="k-btn k-btn--default k-btn--size-default" type="submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Shell                                                           -->
+  <!-- =============================================================== -->
+  <section id="shell">
+    <h2>11. Shell autenticado <span class="doc__src">src/app/(clinic)/app/layout.tsx · _shell/*</span></h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      Sidebar de <code>15rem</code> (só a partir de <code>lg</code>, 64rem; abaixo disso ela
+      vive dentro do drawer aberto pelo botão do header), header de
+      <code>var(--app-header-height)</code> com trilha de navegação, e a área de
+      conteúdo com <code>PageToolbar</code> fixo. Os itens de navegação são
+      exatamente os declarados em <code>layout.tsx</code> — áreas ainda não entregues
+      não aparecem.
+    </p>
+
+    <div class="doc__frame">
+      <div class="k-shell">
+        <a class="k-skip" href="#kit-main-content">Ir para o conteúdo</a>
+
+        <!-- Sidebar (desktop) -->
+        <div class="k-shell__sidebar-slot">
+          <div class="k-sidebar">
+            <div class="k-sidebar__brand">
+              <span class="k-sidebar__mark" aria-hidden="true">CC</span>
+              <span class="k-sidebar__name">CRM Clínicas</span>
+            </div>
+
+            <nav class="k-sidebar__nav k-sidebar__nav--main scroll-slim" aria-label="Navegação principal">
+              <ul class="k-sidebar__list">
+                <li>
+                  <a class="k-sidebar__item" href="#shell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span>Visão geral</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="k-sidebar__item" href="#shell" aria-current="page">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>
+                    <span>Pipeline</span>
+                  </a>
+                  <ul class="k-sidebar__sublist">
+                    <li><a class="k-sidebar__item k-sidebar__subitem" href="#shell"><span>Pipeline padrão</span></a></li>
+                  </ul>
+                </li>
+                <li>
+                  <a class="k-sidebar__item" href="#shell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+                    <span>Todos os leads</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="k-sidebar__item" href="#shell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Contatos</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="k-sidebar__item" href="#shell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                    <span>Equipe</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="k-sidebar__item" href="#shell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span>Configurações</span>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+
+            <div class="k-sidebar__footer">
+              <div class="k-sidebar__clinic">
+                <p class="k-sidebar__clinic-label">Clínica ativa</p>
+                <p class="k-sidebar__clinic-name">Clínica Exemplo</p>
+              </div>
+              <nav class="k-sidebar__nav k-sidebar__nav--account" aria-label="Conta e sessão">
+                <ul class="k-sidebar__list">
+                  <li>
+                    <a class="k-sidebar__item" href="#shell">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                      <span>Conta</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a class="k-sidebar__item" href="#shell">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                      <span>Segurança</span>
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+              <div class="k-sidebar__logout">
+                <button class="k-sidebar__item" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna principal -->
+        <div class="k-shell__main-col">
+          <header class="k-header">
+            <button class="k-btn k-btn--ghost k-btn--size-icon k-header__nav-trigger" type="button" aria-label="Abrir navegação" aria-haspopup="dialog" aria-expanded="false" data-drawer-open="drawer-nav">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+            <nav class="k-header__crumbs" aria-label="Trilha de navegação">
+              <span class="k-header__clinic">Clínica Exemplo</span>
+              <svg class="k-header__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              <span class="k-header__section" aria-current="page">Pipeline</span>
+            </nav>
+            <div class="k-header__actions">
+              <span class="k-badge k-badge--accent"><span>Modo demonstração</span></span>
+            </div>
+          </header>
+
+          <main class="k-shell__content scroll-slim" id="kit-main-content">
+            <div class="k-toolbar">
+              <div class="k-toolbar__row">
+                <div class="k-toolbar__main">
+                  <div class="k-toolbar__title-row">
+                    <h1 class="k-toolbar__title">Pipeline padrão</h1>
+                    <span class="k-badge k-badge--neutral"><span>Quadro</span></span>
+                  </div>
+                  <p class="k-toolbar__description">Oportunidades abertas da clínica, por etapa.</p>
+                </div>
+                <div class="k-toolbar__meta">
+                  <p class="k-toolbar-metric">
+                    <span class="k-toolbar-metric__label">Abertas</span>
+                    <span class="k-toolbar-metric__value">42</span>
+                  </p>
+                  <p class="k-toolbar-metric">
+                    <span class="k-toolbar-metric__label">Valor</span>
+                    <span class="k-toolbar-metric__value">R$ 186.400,00</span>
+                  </p>
+                </div>
+                <div class="k-toolbar__actions">
+                  <button class="k-btn k-btn--outline k-btn--size-sm" type="button">Exportar</button>
+                  <button class="k-btn k-btn--default k-btn--size-sm" type="button">Nova oportunidade</button>
+                </div>
+              </div>
+              <div class="k-toolbar__filters">
+                <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem">
+                  <div class="k-search">
+                    <div class="k-search__field">
+                      <label class="sr-only" for="shell-q">Pesquisar</label>
+                      <div class="k-search__box">
+                        <svg class="k-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <input class="k-search__input" id="shell-q" name="q" type="search" placeholder="Buscar oportunidade">
+                      </div>
+                    </div>
+                    <button class="k-btn k-btn--outline k-btn--size-sm" type="button">Buscar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:1rem;display:grid;gap:1rem">
+              <dl class="k-metric-grid" aria-label="Indicadores do pipeline">
+                <div class="k-metric">
+                  <dt class="k-metric__label">Novos hoje</dt>
+                  <dd style="min-width:0"><span class="k-metric__value k-metric__value--neutral">6</span></dd>
+                </div>
+                <div class="k-metric">
+                  <dt class="k-metric__label">Sem resposta</dt>
+                  <dd style="min-width:0"><span class="k-metric__value k-metric__value--warning">8</span></dd>
+                </div>
+                <div class="k-metric">
+                  <dt class="k-metric__label">Ganhos no mês</dt>
+                  <dd style="min-width:0"><span class="k-metric__value k-metric__value--success">9</span></dd>
+                </div>
+                <div class="k-metric">
+                  <dt class="k-metric__label">Ticket médio</dt>
+                  <dd style="min-width:0"><span class="k-metric__value k-metric__value--neutral">R$ 5.350</span></dd>
+                </div>
+              </dl>
+
+              <section class="k-state k-state--empty" role="status" aria-live="polite">
+                <h2 class="k-state__title">Área de conteúdo</h2>
+                <p class="k-state__description">Aqui entra o conteúdo da tela — quadro, tabela, formulário. Monte-o com os componentes das seções acima.</p>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- Registro                                                        -->
+  <!-- =============================================================== -->
+  <section id="registro">
+    <h2>12. Registro de divergências e lacunas</h2>
+    <p style="font-size:.875rem;color:var(--muted-foreground);margin-bottom:1rem">
+      O que não deu para replicar fielmente em HTML puro, e o que foi pedido mas
+      não existe no código. Nada aqui foi “aproximado”: está registrado para ser
+      resolvido no lugar certo.
+    </p>
+
+    <div class="doc__missing doc__block">
+      <h3 style="color:inherit">Pedido no briefing, inexistente no código</h3>
+      <ul class="doc__list">
+        <li>
+          <strong><code>SidePanel</code> não existe.</strong> Não há nenhum arquivo com
+          esse nome em <code>src/shared/ui/</code>. O painel lateral do projeto é o
+          <code>Drawer</code> (<code>src/shared/ui/drawer.tsx</code>), replicado na seção 5.
+          Se o mockup precisar de um painel lateral <em>não modal</em>, isso é um
+          componente novo — precisa ser proposto, não improvisado.
+        </li>
+        <li>
+          <strong><code>MetricCard</code> não é de <code>shared/ui</code>.</strong> Ele vive em
+          <code>src/app/(clinic)/app/_dashboard/metric-card.tsx</code>, junto com
+          <code>MetricGrid</code>. Reusá-lo fora do dashboard exige promovê-lo a
+          <code>shared/ui</code> primeiro (ADR-003: módulos só se falam pela interface pública).
+        </li>
+      </ul>
+    </div>
+
+    <div class="doc__panel doc__block">
+      <h3>Replicado visualmente, mas com comportamento simplificado</h3>
+      <ul class="doc__list">
+        <li>
+          <strong>Tabs</strong> — o componente React mantém foco itinerante com
+          <code>roving tabindex</code>, setas, Home/End, e <strong>monta apenas o painel
+          ativo</strong>. Aqui os quatro painéis existem no DOM (os inativos com
+          <code>hidden</code>) e o JS de demonstração cobre clique e setas. Semântica
+          ARIA e aparência são fiéis; a montagem condicional não é.
+        </li>
+        <li>
+          <strong>Drawer</strong> — usa <code>&lt;dialog&gt;</code> + <code>showModal()</code>, igual
+          ao componente, então foco preso, camada e Escape são reais. A devolução de
+          foco ao gatilho está no script; o gerenciamento por <code>useRef</code>/
+          <code>useEffect</code> do React não tem equivalente aqui.
+        </li>
+        <li>
+          <strong>FilterPopover</strong> — abertura, Escape e clique fora estão no
+          script. No componente, os campos permanecem montados dentro do
+          <code>form method="get"</code> que o envolve; no mockup, mantenha-os dentro de um
+          <code>&lt;form&gt;</code> para não perder essa característica.
+        </li>
+        <li>
+          <strong>SidebarNav</strong> — o estado ativo vem de <code>usePathname()</code>. Aqui
+          o item ativo é marcado à mão com <code>aria-current="page"</code>. Em mockup,
+          marque sempre o item da tela que está sendo desenhada.
+        </li>
+        <li>
+          <strong>AppHeader</strong> — o rótulo da seção é derivado da rota por uma
+          tabela em <code>_shell/app-header.tsx</code>. Aqui é texto fixo; use um dos
+          rótulos já existentes naquela tabela em vez de inventar um novo.
+        </li>
+        <li>
+          <strong>Ícones</strong> — são os SVGs do <code>lucide-react</code> usados no
+          projeto, colados inline (mesmos <code>path</code>, <code>viewBox 24</code>,
+          <code>stroke-width 2</code>). Só use ícones que existam no lucide.
+        </li>
+        <li>
+          <strong>Navegação mobile</strong> — <code>_shell/mobile-navigation.tsx</code> coloca a
+          mesma sidebar dentro de um <code>Drawer</code> com <code>side="left"</code>. O botão
+          do header abre uma versão reduzida desse drawer aqui; a instância dupla
+          (desktop + mobile, com prefixos de ID distintos) não é reproduzida.
+        </li>
+      </ul>
+    </div>
+
+    <div class="doc__panel doc__block">
+      <h3>Existe em <code>src/shared/ui/</code>, fora do escopo deste arquivo</h3>
+      <p style="font-size:.875rem;line-height:1.5rem;margin-bottom:.5rem">
+        Não estão replicados aqui, mas <strong>existem</strong> — se o mockup precisar de
+        um deles, o componente já está pronto no código e deve ser lido lá antes de
+        ser desenhado (e, de preferência, acrescentado a este kit):
+      </p>
+      <p style="font-size:.875rem;line-height:1.6rem">
+        <code>actions-menu</code>, <code>clinic-selector</code>, <code>color-indicator</code>,
+        <code>confirm-dialog</code>, <code>controlled-field</code>, <code>duration-input</code>,
+        <code>error-summary</code>, <code>feedback-banner</code>, <code>loading-table</code>,
+        <code>money-input</code>, <code>stage-accent</code>, <code>submit-button</code>,
+        <code>support-mode-banner</code>.
+      </p>
+      <p style="font-size:.875rem;line-height:1.5rem;margin-top:.5rem">
+        Replicados por serem necessários às seções acima, mesmo sem estarem no
+        briefing: <code>skeleton</code> (base do <code>LoadingState</code>),
+        <code>input</code> (controle do <code>FormField</code>) e <code>page-toolbar</code>
+        (barra da área de conteúdo).
+      </p>
+    </div>
+  </section>
+</div>
+
+<!-- ================================================================= -->
+<!-- Drawers (fora do fluxo, como no componente)                       -->
+<!-- ================================================================= -->
+<dialog class="k-drawer k-drawer--right" id="drawer-right" aria-labelledby="drawer-right-title" aria-describedby="drawer-right-desc">
+  <div class="k-drawer__inner">
+    <div class="k-drawer__header">
+      <div style="min-width:0">
+        <h2 class="k-drawer__title" id="drawer-right-title">Detalhes da oportunidade</h2>
+        <p class="k-drawer__description" id="drawer-right-desc">Ana Ribeiro · Pipeline padrão</p>
+      </div>
+      <button class="k-btn k-btn--ghost k-btn--size-icon" type="button" aria-label="Fechar painel" data-drawer-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="k-drawer__body scroll-slim">
+      <div style="display:grid;gap:1rem">
+        <div class="doc__row">
+          <span class="k-badge k-badge--neutral"><span class="k-badge__dot" aria-hidden="true" style="background-color:var(--stage-1)"></span><span>Novo lead</span></span>
+          <span class="k-badge k-badge--accent"><span>WhatsApp</span></span>
+        </div>
+        <div class="k-field">
+          <div class="k-field__top"><label class="k-field__label" for="drawer-owner">Responsável</label></div>
+          <select class="k-select" id="drawer-owner"><option>Camila S.</option><option>Rafael M.</option></select>
+        </div>
+        <div class="k-field">
+          <div class="k-field__top"><label class="k-field__label" for="drawer-note">Nota interna</label></div>
+          <textarea class="k-textarea" id="drawer-note" rows="4" placeholder="Contexto do atendimento"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem">
+          <button class="k-btn k-btn--ghost k-btn--size-sm" type="button" data-drawer-close>Cancelar</button>
+          <button class="k-btn k-btn--default k-btn--size-sm" type="button">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="k-drawer k-drawer--left" id="drawer-left" aria-labelledby="drawer-left-title">
+  <div class="k-drawer__inner">
+    <div class="k-drawer__header">
+      <div style="min-width:0"><h2 class="k-drawer__title" id="drawer-left-title">Painel à esquerda</h2></div>
+      <button class="k-btn k-btn--ghost k-btn--size-icon" type="button" aria-label="Fechar painel" data-drawer-close>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="k-drawer__body scroll-slim">
+      <p style="font-size:.875rem;color:var(--muted-foreground)">
+        <code>side="left"</code> tem largura fixa de <code>17rem</code> — é a medida usada
+        pela navegação no mobile.
+      </p>
+    </div>
+  </div>
+</dialog>
+
+<!-- Navegação mobile: a mesma sidebar dentro de um Drawer side=left. -->
+<dialog class="k-drawer k-drawer--left" id="drawer-nav" aria-label="Navegação">
+  <div class="k-sidebar">
+    <div class="k-sidebar__brand">
+      <span class="k-sidebar__mark" aria-hidden="true">CC</span>
+      <span class="k-sidebar__name">CRM Clínicas</span>
+      <button class="k-btn k-btn--ghost k-btn--size-icon" type="button" aria-label="Fechar painel" data-drawer-close style="margin-inline-start:auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <nav class="k-sidebar__nav k-sidebar__nav--main" aria-label="Navegação principal">
+      <ul class="k-sidebar__list">
+        <li><a class="k-sidebar__item" href="#shell"><span>Visão geral</span></a></li>
+        <li><a class="k-sidebar__item" href="#shell" aria-current="page"><span>Pipeline</span></a></li>
+        <li><a class="k-sidebar__item" href="#shell"><span>Todos os leads</span></a></li>
+        <li><a class="k-sidebar__item" href="#shell"><span>Contatos</span></a></li>
+        <li><a class="k-sidebar__item" href="#shell"><span>Equipe</span></a></li>
+        <li><a class="k-sidebar__item" href="#shell"><span>Configurações</span></a></li>
+      </ul>
+    </nav>
+  </div>
+</dialog>
+
+<script>
+/* ------------------------------------------------------------------
+   Script mínimo — só para o kit ser navegável. Nenhum comportamento
+   aqui é fonte de verdade: o componente React em src/ é.
+   ------------------------------------------------------------------ */
+(function () {
+  "use strict";
+
+  /* --- Toggle de tema: alterna a classe .dark no <html>, como o app --- */
+  var root = document.documentElement;
+  var toggle = document.getElementById("theme-toggle");
+  var toggleLabel = document.getElementById("theme-toggle-label");
+
+  function applyTheme(dark) {
+    root.classList.toggle("dark", dark);
+    toggle.setAttribute("aria-pressed", String(dark));
+    toggleLabel.textContent = dark ? "Tema: escuro" : "Tema: claro";
+    renderSwatches();
+  }
+  toggle.addEventListener("click", function () {
+    applyTheme(!root.classList.contains("dark"));
+  });
+
+  /* --- Amostras de token: lê o valor computado do tema ativo --- */
+  var swatchGroups = Array.prototype.slice.call(document.querySelectorAll("[data-tokens]"));
+  function renderSwatches() {
+    var styles = getComputedStyle(root);
+    swatchGroups.forEach(function (group) {
+      var names = group.getAttribute("data-tokens").split(",");
+      group.innerHTML = names.map(function (name) {
+        var value = styles.getPropertyValue("--" + name).trim();
+        return '<div class="doc__swatch">' +
+          '<span class="doc__chip" aria-hidden="true"><span style="background-color:var(--' + name + ')"></span></span>' +
+          '<span class="doc__swatch-text">' +
+            '<span class="doc__swatch-name">--' + name + '</span><br>' +
+            '<span class="doc__swatch-value">' + value + '</span>' +
+          '</span>' +
+        '</div>';
+      }).join("");
+    });
+  }
+
+  /* --- Tabs: clique + setas/Home/End, como no componente --- */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tabs]"), function (root_) {
+    var tabs = Array.prototype.slice.call(root_.querySelectorAll('[role="tab"]'));
+    function select(index) {
+      var target = tabs[((index % tabs.length) + tabs.length) % tabs.length];
+      tabs.forEach(function (tab) {
+        var selected = tab === target;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
+      });
+      target.focus();
+    }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener("click", function () { select(index); });
+      tab.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowRight") select(index + 1);
+        else if (event.key === "ArrowLeft") select(index - 1);
+        else if (event.key === "Home") select(0);
+        else if (event.key === "End") select(tabs.length - 1);
+        else return;
+        event.preventDefault();
+      });
+    });
+  });
+
+  /* --- FilterPopover: Escape e clique fora fecham; foco volta ao gatilho --- */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-filter]"), function (container) {
+    var trigger = container.querySelector("[data-filter-trigger]");
+    var panel = container.querySelector(".k-filter__panel");
+    function setOpen(open) {
+      trigger.setAttribute("aria-expanded", String(open));
+      panel.hidden = !open;
+    }
+    trigger.addEventListener("click", function () {
+      setOpen(trigger.getAttribute("aria-expanded") !== "true");
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape" || panel.hidden) return;
+      setOpen(false);
+      trigger.focus();
+    });
+    document.addEventListener("mousedown", function (event) {
+      if (panel.hidden || container.contains(event.target)) return;
+      setOpen(false);
+    });
+  });
+
+  /* --- Drawer: <dialog> nativo; o gatilho recupera o foco ao fechar --- */
+  var lastTrigger = null;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-drawer-open]"), function (trigger) {
+    trigger.addEventListener("click", function () {
+      var dialog = document.getElementById(trigger.getAttribute("data-drawer-open"));
+      lastTrigger = trigger;
+      trigger.setAttribute("aria-expanded", "true");
+      dialog.showModal();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("dialog.k-drawer"), function (dialog) {
+    function close() {
+      dialog.close();
+      if (lastTrigger) {
+        lastTrigger.setAttribute("aria-expanded", "false");
+        lastTrigger.focus();
+        lastTrigger = null;
+      }
+    }
+    Array.prototype.forEach.call(dialog.querySelectorAll("[data-drawer-close]"), function (button) {
+      button.addEventListener("click", close);
+    });
+    dialog.addEventListener("cancel", function (event) { event.preventDefault(); close(); });
+    dialog.addEventListener("click", function (event) { if (event.target === dialog) close(); });
+  });
+
+  applyTheme(false);
+})();
+</script>
+
+</body>
+</html>

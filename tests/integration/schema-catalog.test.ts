@@ -37,13 +37,14 @@ const TABLES = [
   "message_status_events",
   "conversation_assignments",
   "message_delivery_attempts",
+  "appointments",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema com núcleo WhatsApp", () => {
-  it("contém exatamente as 33 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema F4 e núcleo WhatsApp", () => {
+  it("contém exatamente as 34 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -53,7 +54,7 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 33 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 34 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -67,7 +68,7 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(33);
+    expect(rows).toHaveLength(34);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -113,6 +114,9 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
       "message_status_events_clinic_message_occurred_idx",
       "conversation_assignments_clinic_conversation_created_idx",
       "message_delivery_attempts_clinic_message_attempt_idx",
+      "appointments_clinic_start_idx",
+      "appointments_clinic_professional_start_idx",
+      "appointments_clinic_contact_start_idx",
     ];
     const { rows } = await pool.query<{ first_column: string; index_name: string }>(
       `select index_class.relname as index_name,
@@ -138,7 +142,7 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
     );
   });
 
-  it("semeia exatamente a matriz de papéis e permissões até a F2.3.1", async () => {
+  it("semeia exatamente a matriz de papéis e permissões até a F4", async () => {
     const roles = await pool.query<{ key: string }>(
       "select key from public.roles order by key",
     );
@@ -154,6 +158,8 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
     );
     expect(permissions.rows.map((row) => row.key)).toEqual(
       [
+        "appointment.manage",
+        "appointment.view",
         "audit.view",
         "clinic.manage",
         "contact.archive",
@@ -187,8 +193,12 @@ describe("catálogo do schema com núcleo WhatsApp", () => {
         "professional.view",
       ],
     );
-    expect(permissions.rows).toHaveLength(31);
-    expect(matrix.rows).toHaveLength(116);
+    expect(permissions.rows).toHaveLength(33);
+    // 94 da F2.3.1 + 12 da agenda (view+manage para owner, admin, manager,
+    // recepção e SDR; só view para profissional e viewer) + 22 do núcleo
+    // WhatsApp (5 conversation.* para owner/admin/manager, 2 para SDR, 3 para
+    // recepção, 1 para profissional, 1 para viewer).
+    expect(matrix.rows).toHaveLength(128);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {

@@ -34,6 +34,7 @@ const REQUIRED_TABLES = [
   "message_status_events",
   "conversation_assignments",
   "message_delivery_attempts",
+  "appointments",
 ] as const;
 
 const TENANT_WRITE_TABLES = [
@@ -64,6 +65,7 @@ const TENANT_WRITE_TABLES = [
   "message_status_events",
   "conversation_assignments",
   "message_delivery_attempts",
+  "appointments",
 ] as const;
 
 export type SecurityCatalogViolation = {
