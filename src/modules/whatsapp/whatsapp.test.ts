@@ -44,15 +44,63 @@ describe("fronteira provider-neutral do WhatsApp", () => {
     }));
   });
 
-  it("não reenfileira evento duplicado", async () => {
+  it("reenfileira evento duplicado em vez de deixá-lo órfão", async () => {
+    // A reentrega do provedor é o que recupera um evento que persistiu mas não
+    // chegou à fila. Sair cedo aqui devolveria 200 e encerraria as reentregas.
     const eventId = crypto.randomUUID();
     const deps = dependencies({ ingest: vi.fn().mockResolvedValue({ duplicate: true, eventId }) });
     const result = await api.ingestWhatsAppEvent({
       accountExternalId: "account", eventType: "message", externalEventId: "same",
       provider: "neutral", rawPayload: {},
     }, deps);
-    expect(result).toEqual({ ok: true, duplicate: true, eventId, queued: false });
-    expect(deps.queue.publish).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true, duplicate: true, eventId, queued: true });
+    expect(deps.queue.publish).toHaveBeenCalledWith(expect.objectContaining({
+      dedupeKey: eventId,
+      payload: { eventId },
+    }));
+  });
+
+  it("não confirma o evento quando a fila recusa o enfileiramento", async () => {
+    const eventId = crypto.randomUUID();
+    const deps = dependencies({ ingest: vi.fn().mockResolvedValue({ duplicate: false, eventId }) });
+    deps.queue.publish.mockResolvedValue({ code: "rejected", enqueued: false });
+    const result = await api.ingestWhatsAppEvent({
+      accountExternalId: "account", eventType: "message", externalEventId: "event",
+      provider: "neutral", rawPayload: {},
+    }, deps);
+    // ok:false mantém a reentrega do provedor; o evento já está durável.
+    expect(result).toMatchObject({ ok: false, code: "not_queued", eventId });
+  });
+
+  it("não confirma o evento quando a fila lança", async () => {
+    const eventId = crypto.randomUUID();
+    const deps = dependencies({ ingest: vi.fn().mockResolvedValue({ duplicate: false, eventId }) });
+    deps.queue.publish.mockRejectedValue(new Error("queue offline"));
+    const result = await api.ingestWhatsAppEvent({
+      accountExternalId: "account", eventType: "message", externalEventId: "event",
+      provider: "neutral", rawPayload: {},
+    }, deps);
+    expect(result).toEqual({ ok: false, code: "unavailable" });
+  });
+
+  it("recupera o evento órfão na reentrega depois de a fila voltar", async () => {
+    // Cenário completo do bug: fila fora do ar na primeira entrega, provedor
+    // reentrega, fila de volta. O evento precisa terminar enfileirado.
+    const eventId = crypto.randomUUID();
+    const deps = dependencies({ ingest: vi.fn().mockResolvedValue({ duplicate: false, eventId }) });
+    const payload = {
+      accountExternalId: "account", eventType: "message", externalEventId: "event",
+      provider: "neutral", rawPayload: {},
+    };
+
+    deps.queue.publish.mockRejectedValueOnce(new Error("queue offline"));
+    expect(await api.ingestWhatsAppEvent(payload, deps)).toMatchObject({ ok: false });
+
+    deps.store.ingest.mockResolvedValue({ duplicate: true, eventId });
+    const retry = await api.ingestWhatsAppEvent(payload, deps);
+
+    expect(retry).toMatchObject({ ok: true, duplicate: true, eventId, queued: true });
+    expect(deps.queue.publish).toHaveBeenCalledTimes(2);
   });
 
   it("remove segredos recursivos do payload sem alterar o original", () => {

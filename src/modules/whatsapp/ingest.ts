@@ -57,19 +57,42 @@ export async function ingestWhatsAppEvent(
       ...parsed.data,
       rawPayload: sanitizeWhatsAppPayload(parsed.data.rawPayload) as Record<string, unknown>,
     });
-    if (persisted.duplicate) {
-      return { ok: true, duplicate: true, eventId: persisted.eventId, queued: false } as const;
-    }
+
+    /*
+     * O enfileiramento é tentado inclusive quando o evento já estava persistido.
+     * Sair cedo no duplicado deixaria órfão todo evento cuja primeira tentativa
+     * persistiu mas não enfileirou: a reentrega do provedor cairia aqui, veria
+     * `duplicate` e devolveria 200 sem nunca colocar mensagem na fila. Publicar
+     * de novo é seguro — `dedupeKey` é o próprio eventId e o processamento é
+     * idempotente.
+     */
     const queued = await dependencies.queue.publish({
       kind: "whatsapp.process-event",
       dedupeKey: persisted.eventId,
       payload: { eventId: persisted.eventId },
     });
+
+    /*
+     * Persistiu mas não enfileirou não é sucesso. Responder ok aqui faria o
+     * provedor parar de reentregar um evento que ninguém vai processar; devolver
+     * falha mantém a reentrega, que é o caminho de recuperação mais rápido.
+     * O evento continua durável, e `retry_whatsapp_event` aceita `pending`
+     * justamente para reprocessar o que o provedor não reentregar.
+     */
+    if (!queued.enqueued) {
+      return {
+        ok: false,
+        code: "not_queued",
+        eventId: persisted.eventId,
+        queueCode: queued.code,
+      } as const;
+    }
+
     return {
       ok: true,
-      duplicate: false,
+      duplicate: persisted.duplicate,
       eventId: persisted.eventId,
-      queued: queued.enqueued,
+      queued: true,
       queueCode: queued.code,
     } as const;
   } catch {

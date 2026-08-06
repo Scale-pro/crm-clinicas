@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createTestAdminClient, createTestUserClient } from "./helpers/create-test-admin-client";
+import { currentTotp } from "./helpers/totp";
 import { createTestDbPool } from "./helpers/create-test-db-client";
 
 const password = "Local-only-test-password-123!";
@@ -20,7 +21,7 @@ let clinicB: string;
 let accountA: string;
 let accountB: string;
 
-async function createUser(label: string) {
+async function createUser(label: string, aal2 = false) {
   const email = `${label}-${crypto.randomUUID()}@example.test`;
   const created = await admin.auth.admin.createUser({ email, email_confirm: true, password });
   if (created.error || !created.data.user) throw created.error;
@@ -28,6 +29,15 @@ async function createUser(label: string) {
   const client = createTestUserClient();
   const signedIn = await client.auth.signInWithPassword({ email, password });
   if (signedIn.error) throw signedIn.error;
+  if (aal2) {
+    const enrolled = await client.auth.mfa.enroll({ factorType: "totp" });
+    if (enrolled.error || !enrolled.data || !("totp" in enrolled.data)) throw enrolled.error;
+    const verified = await client.auth.mfa.challengeAndVerify({
+      factorId: enrolled.data.id,
+      code: currentTotp(enrolled.data.totp.secret),
+    });
+    if (verified.error) throw verified.error;
+  }
   return { client, id: created.data.user.id };
 }
 
@@ -101,8 +111,8 @@ async function processMessage(
 }
 
 beforeAll(async () => {
-  ownerA = await createUser("wa-owner-a");
-  ownerB = await createUser("wa-owner-b");
+  ownerA = await createUser("wa-owner-a", true);
+  ownerB = await createUser("wa-owner-b", true);
   managerA = await createUser("wa-manager-a");
   sdrA = await createUser("wa-sdr-a");
   const clinics = await pool.query<{ id: string; name: string }>(
@@ -249,6 +259,80 @@ describe("núcleo WhatsApp em banco real", () => {
     expect(failed.rows).toEqual([{ last_error_code: "invalid_message", processing_status: "failed" }]);
     const retried = await asServiceRole<{ retry_whatsapp_event: boolean }>(
       "select public.retry_whatsapp_event($1)", [invalidEvent.event_id],
+    );
+    expect(retried[0]?.retry_whatsapp_event).toBe(true);
+  });
+
+
+  it("provisiona conta somente por RPC autorizada e reaproveita a existente", async () => {
+    const externalAccountId = `provision-${crypto.randomUUID()}`;
+
+    // Owner com AAL2 provisiona; repetir devolve a mesma conta (account_key
+    // é a chave natural de idempotência).
+    const created = await ownerA.client.rpc("create_whatsapp_account", {
+      clinic_id: clinicA,
+      display_phone: "+5511977770000",
+      external_account_id: externalAccountId,
+      provider: "provider_test",
+    });
+    expect(created.error).toBeNull();
+    expect(created.data).toBeTruthy();
+
+    const again = await ownerA.client.rpc("create_whatsapp_account", {
+      clinic_id: clinicA,
+      display_phone: "+5511977770000",
+      external_account_id: externalAccountId,
+      provider: "provider_test",
+    });
+    expect(again.data).toBe(created.data);
+
+    const rows = await pool.query<{ count: string }>(
+      "select count(*)::text count from public.whatsapp_accounts where clinic_id = $1 and external_account_id = $2",
+      [clinicA, externalAccountId],
+    );
+    expect(rows.rows[0]?.count).toBe("1");
+
+    // Outra clínica não pode reivindicar a mesma conta do provedor.
+    const claimed = await ownerB.client.rpc("create_whatsapp_account", {
+      clinic_id: clinicB,
+      display_phone: null,
+      external_account_id: externalAccountId,
+      provider: "provider_test",
+    });
+    // P4304 e não 42501: ownerB tem clinic.manage e AAL2 na própria clínica,
+    // então o que o barra é a conta já pertencer a outra.
+    expect(claimed.error?.code).toBe("P4304");
+
+    // Sem clinic.manage não passa, mesmo sendo membro da clínica.
+    const denied = await sdrA.client.rpc("create_whatsapp_account", {
+      clinic_id: clinicA,
+      display_phone: null,
+      external_account_id: `denied-${crypto.randomUUID()}`,
+      provider: "provider_test",
+    });
+    expect(denied.error?.code).toBe("42501");
+    expect(denied.error?.message).toContain("whatsapp account access denied");
+
+    // O evento agora tem conta para resolver: a ingestão passa a funcionar.
+    const ingested = await asServiceRole<{ duplicate: boolean; event_id: string }>(
+      `select * from public.ingest_whatsapp_event($1, $2, $3, $4, $5::jsonb)`,
+      ["provider_test", externalAccountId, crypto.randomUUID(), "message.received", JSON.stringify({ fixture: true })],
+    );
+    expect(ingested[0]?.duplicate).toBe(false);
+  });
+
+  it("torna recuperável o evento que persistiu sem chegar à fila", async () => {
+    // Enfileiramento falho deixa o evento em 'pending'. Ele precisa continuar
+    // reprocessável, senão a mensagem some em silêncio.
+    const event = await ingest("account-a");
+    const status = await pool.query<{ processing_status: string }>(
+      "select processing_status from public.whatsapp_webhook_events where id = $1",
+      [event.event_id],
+    );
+    expect(status.rows[0]?.processing_status).toBe("pending");
+
+    const retried = await asServiceRole<{ retry_whatsapp_event: boolean }>(
+      "select public.retry_whatsapp_event($1)", [event.event_id],
     );
     expect(retried[0]?.retry_whatsapp_event).toBe(true);
   });

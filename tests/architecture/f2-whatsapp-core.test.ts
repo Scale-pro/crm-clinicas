@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "../..");
 const read = (relativePath: string) => readFileSync(path.join(root, relativePath), "utf8");
 const schema = read("supabase/migrations/20260730100000_f2_whatsapp_core_schema.sql").toLowerCase();
 const rpcs = read("supabase/migrations/20260730101000_f2_whatsapp_core_rpcs.sql").toLowerCase();
+const accounts = read("supabase/migrations/20260730102000_f2_whatsapp_account_provisioning.sql").toLowerCase();
 const moduleApi = read("src/modules/whatsapp/index.ts");
 const ingest = read("src/modules/whatsapp/ingest.ts");
 
@@ -82,8 +83,35 @@ describe("núcleo WhatsApp multi-tenant", () => {
     expect(ingest).not.toMatch(/@\/modules\/crm\//);
   });
 
+
+  it("provisiona conta por RPC autorizada, nunca por escrita direta", () => {
+    // Sem esta RPC não há caminho autorizado para ligar a integração, e a
+    // ingestão falha sempre em 'whatsapp account not found'.
+    expect(accounts).toContain("create function public.create_whatsapp_account");
+    expect(accounts).toContain("security definer");
+    expect(accounts).toContain("set search_path = ''");
+    expect(accounts).toContain("app_private.is_clinic_member(clinic_id)");
+    expect(accounts).toContain("app_private.has_permission(clinic_id, 'clinic.manage')");
+    expect(accounts).toContain("app_private.require_aal2()");
+    expect(accounts).toContain("revoke all on function public.create_whatsapp_account");
+    // clinic_id de parâmetro nunca autoriza sozinho: is_clinic_member e
+    // has_permission revalidam o vínculo antes de qualquer escrita.
+    expect(accounts.indexOf("app_private.has_permission")).toBeLessThan(
+      accounts.indexOf("insert into public.whatsapp_accounts"),
+    );
+    expect(accounts).not.toMatch(/to (?:anon|service_role)\b/);
+  });
+
+  it("não deixa evento persistido sem caminho de recuperação", () => {
+    // O evento persiste antes da fila; se o enfileiramento não acontecer, ele
+    // fica 'pending'. Os dois caminhos de volta precisam existir.
+    expect(rpcs).toContain("in ('pending', 'failed', 'dead')");
+    expect(ingest).not.toMatch(/if \(persisted\.duplicate\)\s*\{\s*return/);
+    expect(ingest).toContain('code: "not_queued"');
+  });
+
   it("não toca frontend nem acopla o domínio a provedor", () => {
-    expect(`${schema}\n${rpcs}`).not.toMatch(/waha|evolution|cloud api/);
+    expect(`${schema}\n${rpcs}\n${accounts}`).not.toMatch(/waha|evolution|cloud api/);
     expect(moduleApi.startsWith('import "server-only";')).toBe(true);
   });
 });

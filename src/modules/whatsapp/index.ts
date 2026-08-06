@@ -27,6 +27,10 @@ export {
   resolveConversationScope,
 } from "./conversations";
 export {
+  createWhatsAppAccount,
+  createWhatsAppAccountSchema,
+} from "./accounts";
+export {
   ingestWhatsAppEvent,
   processWhatsAppEvent,
   reprocessWhatsAppEvent,

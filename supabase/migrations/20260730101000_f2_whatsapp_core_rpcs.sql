@@ -503,6 +503,10 @@ from public, anon, authenticated;
 grant execute on function public.record_whatsapp_message_status(uuid, text, text, timestamptz)
 to service_role;
 
+-- `pending` também é recuperável: um evento persistido cujo enfileiramento
+-- falhou fica exatamente nesse estado, sem mensagem na fila e sem ninguém para
+-- reprocessá-lo. Reenfileirar é seguro porque process_whatsapp_message é
+-- idempotente (serializa por mensagem externa e devolve duplicate).
 create function public.retry_whatsapp_event(p_event_id uuid)
 returns boolean
 language plpgsql
@@ -513,7 +517,7 @@ as $$
 begin
   update public.whatsapp_webhook_events we
   set processing_status = 'pending', next_retry_at = null, last_error_code = null
-  where we.id = p_event_id and we.processing_status in ('failed', 'dead');
+  where we.id = p_event_id and we.processing_status in ('pending', 'failed', 'dead');
   return found;
 end;
 $$;

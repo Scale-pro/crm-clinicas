@@ -247,6 +247,7 @@ describe("catálogo de autorização e RLS", () => {
             "create_contact",
             "create_lead_source",
             "create_opportunity",
+            "create_whatsapp_account",
             "create_whatsapp_outbound_message",
             "create_pipeline",
             "create_pipeline_stage",

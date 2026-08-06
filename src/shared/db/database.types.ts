@@ -1574,6 +1574,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      create_whatsapp_account: {
+        Args: {
+          clinic_id: string
+          display_phone: string | null
+          external_account_id: string
+          provider: string
+        }
+        Returns: string
+      }
       create_whatsapp_outbound_message: {
         Args: {
           p_attachment_metadata: Json
