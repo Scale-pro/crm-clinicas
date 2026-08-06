@@ -114,4 +114,15 @@ export default defineConfig([
       "no-console": "off",
     },
   },
+  {
+    // Scripts de linha de comando fora de `src/`: não são código de aplicação
+    // e não atendem requisição nenhuma, então o terminal É a saída deles.
+    // A proibição de `console` protege o log do servidor de vazar dado
+    // pessoal (ADR-012) — aqui não há servidor nem dado real, só ferramenta
+    // de desenvolvimento com fixtures fictícias.
+    files: ["scripts/**"],
+    rules: {
+      "no-console": "off",
+    },
+  },
 ]);

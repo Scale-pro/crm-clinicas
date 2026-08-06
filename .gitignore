@@ -26,3 +26,6 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# saída do harness visual (docs/runbooks/visual-harness.md)
+.harness-shots/
