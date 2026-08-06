@@ -10,6 +10,8 @@ export type AgendaProfessional = {
   readonly id: string;
   readonly name: string;
   readonly color: string;
+  /** Primeira especialidade cadastrada, para o cabeçalho da coluna. */
+  readonly specialty: string | null;
 };
 
 export type AgendaProcedure = {

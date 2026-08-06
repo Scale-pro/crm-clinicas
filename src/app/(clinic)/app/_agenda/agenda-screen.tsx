@@ -5,9 +5,10 @@ import Link from "next/link";
 
 import { formatBrlFromCents } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
+import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
-import { StatusBadge } from "@/shared/ui/status-badge";
+import { StatusBadge, type StatusTone } from "@/shared/ui/status-badge";
 
 import { OperationsNoticeBanner } from "../_operations/operations-feedback";
 import type { AgendaWorkspaceData } from "./agenda-types";
@@ -17,7 +18,9 @@ import {
   formatMinutesAsTime,
   gridBounds,
   groupByProfessional,
+  minutesIntoDay,
   placeAppointments,
+  zonedDayKey,
   zonedDayStart,
 } from "./agenda-view-model";
 import { AppointmentPanel } from "./appointment-panel";
@@ -25,7 +28,29 @@ import { NewAppointmentDialog } from "./new-appointment-dialog";
 import { useAgendaActions } from "./use-agenda-actions";
 
 /** Altura de uma hora na grade. Fixa, para que a régua da esquerda case. */
-const HOUR_HEIGHT_REM = 5;
+const HOUR_HEIGHT_REM = 6;
+
+/**
+ * Fundo do bloco por status, derivado do MESMO mapa de tons da etiqueta
+ * (`STATUS_TONES`), para que grade e badge nunca discordem. A cor é reforço:
+ * o texto do status continua impresso no bloco (ADR-011).
+ */
+const BLOCK_TONES: Readonly<Record<StatusTone, string>> = {
+  neutral: "bg-surface border-border",
+  accent: "bg-accent/10 border-accent/30",
+  success: "bg-success/10 border-success/30",
+  warning: "bg-warning/15 border-warning/40",
+  danger: "bg-destructive/10 border-destructive/30",
+};
+
+/**
+ * Abaixo de 1h o bloco não comporta horário + nome + procedimento + etiqueta
+ * sem cortar texto (a 6rem/hora, 45min = 4.5rem contra ~5rem de conteúdo). A
+ * densidade acompanha a duração real em vez de estourar a caixa.
+ */
+function blockDensity(durationMinutes: number): "compact" | "full" {
+  return durationMinutes < 60 ? "compact" : "full";
+}
 
 /**
  * Grade do dia: uma coluna por profissional, uma linha por hora.
@@ -41,6 +66,7 @@ export function AgendaScreen({
   canManage,
   contacts,
   dayKey,
+  nowIso,
   procedures,
   professionals,
   timezone,
@@ -54,6 +80,16 @@ export function AgendaScreen({
   );
   const columns = groupByProfessional(professionals, appointments);
   const gridHeight = `${hours.length * HOUR_HEIGHT_REM}rem`;
+
+  // Linha do "agora": só existe quando o dia em foco É o dia corrente da
+  // clínica, e sempre no fuso dela — nunca no relógio do navegador (ADR-006).
+  const spanMinutes = (bounds.endHour - bounds.startHour) * 60;
+  const nowMinutes = minutesIntoDay(nowIso, dayStart);
+  const nowOffset = nowMinutes - bounds.startHour * 60;
+  const showNowLine = zonedDayKey(nowIso, timezone) === dayKey
+    && nowOffset >= 0
+    && nowOffset <= spanMinutes;
+  const nowLabel = formatMinutesAsTime(nowMinutes);
 
   if (professionals.length === 0) {
     return <div className="space-y-3">
@@ -85,26 +121,46 @@ export function AgendaScreen({
           className="sticky top-0 z-10 grid border-b border-border bg-surface"
           style={{ gridTemplateColumns: `4rem repeat(${columns.length}, minmax(11rem, 1fr))` }}
         >
-          <span className="border-r border-border" />
+          {/* Régua de horas: fixa na horizontal, para que o horário continue
+              legível ao rolar a grade lateralmente no celular. */}
+          <span className="sticky left-0 z-10 border-r border-border bg-surface" />
           {columns.map(({ professional }) => <div
-            className="flex min-w-0 items-center gap-2 border-r border-border px-3 py-2.5 last:border-r-0"
+            className="flex min-w-0 items-center gap-2.5 border-r border-border px-3 py-2.5 last:border-r-0"
             key={professional.id}
           >
-            <span
-              aria-hidden="true"
-              className="size-2.5 shrink-0 rounded-full border border-border"
-              style={{ backgroundColor: professional.color }}
-            />
-            <span className="truncate text-sm font-medium">{professional.name}</span>
+            <Avatar accent={professional.color} name={professional.name} />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium leading-tight">
+                {professional.name}
+              </span>
+              {professional.specialty ? <span className="block truncate text-xs leading-tight text-muted-foreground">
+                {professional.specialty}
+              </span> : null}
+            </span>
           </div>)}
         </div>
 
         {/* Corpo da grade */}
         <div
-          className="grid"
+          className="relative grid"
           style={{ gridTemplateColumns: `4rem repeat(${columns.length}, minmax(11rem, 1fr))` }}
         >
-          <div aria-hidden="true" className="border-r border-border" style={{ height: gridHeight }}>
+          {showNowLine ? <div
+            className="pointer-events-none absolute inset-x-0 z-[7] flex items-center"
+            style={{ top: `${(nowOffset / spanMinutes) * 100}%` }}
+          >
+            <span className="sticky left-0 w-16 shrink-0 bg-surface pr-1 text-right text-[0.625rem] font-medium tabular-nums text-destructive">
+              {nowLabel}
+            </span>
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
+            <span aria-hidden="true" className="h-px flex-1 bg-destructive" />
+          </div> : null}
+
+          <div
+            aria-hidden="true"
+            className="sticky left-0 z-[6] border-r border-border bg-surface"
+            style={{ height: gridHeight }}
+          >
             {hours.map((hour) => <div
               className="relative border-b border-border/60 text-[0.6875rem] text-muted-foreground"
               key={hour}
@@ -131,36 +187,58 @@ export function AgendaScreen({
               />)}
 
               <ul aria-label={`Agendamentos de ${professional.name}`} className="absolute inset-0">
-                {placed.map((item) => <li
-                  className="absolute inset-x-1"
-                  key={item.appointment.id}
-                  style={{
-                    top: `${item.top * 100}%`,
-                    height: `max(2.75rem, ${item.height * 100}%)`,
-                  }}
-                >
-                  <button
-                    className={cn(
-                      "flex size-full flex-col gap-0.5 overflow-hidden rounded-md border border-l-4 bg-surface px-2 py-1.5 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                      "border-border",
-                    )}
-                    onClick={() => agenda.select(item.appointment)}
-                    style={{ borderLeftColor: professional.color }}
-                    type="button"
+                {placed.map((item) => {
+                  const { appointment } = item;
+                  const density = blockDensity(appointment.durationMinutes);
+                  const tone = STATUS_TONES[appointment.status];
+                  const name = appointment.contactName ?? "Cliente";
+                  return <li
+                    className="absolute inset-x-1"
+                    key={appointment.id}
+                    style={{
+                      top: `${item.top * 100}%`,
+                      height: `max(1.75rem, ${item.height * 100}%)`,
+                    }}
                   >
-                    <span className="truncate text-xs font-medium tabular-nums text-muted-foreground">
-                      {item.timeLabel}–{item.endLabel}
-                    </span>
-                    <span className="truncate text-sm font-medium">
-                      {item.appointment.contactName ?? "Cliente"}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {item.appointment.procedureName}
-                      {" · "}
-                      {STATUS_LABELS[item.appointment.status]}
-                    </span>
-                  </button>
-                </li>)}
+                    <button
+                      aria-label={`${item.timeLabel} às ${item.endLabel}, ${name}, ${appointment.procedureName}, ${STATUS_LABELS[appointment.status]}`}
+                      className={cn(
+                        "flex size-full flex-col overflow-hidden rounded-md border border-l-[3px] text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                        density === "compact" ? "justify-center gap-0 px-2 py-1" : "gap-0.5 px-2 py-1.5",
+                        BLOCK_TONES[tone],
+                      )}
+                      onClick={() => agenda.select(appointment)}
+                      style={{ borderLeftColor: professional.color }}
+                      type="button"
+                    >
+                      {density === "compact"
+                        ? <>
+                          <span aria-hidden="true" className="truncate text-xs font-medium leading-tight">
+                            {item.timeLabel} · {name}
+                          </span>
+                          <span aria-hidden="true" className="truncate text-[0.6875rem] leading-tight text-muted-foreground">
+                            {STATUS_LABELS[appointment.status]}
+                          </span>
+                        </>
+                        : <>
+                          <span aria-hidden="true" className="truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
+                            {item.timeLabel}–{item.endLabel}
+                          </span>
+                          <span aria-hidden="true" className="truncate text-sm font-medium leading-tight">
+                            {name}
+                          </span>
+                          <span aria-hidden="true" className="truncate text-xs leading-tight text-muted-foreground">
+                            {appointment.procedureName}
+                          </span>
+                          <span className="pt-1">
+                            <StatusBadge tone={tone}>
+                              {STATUS_LABELS[appointment.status]}
+                            </StatusBadge>
+                          </span>
+                        </>}
+                    </button>
+                  </li>;
+                })}
               </ul>
             </div>;
           })}

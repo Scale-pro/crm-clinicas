@@ -80,6 +80,7 @@ export async function loadAgendaWorkspace({ clinicId, timezone, dayKey, days = 1
       id: item.id,
       name: item.displayName,
       color: item.color,
+      specialty: item.specialties[0] ?? null,
     }))
     : [];
 
