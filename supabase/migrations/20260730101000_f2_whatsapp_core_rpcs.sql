@@ -353,7 +353,13 @@ begin
       clinic_id, whatsapp_account_id, contact_id, opportunity_id
     ) values (
       v_event.clinic_id, v_event.whatsapp_account_id, v_contact_id, v_opportunity_id
-    ) on conflict (clinic_id, whatsapp_account_id, contact_id)
+    )
+    -- Conflito referenciado pela constraint, não pela lista de colunas: esta
+    -- função declara `#variable_conflict use_variable` e tem parâmetro OUT
+    -- chamado `contact_id`, então `on conflict (..., contact_id)` resolveria
+    -- `contact_id` para a variável e não para a coluna — o que faz a inferência
+    -- do índice falhar com 42P10.
+    on conflict on constraint conversations_account_contact_key
     do update set opportunity_id = coalesce(public.conversations.opportunity_id, excluded.opportunity_id)
     returning id into v_conversation_id;
 
