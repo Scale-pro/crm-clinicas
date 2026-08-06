@@ -103,16 +103,40 @@ de medir engana. Itens flex com `truncate` (`overflow: hidden`) têm o
 abaixo da própria `line-height`**. Nesse estado `scrollHeight === clientHeight`
 e o bloco parece são, enquanto o texto sai fatiado na vertical.
 
-Por isso `harness:measure` usa duas sondas:
+Por isso `harness:measure` usa três sondas:
 
 - **ESPREME** — compara a altura renderizada de cada linha com a `line-height`
   que ela deveria ocupar. Pega o encolhimento silencioso.
 - **TRANSBORDA** — com as linhas travadas em `shrink-0`, sobra de conteúdo
   volta a aparecer como `scrollHeight > clientHeight`.
+- **CORTA** — truncamento horizontal (`text-overflow: ellipsis`). Não produz
+  transbordo nem encolhimento vertical: o texto simplesmente some no fim da
+  linha, e o screenshot parece perfeito. A sonda compara `scrollWidth` com
+  `clientWidth` de cada linha de texto.
 
-Foi assim que se estabeleceu a altura de hora da grade da agenda: a 5rem, três
-blocos transbordavam; 5.25rem é o piso exato, com zero folga; 5.5rem deixa
-2–4px de margem. Sem medir, a escolha teria sido chute.
+A medição roda nas duas larguras (1440px e 390px) e cobre os três lugares que
+imprimem nome de cliente e procedimento: a grade, a faixa de cancelados e a
+lista do celular. A coluna estreita é onde o nome longo quebra primeiro.
+
+### A regra da agenda: nome e procedimento nunca são cortados
+
+Nome de cliente e nome de procedimento aparecem **por inteiro**, em qualquer
+faixa de duração. Quando o texto não cabe na proporção do tempo, quem cede é a
+altura: a grade é uma malha de faixas de 5 minutos com
+`minmax(<proporção>, auto)`, e a régua de horas e todas as colunas são
+`subgrid` dela. Uma faixa que estica para caber um nome de 57 caracteres estica
+para todo mundo ao mesmo tempo — o horário da régua continua alinhado ao bloco,
+e dois profissionais no mesmo horário continuam lado a lado.
+
+O custo é conhecido e aceito: num dia com nomes muito longos em colunas
+estreitas, a proporcionalidade entre durações afrouxa (um bloco de 60 min pode
+ficar mais alto que um de 90 min em outra coluna). Legibilidade ganha de
+proporção — a duração continua escrita no próprio bloco ("60′"), então a
+informação não depende da altura.
+
+A altura de referência da hora (`HOUR_HEIGHT_REM`, hoje 5.5rem) continua saindo
+de medição, não de chute: é o **piso** de cada faixa, o que a grade usa quando o
+conteúdo cabe. A 5rem os blocos densos já espremiam texto; 5.5rem deixa folga.
 
 ## Ao acrescentar uma tela
 

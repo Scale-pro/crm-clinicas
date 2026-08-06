@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle2, CreditCard, FileText, Play, Sparkles, XCircle } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  CreditCard,
+  FileText,
+  Play,
+  UserCheck,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import type { AppointmentStatus } from "@/modules/scheduling";
@@ -9,7 +18,7 @@ import { cn } from "@/shared/lib/utils";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { SidePanel } from "@/shared/ui/side-panel";
-import { StatusBadge } from "@/shared/ui/status-badge";
+import { StatusBadge, type StatusTone } from "@/shared/ui/status-badge";
 
 import {
   STATUS_LABELS,
@@ -19,35 +28,40 @@ import {
   zonedDayStart,
   type AgendaAppointment,
 } from "./agenda-view-model";
+import { validStatusTransitions } from "./status-transitions";
 
 /**
- * Cor de cada ação rápida. O tom acompanha o significado do estado que a ação
- * grava — o mesmo tom que o bloco e a etiqueta usam para aquele status — e
- * nunca carrega a informação sozinho: cada botão tem ícone e rótulo escrito
- * (ADR-011).
+ * Cor de cada ação rápida, indexada pelo TOM do status de destino — o mesmo
+ * tom que o bloco e a etiqueta usam para aquele status (`STATUS_TONES`). Assim
+ * o botão que leva a "Pago" tem a cor de "Pago" sem que exista um segundo mapa
+ * de cor por status para sair de sincronia. A cor nunca carrega a informação
+ * sozinha: cada botão tem ícone e rótulo escrito (ADR-011).
  */
-const QUICK_ACTION_STYLES = {
-  arrived: "border-success/40 text-success-strong hover:bg-success/10",
-  in_service: "border-accent/40 text-accent-strong hover:bg-accent/10",
-  paid: "border-warning/50 text-warning-strong hover:bg-warning/15",
-} as const;
+const ACTION_TONES: Readonly<Record<StatusTone, string>> = {
+  neutral: "border-border hover:bg-muted",
+  accent: "border-accent/40 text-accent-strong hover:bg-accent/10",
+  success: "border-success/40 text-success-strong hover:bg-success/10",
+  warning: "border-warning/50 text-warning-strong hover:bg-warning/15",
+  danger: "border-destructive/40 text-destructive hover:bg-destructive/10",
+};
 
-const QUICK_ACTIONS: readonly {
-  readonly status: keyof typeof QUICK_ACTION_STYLES;
-  readonly label: string;
-  readonly icon: typeof CheckCircle2;
-}[] = [
-  { status: "arrived", label: "Chegou", icon: CheckCircle2 },
-  { status: "in_service", label: "Iniciar", icon: Play },
-  { status: "paid", label: "Receber", icon: CreditCard },
-];
+const ACTION_ICONS: Readonly<Record<AppointmentStatus, LucideIcon>> = {
+  scheduled: CalendarClock,
+  confirmed: CheckCircle2,
+  arrived: UserCheck,
+  in_service: Play,
+  paid: CreditCard,
+  canceled: XCircle,
+};
 
 /**
  * Detalhe de um agendamento com as ações rápidas da recepção.
  *
- * As ações mudam **status**, e status é escrita: cada botão chama a Server
- * Action, que chama a RPC autorizada. Esconder um botão sem permissão é
- * conforto visual, nunca o controle de acesso (ADR-004).
+ * As ações oferecidas são exatamente as transições que a escrita aceita a
+ * partir do status atual (ver `status-transitions.ts`) — não um trio fixo
+ * repetido em todo estado. Esconder ou não mostrar um botão é conforto visual;
+ * o controle de acesso e a regra de transição estão na Server Action e na RPC
+ * autorizada (ADR-004).
  */
 export function AppointmentPanel({
   appointment,
@@ -72,31 +86,50 @@ export function AppointmentPanel({
   );
   const from = minutesIntoDay(appointment.startAt, dayStart);
   const timeRange = `${formatMinutesAsTime(from)} – ${formatMinutesAsTime(from + appointment.durationMinutes)}`;
-  const canceled = appointment.status === "canceled";
   const name = appointment.contactName ?? "Cliente sem nome visível";
+  const tone = STATUS_TONES[appointment.status];
+
+  const transitions = validStatusTransitions(appointment.status);
+  // Cancelar é uma transição como as outras, mas com peso diferente na tela:
+  // sai da lista de avanço e ganha lugar próprio, longe do clique de rotina.
+  const advance = transitions.filter((status) => status !== "canceled");
+  const canCancel = transitions.includes("canceled");
+
+  // Linha sem valor não vira "—" nem zero inventado: simplesmente não aparece.
+  const rows: readonly { readonly label: string; readonly value: string | null }[] = [
+    { label: "Horário", value: timeRange },
+    { label: "Duração", value: `${appointment.durationMinutes} min` },
+    { label: "Procedimento", value: appointment.procedureName },
+    { label: "Valor", value: formatBrlFromCents(appointment.priceCents) },
+  ];
 
   return <SidePanel
-    description={`${timeRange} · ${appointment.durationMinutes} min`}
+    header={<div className="min-w-0 space-y-2">
+      <StatusBadge dot tone={tone}>{STATUS_LABELS[appointment.status]}</StatusBadge>
+      <div className="min-w-0">
+        <h2 className="text-base font-semibold break-words">{name}</h2>
+        <p className="text-sm text-muted-foreground break-words">{appointment.procedureName}</p>
+      </div>
+    </div>}
     onClose={onClose}
     open
     title={name}
   >
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge tone={STATUS_TONES[appointment.status]}>
-          {STATUS_LABELS[appointment.status]}
-        </StatusBadge>
-        <span className="text-sm tabular-nums text-muted-foreground">
-          {formatBrlFromCents(appointment.priceCents)}
-        </span>
-      </div>
+      <dl className="space-y-2">
+        {rows.filter((row) => row.value !== null).map((row) => <div className="flex items-baseline justify-between gap-4" key={row.label}>
+          <dt className="shrink-0 text-xs text-muted-foreground">{row.label}</dt>
+          <dd className="text-right text-sm font-medium break-words">{row.value}</dd>
+        </div>)}
+      </dl>
 
       {/*
-        O protótipo previa um atalho de WhatsApp aqui. O telefone do contato
-        não vem no contrato de leitura de agendamentos (`AgendaAppointment` tem
-        `contactId` e `contactName`, não telefone), e trazê-lo exigiria alterar
-        `modules/scheduling`. Em vez de um botão que não disca, a ficha do
-        cliente — que tem os meios de contato — fica a um toque.
+        O protótipo previa telefone e um atalho de WhatsApp aqui. O telefone do
+        contato não vem no contrato de leitura de agendamentos
+        (`AgendaAppointment` tem `contactId` e `contactName`, não telefone), e
+        trazê-lo exigiria alterar `modules/scheduling`. Em vez de um botão que
+        não disca, a ficha do cliente — que tem os meios de contato — fica a um
+        toque.
       */}
       <div className="grid grid-cols-2 gap-2">
         <Link
@@ -106,7 +139,7 @@ export function AppointmentPanel({
           <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
             <span className="block text-xs text-muted-foreground">Cliente</span>
-            <span className="block truncate text-sm font-medium text-accent-strong">Ver ficha</span>
+            <span className="block text-sm font-medium text-accent-strong">Ver ficha</span>
           </span>
         </Link>
 
@@ -118,29 +151,7 @@ export function AppointmentPanel({
           />
           <span className="min-w-0">
             <span className="block text-xs text-muted-foreground">Profissional</span>
-            <span className="block truncate text-sm font-medium">{appointment.professionalName}</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="border-y border-border py-4">
-        <h3 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-          Procedimento
-        </h3>
-        <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-accent/30 bg-accent/10 p-3">
-          <span className="flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-md bg-surface">
-              <Sparkles className="size-4 text-accent-strong" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{appointment.procedureName}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {appointment.durationMinutes} min · {timeRange}
-              </span>
-            </span>
-          </span>
-          <span className="shrink-0 text-sm font-semibold tabular-nums">
-            {formatBrlFromCents(appointment.priceCents)}
+            <span className="block text-sm font-medium break-words">{appointment.professionalName}</span>
           </span>
         </div>
       </div>
@@ -152,75 +163,45 @@ export function AppointmentPanel({
         <p className="mt-1 whitespace-pre-line text-sm">{appointment.notes}</p>
       </div> : null}
 
-      {canManage ? <div>
+      {canManage ? <div className="border-t border-border pt-4">
         <h3 className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
           Ações rápidas
         </h3>
-        {canceled
+        {transitions.length === 0
           ? <p className="mt-2 text-sm text-muted-foreground">
-            Agendamento cancelado. Para reagendar, crie um novo — o histórico do cancelamento
-            é preservado.
+            Agendamento cancelado — o cancelamento é definitivo. Para reagendar, crie um novo;
+            o histórico do cancelamento é preservado.
           </p>
           : <>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {QUICK_ACTIONS.map((action) => {
-                const Icon = action.icon;
-                const current = appointment.status === action.status;
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {advance.map((status) => {
+                const Icon = ACTION_ICONS[status];
                 return <Button
-                  aria-pressed={current}
-                  className={cn(
-                    "h-auto flex-col gap-1.5 py-3",
-                    current ? undefined : QUICK_ACTION_STYLES[action.status],
-                  )}
-                  disabled={pending || current}
-                  key={action.status}
-                  onClick={() => onChangeStatus(appointment, action.status)}
+                  className={cn("h-auto justify-start gap-2 py-2.5", ACTION_TONES[STATUS_TONES[status]])}
+                  disabled={pending}
+                  key={status}
+                  onClick={() => onChangeStatus(appointment, status)}
                   size="sm"
                   type="button"
-                  variant={current ? "secondary" : "outline"}
+                  variant="outline"
                 >
                   <Icon aria-hidden="true" />
-                  <span className="text-xs">{action.label}</span>
+                  <span className="text-xs">{STATUS_LABELS[status]}</span>
                 </Button>;
               })}
             </div>
 
-            <div className="mt-3 space-y-2">
-              <label
-                className="block text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
-                htmlFor="appointment-status"
-              >
-                Alterar status
-              </label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                disabled={pending}
-                id="appointment-status"
-                onChange={(event) => onChangeStatus(
-                  appointment,
-                  event.target.value as AppointmentStatus,
-                )}
-                value={appointment.status}
-              >
-                {(Object.keys(STATUS_LABELS) as AppointmentStatus[])
-                  .filter((status) => status !== "canceled")
-                  .map((status) => <option key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </option>)}
-              </select>
-
-              <Button
-                className="w-full"
-                disabled={pending}
-                onClick={() => onChangeStatus(appointment, "canceled")}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <XCircle aria-hidden="true" />
-                Cancelar agendamento
-              </Button>
-            </div>
+            {canCancel ? <Button
+              className={cn("mt-2 w-full", ACTION_TONES.danger)}
+              disabled={pending}
+              onClick={() => onChangeStatus(appointment, "canceled")}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <XCircle aria-hidden="true" />
+              Cancelar agendamento
+            </Button> : null}
           </>}
       </div> : null}
     </div>
