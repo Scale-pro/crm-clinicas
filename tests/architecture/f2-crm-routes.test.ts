@@ -55,7 +55,9 @@ describe("rotas e fronteiras de CRM F2.2", () => {
   it("não cria superfície de fases futuras", () => {
     const files = filesUnder("src/app/(clinic)/app").join("\n");
     // A agenda e o financeiro derivado dela chegaram na F4, com backend próprio.
-    expect(files).not.toMatch(/tasks|conversations|whatsapp|messages/i);
+    // O WhatsApp chegou na F2/WhatsApp — a conversa vive dentro do pipeline, e
+    // uma caixa de entrada dedicada (`conversations`) continua sendo fase futura.
+    expect(files).not.toMatch(/tasks|conversations|messages/i);
   });
 
   it("cria somente o Kanban e a ficha de oportunidade aprovados", () => {

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 const sectionLabels: ReadonlyArray<readonly [string, string]> = [
   ["/app/settings/pipeline", "Configurações · Etapas do pipeline"],
+  ["/app/settings/whatsapp", "Configurações · WhatsApp"],
   ["/app/opportunities", "Oportunidade"],
   ["/app/pipeline", "Pipeline"],
   ["/app/leads", "Todos os leads"],

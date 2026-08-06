@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
 import { normalizeE164Phone } from "@/shared/lib/contact-method";
+import { resolveQueuePublisher } from "@/shared/queue";
 
 import { safeAttachmentMetadataSchema, whatsappMessageTypeSchema } from "./contracts";
 
@@ -222,5 +223,26 @@ export async function createOutboundMessage(input: unknown) {
   if (result.error) return { ok: false, code: mapConversationError(result.error) } as const;
   const row = result.data[0];
   if (!row) return { ok: false, code: "unavailable" } as const;
-  return { ok: true, attemptId: row.attempt_id, messageId: row.message_id } as const;
+
+  /*
+   * Envio enfileirado (decisão D2). O clique só grava a intenção: a chamada ao
+   * provedor sai do caminho do request, então uma API lenta não trava a tela e
+   * o retry/backoff/DLQ ficam por conta da fila.
+   *
+   * Falha ao enfileirar não invalida a mensagem — ela já está durável e
+   * `pending`. O chamador recebe `queued: false` e a interface avisa que o
+   * envio ficou pendente, em vez de sugerir que a mensagem saiu.
+   */
+  const queued = await (await resolveQueuePublisher()).publish({
+    kind: "whatsapp.send-message",
+    dedupeKey: `send:${row.message_id}`,
+    payload: { attemptId: row.attempt_id, messageId: row.message_id },
+  });
+
+  return {
+    ok: true,
+    attemptId: row.attempt_id,
+    messageId: row.message_id,
+    queued: queued.enqueued,
+  } as const;
 }

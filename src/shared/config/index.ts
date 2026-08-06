@@ -32,6 +32,13 @@ function readServerEnv(): ServerEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+    UAZAPI_WEBHOOK_SECRET: process.env.UAZAPI_WEBHOOK_SECRET,
+    UAZAPI_API_BASE_URL: process.env.UAZAPI_API_BASE_URL,
+    WHATSAPP_CREDENTIAL_KEY: process.env.WHATSAPP_CREDENTIAL_KEY,
+    QSTASH_TOKEN: process.env.QSTASH_TOKEN,
+    QSTASH_CURRENT_SIGNING_KEY: process.env.QSTASH_CURRENT_SIGNING_KEY,
+    QSTASH_NEXT_SIGNING_KEY: process.env.QSTASH_NEXT_SIGNING_KEY,
   });
   return cached;
 }
@@ -56,6 +63,27 @@ export const serverEnv: ServerEnv = {
   },
   get NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY() {
     return readServerEnv().NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  },
+  get SUPABASE_SECRET_KEY() {
+    return readServerEnv().SUPABASE_SECRET_KEY;
+  },
+  get UAZAPI_WEBHOOK_SECRET() {
+    return readServerEnv().UAZAPI_WEBHOOK_SECRET;
+  },
+  get UAZAPI_API_BASE_URL() {
+    return readServerEnv().UAZAPI_API_BASE_URL;
+  },
+  get WHATSAPP_CREDENTIAL_KEY() {
+    return readServerEnv().WHATSAPP_CREDENTIAL_KEY;
+  },
+  get QSTASH_TOKEN() {
+    return readServerEnv().QSTASH_TOKEN;
+  },
+  get QSTASH_CURRENT_SIGNING_KEY() {
+    return readServerEnv().QSTASH_CURRENT_SIGNING_KEY;
+  },
+  get QSTASH_NEXT_SIGNING_KEY() {
+    return readServerEnv().QSTASH_NEXT_SIGNING_KEY;
   },
 };
 

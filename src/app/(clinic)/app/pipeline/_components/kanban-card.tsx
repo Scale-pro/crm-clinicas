@@ -4,6 +4,10 @@ import { Input } from "@/shared/ui/input";
 import { StatusBadge } from "@/shared/ui/status-badge";
 import { SubmitButton } from "@/shared/ui/submit-button";
 
+import {
+  WhatsAppCardFooter,
+  type CardConversation,
+} from "../../_whatsapp/whatsapp-card-footer";
 import { statusLabel, statusTone, type LeadRow } from "../../_components/opportunity-view";
 import { closeOpportunityFormAction, moveOpportunityFormAction } from "../actions";
 
@@ -14,11 +18,15 @@ type MoveTarget = { readonly id: string; readonly name: string };
  * existentes e mantêm `expectedVersion`; a movimentação continua disponível
  * por `select` acessível, sem depender de arrastar e soltar.
  */
-export function KanbanCard({ card, clinicId, closeAllowed, moveTargets, version }: {
+export function KanbanCard({
+  card, clinicId, closeAllowed, conversation, moveTargets, timezone, version,
+}: {
   card: LeadRow;
   clinicId: string;
   closeAllowed: boolean;
+  conversation: CardConversation | null;
   moveTargets: readonly MoveTarget[];
+  timezone: string;
   version: number;
 }) {
   return <article className="rounded-md border border-border bg-surface p-2.5 shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring hover:shadow">
@@ -91,5 +99,13 @@ export function KanbanCard({ card, clinicId, closeAllowed, moveTargets, version 
         </form>
       </div> : null}
     </details>
+
+    <WhatsAppCardFooter
+      contactName={card.contactName}
+      conversation={conversation}
+      opportunityTitle={card.title}
+      stageName={card.stageName}
+      timezone={timezone}
+    />
   </article>;
 }

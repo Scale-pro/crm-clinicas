@@ -17,15 +17,39 @@ function source(relative: string): string {
 }
 
 describe("validação final estática da F1", () => {
-  it("mantém service role e segredos administrativos fora da aplicação", () => {
-    const application = filesUnder("src")
-      .filter((file) => /\.(?:ts|tsx)$/.test(file))
-      .map(source)
-      .join("\n");
+  /*
+   * Até a F2/WhatsApp nenhuma exceção da lista fechada do ADR-002 existia, e a
+   * garantia podia ser "a chave técnica não aparece em src/". O webhook do
+   * provedor chega sem sessão de usuário — o caso previsto na decisão 3 do
+   * ADR-002, junto com cron, agregação de plataforma e migrations — e a
+   * exceção passou a existir de fato.
+   *
+   * A verificação continua sendo por ausência, só que com uma lista fechada de
+   * arquivos onde a chave pode ser citada. Isso é mais forte que o regex
+   * anterior: antes, bastava batizar o construtor de outra coisa para o teste
+   * passar; agora, um consumidor novo quebra o teste mesmo com nome inocente.
+   */
+  const TECHNICAL_KEY_FILES = [
+    // Único construtor do executor técnico (só `rpc`, nunca `from`).
+    "src/shared/db/technical.ts",
+    // Declaração e leitura da variável de ambiente.
+    "src/shared/config/env-schema.ts",
+    "src/shared/config/index.ts",
+  ];
 
-    expect(application).not.toMatch(/service[_-]?role/i);
-    expect(application).not.toMatch(/supabase_(?:service|secret)[_-]?(?:role_?)?key/i);
-    expect(application).not.toMatch(/createServiceRoleClient/);
+  it("mantém service role e segredos administrativos fora da aplicação", () => {
+    const files = filesUnder("src").filter((file) => /\.(?:ts|tsx)$/.test(file));
+
+    const offenders = files.filter((file) =>
+      !TECHNICAL_KEY_FILES.includes(file.split(path.sep).join("/"))
+      && /service[_-]?role|supabase_(?:service|secret)[_-]?(?:role_?)?key/i.test(source(file)));
+
+    expect(
+      offenders,
+      "A chave técnica do Supabase só pode ser citada na lista fechada do ADR-002. "
+        + "Um consumidor novo precisa entrar em TECHNICAL_KEY_FILES por decisão explícita.",
+    ).toEqual([]);
+    expect(files.map(source).join("\n")).not.toMatch(/createServiceRoleClient/);
   });
 
   it("não usa getSession, localStorage ou estado cliente como autorização", () => {
