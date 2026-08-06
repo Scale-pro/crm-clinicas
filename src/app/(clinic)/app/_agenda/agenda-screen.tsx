@@ -27,8 +27,15 @@ import { AppointmentPanel } from "./appointment-panel";
 import { NewAppointmentDialog } from "./new-appointment-dialog";
 import { useAgendaActions } from "./use-agenda-actions";
 
-/** Altura de uma hora na grade. Fixa, para que a régua da esquerda case. */
-const HOUR_HEIGHT_REM = 6;
+/**
+ * Altura de uma hora na grade. Fixa, para que a régua da esquerda case.
+ *
+ * Medido no harness visual: a 5rem três blocos ainda transbordam; 5.25rem é
+ * o piso exato, com zero folga; 5.5rem deixa 2–4px de margem em todas as
+ * faixas de densidade. Fica em 5.5 para que uma mudança de copy não volte a
+ * cortar texto em silêncio.
+ */
+const HOUR_HEIGHT_REM = 5.5;
 
 /**
  * Fundo do bloco por status, derivado do MESMO mapa de tons da etiqueta
@@ -44,12 +51,19 @@ const BLOCK_TONES: Readonly<Record<StatusTone, string>> = {
 };
 
 /**
- * Abaixo de 1h o bloco não comporta horário + nome + procedimento + etiqueta
- * sem cortar texto (a 6rem/hora, 45min = 4.5rem contra ~5rem de conteúdo). A
- * densidade acompanha a duração real em vez de estourar a caixa.
+ * Densidade do conteúdo pela duração real, para nenhum bloco cortar texto.
+ * Os limiares saem de medição no harness visual, não de estimativa: a
+ * 5.5rem/hora o conteúdo de cada faixa mede ~41px, ~63px e ~94px, contra
+ * caixas de 44px (30min), 66px (45min) e 132px (90min).
+ *
+ * - `compact` (< 45min): horário + nome numa linha, status na seguinte.
+ * - `medium` (45–89min): cabe o procedimento, mas não a pílula de status —
+ *   ela vira ponto + rótulo na mesma linha do horário.
+ * - `full` (>= 90min): tudo, com a pílula de status.
  */
-function blockDensity(durationMinutes: number): "compact" | "full" {
-  return durationMinutes < 60 ? "compact" : "full";
+function blockDensity(durationMinutes: number): "compact" | "medium" | "full" {
+  if (durationMinutes < 45) return "compact";
+  return durationMinutes < 90 ? "medium" : "full";
 }
 
 /**
@@ -145,16 +159,30 @@ export function AgendaScreen({
           className="relative grid"
           style={{ gridTemplateColumns: `4rem repeat(${columns.length}, minmax(11rem, 1fr))` }}
         >
-          {showNowLine ? <div
-            className="pointer-events-none absolute inset-x-0 z-[7] flex items-center"
-            style={{ top: `${(nowOffset / spanMinutes) * 100}%` }}
-          >
-            <span className="sticky left-0 w-16 shrink-0 bg-surface pr-1 text-right text-[0.625rem] font-medium tabular-nums text-destructive">
-              {nowLabel}
-            </span>
-            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
-            <span aria-hidden="true" className="h-px flex-1 bg-destructive" />
-          </div> : null}
+          {showNowLine ? <>
+            {/* A linha vem antes das colunas no DOM e sem z-index própria, logo
+                passa POR TRÁS dos blocos: cruzar o texto de um atendimento o
+                deixaria ilegível. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 flex items-center"
+              style={{ top: `${(nowOffset / spanMinutes) * 100}%` }}
+            >
+              <span className="w-16 shrink-0" />
+              <span className="h-px flex-1 bg-destructive/70" />
+            </div>
+            {/* Rótulo e ponto acompanham a régua fixa e ficam acima dela, para
+                que a hora corrente continue legível mesmo com a coluna cheia. */}
+            <div
+              className="pointer-events-none absolute inset-x-0 z-[8] flex items-center"
+              style={{ top: `${(nowOffset / spanMinutes) * 100}%` }}
+            >
+              <span className="sticky left-0 flex shrink-0 items-center gap-1 bg-surface pr-1 text-[0.625rem] font-medium tabular-nums text-destructive">
+                <span className="w-[3.25rem] text-right">{nowLabel}</span>
+                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-destructive" />
+              </span>
+            </div>
+          </> : null}
 
           <div
             aria-hidden="true"
@@ -204,38 +232,59 @@ export function AgendaScreen({
                       aria-label={`${item.timeLabel} às ${item.endLabel}, ${name}, ${appointment.procedureName}, ${STATUS_LABELS[appointment.status]}`}
                       className={cn(
                         "flex size-full flex-col overflow-hidden rounded-md border border-l-[3px] text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                        density === "compact" ? "justify-center gap-0 px-2 py-1" : "gap-0.5 px-2 py-1.5",
+                        density === "compact" ? "justify-center gap-0 px-2 py-0" : density === "medium" ? "gap-0 px-2 py-0.5" : "gap-0.5 px-2 py-1.5",
                         BLOCK_TONES[tone],
                       )}
                       onClick={() => agenda.select(appointment)}
                       style={{ borderLeftColor: professional.color }}
                       type="button"
                     >
-                      {density === "compact"
-                        ? <>
-                          <span aria-hidden="true" className="truncate text-xs font-medium leading-tight">
-                            {item.timeLabel} · {name}
-                          </span>
-                          <span aria-hidden="true" className="truncate text-[0.6875rem] leading-tight text-muted-foreground">
+                      {density === "compact" ? <>
+                        <span aria-hidden="true" className="shrink-0 truncate text-xs font-medium leading-tight">
+                          {item.timeLabel} · {name}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0">
+                          <StatusBadge tone={tone} variant="inline">
                             {STATUS_LABELS[appointment.status]}
-                          </span>
-                        </>
-                        : <>
-                          <span aria-hidden="true" className="truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
+                          </StatusBadge>
+                        </span>
+                      </> : null}
+
+                      {density === "medium" ? <>
+                        <span className="flex shrink-0 items-center justify-between gap-1.5">
+                          <span aria-hidden="true" className="shrink-0 truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
                             {item.timeLabel}–{item.endLabel}
                           </span>
-                          <span aria-hidden="true" className="truncate text-sm font-medium leading-tight">
-                            {name}
-                          </span>
-                          <span aria-hidden="true" className="truncate text-xs leading-tight text-muted-foreground">
-                            {appointment.procedureName}
-                          </span>
-                          <span className="pt-1">
-                            <StatusBadge tone={tone}>
+                          <span aria-hidden="true" className="shrink-0">
+                            <StatusBadge tone={tone} variant="inline">
                               {STATUS_LABELS[appointment.status]}
                             </StatusBadge>
                           </span>
-                        </>}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 truncate text-sm font-medium leading-tight">
+                          {name}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 truncate text-xs leading-tight text-muted-foreground">
+                          {appointment.procedureName}
+                        </span>
+                      </> : null}
+
+                      {density === "full" ? <>
+                        <span aria-hidden="true" className="shrink-0 truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
+                          {item.timeLabel}–{item.endLabel}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 truncate text-sm font-medium leading-tight">
+                          {name}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 truncate text-xs leading-tight text-muted-foreground">
+                          {appointment.procedureName}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 pt-0.5">
+                          <StatusBadge tone={tone}>
+                            {STATUS_LABELS[appointment.status]}
+                          </StatusBadge>
+                        </span>
+                      </> : null}
                     </button>
                   </li>;
                 })}
