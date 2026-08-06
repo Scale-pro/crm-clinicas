@@ -248,7 +248,62 @@ ordem em que ficam prontos no painel de quem opera, não na ordem de nome de
 arquivo. `supabase db push` (sem flag) **recusa** aplicar um arquivo mais
 antigo que o último já aplicado — é essa recusa que expõe o desalinhamento.
 
-### Caminho A — resetar do zero (recomendado quando o dado é descartável)
+Três caminhos, na ordem em que vale tentar: **C primeiro** — resolve o
+sintoma (histórico fora de ordem) sem tocar em nada além dele. Caia para A só
+se C não servir (ex.: o banco está numa bagunça maior que só migration fora
+de ordem). Caia para B só se houver dado que precise sobreviver e resetar não
+for opção.
+
+### Caminho C — completar só o que falta, sem resetar (o mais cirúrgico)
+
+Use quando o diagnóstico mostra exatamente o sintoma desta seção: um
+intervalo de arquivos de migration **não aplicado**, intercalado entre
+versões que já foram — não o banco inteiro fora de sincronia. Verificado em
+produção neste projeto: aplicado pelo SQL Editor do painel, sem CLI, sem
+tocar em Auth, credenciais ou no restante do schema.
+
+O que resolve isto, e o que não: `delete from
+supabase_migrations.schema_migrations` seguido de reaplicar **tudo** do zero
+**não é seguro** — nenhuma migration deste repositório usa
+`create table if not exists`, então a primeira tabela que já existe (a
+primeira migration de F1) derruba a reaplicação com "relation already
+exists". A tabela de histórico não é o schema; apagá-la não desfaz o que já
+foi criado, só faz a CLI tentar recriar.
+
+O caminho seguro é o oposto: **não apague nada da tabela de histórico, só
+complete o que falta.**
+
+1. Identifique os arquivos de migration que o diagnóstico mostrou como
+   ausentes — o intervalo entre a última versão aplicada antes do buraco e a
+   primeira depois dele.
+2. Cole o conteúdo de cada um no SQL Editor, **na ordem exata do nome de
+   arquivo**, um de cada vez, conferindo "Success" antes do próximo — arquivos
+   da mesma leva costumam depender uns dos outros (RPC que referencia tabela
+   ou função do arquivo anterior).
+3. Confirme que os objetos foram criados (ex.: `select table_name from
+   information_schema.tables where table_name = '<tabela nova>';`).
+4. Registre as versões aplicadas na tabela de histórico — a única escrita
+   nela, e é um `insert`, nunca um `delete`:
+
+   ```sql
+   -- Confira as colunas reais antes de escrever o insert; o formato mais
+   -- comum é (version, name), mas não assuma sem checar.
+   select * from supabase_migrations.schema_migrations limit 3;
+
+   insert into supabase_migrations.schema_migrations (version, name) values
+     ('<versão1>', '<nome_do_arquivo_1>'),
+     ('<versão2>', '<nome_do_arquivo_2>');
+   ```
+
+5. Confirme a posição: `select version, name from
+   supabase_migrations.schema_migrations order by version;` — as versões
+   novas devem aparecer entre as vizinhas corretas, não no fim.
+
+Depois disso, `supabase migration list --linked` (quando alguém rodar com CLI
+e rede) não mostra pendência, e um `db push` futuro não recusa por ordem —
+do ponto de vista da tabela, essas versões sempre estiveram lá.
+
+### Caminho A — resetar do zero (quando C não se aplica e o dado é descartável)
 
 Só se **todo** o conteúdo do banco for fictício e descartável — confirme por
 uma leitura, não por suposição (ver diagnóstico acima). Se houver qualquer
