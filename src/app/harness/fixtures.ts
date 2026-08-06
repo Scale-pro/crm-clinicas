@@ -94,6 +94,34 @@ export const APPOINTMENTS: readonly AgendaAppointment[] = [
     durationMinutes: 30, status: "scheduled",
     contactName: "Beatriz Cardoso Farias", procedureName: "Limpeza de Pele", priceCents: 18_000,
   }),
+  // 45 min correndo junto com os 60 min de `a4` (09:00–10:00): fecha o quarteto
+  // 30/45/60/90 e põe dois profissionais diferentes no mesmo horário pela
+  // segunda vez no dia. Começa às 09:30 porque o banco proíbe sobreposição no
+  // mesmo profissional — `a3` só libera a agenda de p3 às 09:30.
+  appointment({
+    id: "a9", professionalId: "p3", startAt: "2026-08-06T12:30:00.000Z",
+    durationMinutes: 45, status: "confirmed",
+    contactName: "Ana Cláudia Monteiro de Albuquerque", procedureName: "Peeling Químico",
+    priceCents: 25_000,
+  }),
+  // O pior caso da regra de não truncar: o nome mais longo do arquivo dentro do
+  // bloco mais curto possível na grade. Se algum dia voltar a haver corte de
+  // texto, é aqui que aparece primeiro.
+  appointment({
+    id: "a10", professionalId: "p1", startAt: "2026-08-06T19:00:00.000Z",
+    durationMinutes: 30, status: "confirmed",
+    contactName: "Maria das Graças Albuquerque Vasconcelos Sobrinho Nogueira",
+    procedureName: "Microagulhamento com protocolo de bioestimulação de colágeno",
+    priceCents: 65_000,
+  }),
+  // Segundo cancelado, com nome longo: a faixa inferior também não pode cortar.
+  appointment({
+    id: "a11", professionalId: "p2", startAt: "2026-08-06T16:30:00.000Z",
+    durationMinutes: 60, status: "canceled",
+    contactName: "Maria das Graças Albuquerque Vasconcelos Sobrinho Nogueira",
+    procedureName: "Microagulhamento com protocolo de bioestimulação de colágeno",
+    priceCents: 65_000,
+  }),
 ];
 
 export const PROCEDURES: readonly AgendaProcedure[] = [

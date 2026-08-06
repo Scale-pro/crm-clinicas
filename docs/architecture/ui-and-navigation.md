@@ -146,6 +146,22 @@ Regras que estas telas aplicam:
   catálogo não reprecifica o passado.
 - **Teclado.** Cada agendamento da grade é um `<button>`; a agenda é operável
   sem arrastar, e o dia inteiro também existe como lista cronológica.
+- **Nada é truncado.** Nome do cliente e procedimento aparecem por inteiro em
+  qualquer duração: a grade é elástica (faixas de 5 min em
+  `minmax(proporção, auto)`, régua e colunas em `subgrid`), então texto que não
+  cabe estica a faixa em vez de ser cortado. A duração também vem escrita no
+  bloco ("60′"), somada à altura proporcional — a altura é reforço, não a única
+  leitura. Medido no harness visual, não julgado por screenshot
+  ([runbook](../runbooks/visual-harness.md)).
+- **Cancelado fora da grade.** Cancelado não ocupa horário, e por isso sai da
+  grade — mas não some: vai para a faixa "Cancelados hoje — não ocupam
+  horário", abaixo do dia, de onde ainda abre o painel de detalhe.
+- **Ações rápidas contextuais.** O painel oferece exatamente as transições de
+  status que a escrita aceita a partir do status atual — não um trio fixo. A
+  lista é derivada das regras que a RPC `update_appointment_status` já impõe
+  (destino no enum, mesmo status é no-op, cancelado é terminal); o domínio não
+  define grafo de progressão, e a tela não inventa um. Se algum dia existir uma
+  ordem obrigatória entre status, ela nasce no domínio por ADR, não aqui.
 - **Gráfico.** Desenhado em SVG próprio, sem biblioteca de terceiros, e sempre
   acompanhado da tabela equivalente para leitor de tela.
 
