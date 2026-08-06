@@ -62,8 +62,14 @@ substituem essa origem.
 - **Client-side:** apenas variáveis com prefixo `NEXT_PUBLIC_`, declaradas no
   schema de client em `src/shared/config/env-schema.ts`. Nunca colocar segredo
   em variável pública.
-- **Validação:** Zod, eager (falha na subida). Mensagens de erro citam **apenas
-  os nomes** das variáveis — nunca os valores.
+- **Validação:** Zod, **preguiçosa e memoizada** — roda na primeira leitura de
+  uma variável em tempo de execução, não no import do módulo. `next build`
+  importa os módulos de rota para coletar dados de página; validar no import
+  faria o build exigir segredo, que é insumo de execução, não de compilação.
+  Nenhuma requisição é atendida com configuração inválida: a primeira leitura
+  em um processo mal configurado falha alto, citando **apenas os nomes** das
+  variáveis — nunca os valores. *(Antes do PR #21 a validação era eager e o
+  build chegou a exigir os segredos; ver a nota histórica na seção 3.)*
 - **Arquivos:** `.env*` são ignorados pelo git; só `.env.example` (sem valores
   reais) é versionado. Localmente, use `.env.local`.
 - **Novas variáveis:** cada integração adiciona as suas na fase em que é
@@ -78,15 +84,17 @@ ambiente é ignorada.
 
 ### Obrigatórias
 
-Sem qualquer uma delas a aplicação **não sobe**. A validação é *eager*:
-`src/shared/config/index.ts` chama `parseEnv` no import do módulo, e o erro cita
-apenas os **nomes** das variáveis, nunca os valores.
+Sem qualquer uma delas a aplicação **não atende requisição nenhuma**. A
+validação (`src/shared/config/index.ts`) é preguiçosa e memoizada: o **build
+não exige** as cinco variáveis, só a primeira requisição em produção exige — e
+falha alto, citando apenas os nomes.
 
-> Consequência prática no provisionamento: como `next build` importa os módulos
-> de rota para coletar dados de página, **o próprio build falha** se as
-> variáveis não estiverem presentes. Isso torna `APP_URL` um problema de ovo e
-> galinha na Vercel — ver o bloqueio correspondente em
-> [primeiro-ambiente](../runbooks/primeiro-ambiente.md#bloqueios-conhecidos).
+> **Nota histórica:** até o PR #21 (*"fix(config): não exija segredos de
+> execução para compilar"*), a validação era *eager* e rodava no import do
+> módulo — como `next build` importa os módulos de rota, o build inteiro
+> exigia as cinco variáveis, inclusive `APP_URL`, que só se conhece depois do
+> primeiro deploy sem domínio próprio. Esse era um bloqueio real de
+> provisionamento, hoje resolvido.
 
 | Variável | Formato | Onde é usada | Onde obter |
 |---|---|---|---|
@@ -125,8 +133,10 @@ painel do Supabase e **afetam o funcionamento da aplicação**:
   `app_private.require_aal2()`, que recusa sessão que não seja `aal2`. Com TOTP
   desabilitado no projeto o usuário não consegue registrar fator, e **toda a
   configuração da operação fica inacessível**: profissionais, procedimentos,
-  pipelines, convites e ajustes da clínica. Contatos, oportunidades e a criação
-  da primeira clínica **não** exigem AAL2 — o corte exato está em
+  pipelines, convites e ajustes da clínica — e, a partir do PR #21 (agenda),
+  também as ações rápidas da recepção (Chegou, Iniciar, Receber), que são
+  mudanças de status de agendamento. Contatos, oportunidades e a criação da
+  primeira clínica **não** exigem AAL2 — o corte exato está em
   [primeiro-ambiente](../runbooks/primeiro-ambiente.md#4-configurar-o-auth-do-projeto).
 - **Site URL e Redirect URLs.** A recuperação de senha aponta explicitamente
   para `<APP_URL>/auth/callback`; o cadastro depende do Site URL (ver os

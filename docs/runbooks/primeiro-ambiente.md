@@ -110,6 +110,12 @@ O corte é específico, e vale conhecê-lo para não diagnosticar errado:
 | Profissionais e disponibilidade | Origens de lead |
 | Procedimentos e vínculos | — |
 | Reabrir oportunidade, suporte de plataforma | — |
+| Agendamentos: criar, mudar status, reagendar (PR #21) | — |
+
+> A última linha só existe depois que o PR #21 (agenda) entrar em `main`. Ela
+> importa na prática: as ações rápidas da tela de recepção — Chegou, Iniciar,
+> Receber — são todas `update_appointment_status`, então **a recepção também
+> precisa de TOTP registrado**, não só quem configura a clínica.
 
 Ou seja: **o onboarding do passo 6 funciona antes do MFA** — de propósito, senão
 seria impossível criar a primeira clínica. O que trava sem TOTP é a configuração
@@ -126,15 +132,19 @@ mínimo no painel; o schema da aplicação não impõe tamanho próprio.
 3. Em **Settings → Environment Variables**, cadastre as cinco variáveis da
    tabela em [environments](../ops/environments.md#3-inventário-de-variáveis).
    Marque o ambiente (Preview/Production) correspondente.
-4. `APP_URL` precisa ser a URL final do deploy, mas o build exige a variável
-   **antes** de existir uma URL. Duas saídas:
+4. `APP_URL` precisa ser a URL final do deploy, e você só a conhece depois do
+   primeiro deploy se não tiver domínio próprio. Isso não trava o build: a
+   validação de configuração é preguiçosa (roda na primeira requisição, não no
+   import do módulo), então **o deploy sobe mesmo sem `APP_URL` definida**.
+   Duas saídas, nenhuma bloqueante:
    - **Domínio próprio**: configure-o antes do primeiro deploy e já cadastre
      `APP_URL` com ele. Um passo só, e é o caminho recomendado.
-   - **Domínio da Vercel**: cadastre um valor provisório sintaticamente válido
-     (qualquer URL), publique, anote a URL gerada, corrija `APP_URL` e
-     **redeploye**. Enquanto estiver provisório, links de convite e de
-     recuperação de senha apontam para o lugar errado — não convide ninguém
-     antes de corrigir.
+   - **Domínio da Vercel**: publique primeiro, anote a URL gerada, cadastre
+     `APP_URL` com ela e **redeploye**. Antes de cadastrar, qualquer rota
+     protegida por sessão responde com o erro claro de configuração ausente
+     (nomes das variáveis, nunca valores) em vez de subir quebrada em
+     silêncio — mas links de convite e de recuperação de senha ainda não
+     funcionam. Não convide ninguém antes de corrigir.
 5. Gere o `ACTIVE_CLINIC_COOKIE_SECRET` (mínimo 32 caracteres):
 
    ```bash
@@ -143,10 +153,18 @@ mínimo no painel; o schema da aplicação não impõe tamanho próprio.
 
 6. Deploy.
 
-Se alguma variável estiver ausente ou inválida, **o build falha**, com uma
-mensagem citando só os **nomes** das variáveis. Cadastre as cinco antes do
-primeiro deploy — inclusive `APP_URL`, mesmo que provisória. Ver o bloqueio 2
-abaixo.
+Se alguma variável estiver ausente ou inválida, **o build passa** e a falha
+aparece na primeira requisição, com uma mensagem citando só os **nomes** das
+variáveis — nunca os valores. Cadastre as cinco antes de convidar qualquer
+pessoa; o deploy em si não exige isso previamente.
+
+> Isto depende do PR #21 (*"fix(config): não exija segredos de execução para
+> compilar"*) já estar em `main`. Antes dele, a validação era *eager* e **o
+> build falhava** sem as cinco variáveis — inclusive `APP_URL`, o que exigia o
+> contorno de publicar com um valor provisório antes de conhecer a URL final.
+> Se você está executando este runbook contra uma `main` anterior ao #21,
+> cadastre as cinco variáveis, com `APP_URL` provisória, **antes** do primeiro
+> deploy.
 
 ## 6. Criar o primeiro usuário e a primeira clínica
 
@@ -199,7 +217,8 @@ de duas pessoas, e nunca sai de migration ou seed.
 ## Bloqueios conhecidos
 
 Levantados no código, **não corrigidos** neste documento. Nenhum impede subir o
-ambiente; o primeiro muda o passo 6.
+ambiente; o primeiro muda o passo 6. O item 2 já tem correção mesclada em
+`main` (fora deste PR) e fica registrado como histórico, não como pendência.
 
 ### 1. `signUp` não define `emailRedirectTo`
 
@@ -216,18 +235,18 @@ recuperação de senha **não** tem esse problema — ela passa
 Contorno até corrigir: desligar **Confirm email** no primeiro ambiente, ou
 confirmar o usuário pelo painel.
 
-### 2. A validação de configuração é *eager*, então o build exige os segredos
+### 2. ~~A validação de configuração era *eager*~~ — RESOLVIDO pelo PR #21
 
-`src/shared/config/index.ts` valida no import do módulo. Como `next build`
-importa os módulos de rota, **compilar exige as variáveis de execução** —
-inclusive `APP_URL`, que só se conhece depois do primeiro deploy quando não há
-domínio próprio (daí o contorno no passo 5).
+Até o commit *"fix(config): não exija segredos de execução para compilar"*
+(PR #21), `src/shared/config/index.ts` validava no import do módulo. Como
+`next build` importa os módulos de rota, **compilar exigia as variáveis de
+execução** — inclusive `APP_URL`, que só se conhece depois do primeiro deploy
+quando não há domínio próprio.
 
-Já existe correção pronta fora da `main`: o PR #21 traz o commit
-*"fix(config): não exija segredos de execução para compilar"*, que torna a
-leitura preguiçosa e memoizada — o build deixa de exigir segredo e a primeira
-requisição mal configurada continua falhando alto. Depois que aquele PR entrar,
-este bloqueio deixa de valer e o passo 5 pode ser simplificado.
+O PR #21 tornou a leitura preguiçosa e memoizada: o build deixa de exigir
+segredo, e a primeira requisição mal configurada continua falhando alto. O
+passo 5 já assume esse comportamento — a nota histórica ali explica o que
+mudou para quem executa contra uma `main` anterior ao #21.
 
 ### 3. `pnpm db:types` só funciona contra a stack local
 
