@@ -27,6 +27,13 @@ const REQUIRED_TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "whatsapp_accounts",
+  "whatsapp_webhook_events",
+  "conversations",
+  "messages",
+  "message_status_events",
+  "conversation_assignments",
+  "message_delivery_attempts",
   "appointments",
 ] as const;
 
@@ -51,6 +58,13 @@ const TENANT_WRITE_TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "whatsapp_accounts",
+  "whatsapp_webhook_events",
+  "conversations",
+  "messages",
+  "message_status_events",
+  "conversation_assignments",
+  "message_delivery_attempts",
   "appointments",
 ] as const;
 

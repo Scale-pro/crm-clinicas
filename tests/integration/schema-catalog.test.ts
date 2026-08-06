@@ -30,14 +30,21 @@ const TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "whatsapp_accounts",
+  "whatsapp_webhook_events",
+  "conversations",
+  "messages",
+  "message_status_events",
+  "conversation_assignments",
+  "message_delivery_attempts",
   "appointments",
 ] as const;
 
 const pool = createTestDbPool();
 afterAll(() => pool.end());
 
-describe("catálogo do schema F4", () => {
-  it("contém exatamente as 27 tabelas públicas aprovadas", async () => {
+describe("catálogo do schema F4 e núcleo WhatsApp", () => {
+  it("contém exatamente as 34 tabelas públicas aprovadas", async () => {
     const { rows } = await pool.query<{ tablename: string }>(
       `select tablename
        from pg_catalog.pg_tables
@@ -47,7 +54,7 @@ describe("catálogo do schema F4", () => {
     expect(rows.map((row) => row.tablename)).toEqual([...TABLES].sort());
   });
 
-  it("mantém ENABLE e FORCE RLS nas 27 tabelas", async () => {
+  it("mantém ENABLE e FORCE RLS nas 34 tabelas", async () => {
     const { rows } = await pool.query<{
       relname: string;
       relforcerowsecurity: boolean;
@@ -61,7 +68,7 @@ describe("catálogo do schema F4", () => {
       [TABLES],
     );
 
-    expect(rows).toHaveLength(27);
+    expect(rows).toHaveLength(34);
     expect(rows.every((row) => row.relrowsecurity && row.relforcerowsecurity)).toBe(
       true,
     );
@@ -97,6 +104,16 @@ describe("catálogo do schema F4", () => {
       "professional_procedures_clinic_professional_idx",
       "professional_procedures_clinic_procedure_idx",
       "professional_weekly_availability_clinic_professional_idx",
+      "whatsapp_accounts_clinic_status_idx",
+      "whatsapp_webhook_events_clinic_status_retry_idx",
+      "conversations_clinic_state_last_idx",
+      "conversations_clinic_assignee_state_idx",
+      "conversations_clinic_unread_idx",
+      "messages_clinic_conversation_occurred_idx",
+      "messages_clinic_contact_occurred_idx",
+      "message_status_events_clinic_message_occurred_idx",
+      "conversation_assignments_clinic_conversation_created_idx",
+      "message_delivery_attempts_clinic_message_attempt_idx",
       "appointments_clinic_start_idx",
       "appointments_clinic_professional_start_idx",
       "appointments_clinic_contact_start_idx",
@@ -151,6 +168,11 @@ describe("catálogo do schema F4", () => {
         "contact.edit_own",
         "contact.view_all",
         "contact.view_own",
+        "conversation.assign",
+        "conversation.manage",
+        "conversation.send",
+        "conversation.view_all",
+        "conversation.view_own",
         "lead_source.manage",
         "member.invite",
         "member.manage",
@@ -171,10 +193,12 @@ describe("catálogo do schema F4", () => {
         "professional.view",
       ],
     );
-    expect(permissions.rows).toHaveLength(28);
-    // 94 da F2.3.1 + 12 da agenda: view+manage para owner, admin, manager,
-    // recepção e SDR; só view para profissional e viewer.
-    expect(matrix.rows).toHaveLength(106);
+    expect(permissions.rows).toHaveLength(33);
+    // 94 da F2.3.1 + 12 da agenda (view+manage para owner, admin, manager,
+    // recepção e SDR; só view para profissional e viewer) + 22 do núcleo
+    // WhatsApp (5 conversation.* para owner/admin/manager, 2 para SDR, 3 para
+    // recepção, 1 para profissional, 1 para viewer).
+    expect(matrix.rows).toHaveLength(128);
   });
 
   it("cria profile automaticamente após criação no Auth", async () => {
