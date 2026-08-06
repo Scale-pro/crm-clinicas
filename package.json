@@ -20,7 +20,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "harness:shoot": "node scripts/visual-harness/shoot.mjs",
-    "harness:measure": "node scripts/visual-harness/measure-blocks.mjs"
+    "harness:measure": "node scripts/visual-harness/measure-blocks.mjs",
+    "seed:dev": "node scripts/seed-dev/index.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.1",

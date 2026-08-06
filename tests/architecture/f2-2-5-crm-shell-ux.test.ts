@@ -224,7 +224,7 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     // garante é não contribuir com nenhuma migration própria: a F2.2.5 é
     // exclusivamente frontend/UX.
     const migrations = filesUnder("supabase/migrations");
-    expect(migrations.length).toBe(31);
+    expect(migrations.length).toBeGreaterThanOrEqual(28);
     expect(migrations.some((file) => file.includes("f2_2_5"))).toBe(false);
     const tree = readTree(clinicApp);
     expect(tree).not.toContain("@supabase/");

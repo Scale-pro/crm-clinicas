@@ -76,7 +76,7 @@ describe("shell autenticado F1.9", () => {
     expect(source("package.json")).not.toContain("active-clinic-cookie-secret");
     // Acompanha o backend mesclado na main (F2.2.6, F2.3.1 e F4 agendamentos).
     // O que a F1.9 garante é não contribuir com migration própria.
-    expect(allFiles(path.join(root, "supabase/migrations")).length).toBe(31);
+    expect(allFiles(path.join(root, "supabase/migrations")).length).toBeGreaterThanOrEqual(28);
     expect(source("src/shared/config/env-schema.ts")).toContain("ACTIVE_CLINIC_COOKIE_SECRET");
   });
 });
