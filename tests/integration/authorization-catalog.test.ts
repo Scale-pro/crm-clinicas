@@ -8,6 +8,7 @@ afterAll(() => pool.end());
 
 const EXPECTED_POLICIES = [
   ["activities", "activities_select", "SELECT"],
+  ["appointments", "appointments_select", "SELECT"],
   ["audit_logs", "audit_logs_select", "SELECT"],
   ["clinic_features", "clinic_features_select", "SELECT"],
   ["clinic_limits", "clinic_limits_select", "SELECT"],
@@ -39,7 +40,7 @@ describe("catálogo de autorização e RLS", () => {
     expect(await findSecurityCatalogViolations(pool)).toEqual([]);
   });
 
-  it("possui exatamente as políticas separadas aprovadas até a F2.3.1", async () => {
+  it("possui exatamente as políticas separadas aprovadas até a F4", async () => {
     const { rows } = await pool.query<{
       cmd: string;
       policyname: string;
@@ -121,6 +122,7 @@ describe("catálogo de autorização e RLS", () => {
       "procedures",
       "professional_procedures",
       "professional_weekly_availability",
+      "appointments",
     ];
     const { rows } = await pool.query<{
       can_delete: boolean;
@@ -235,6 +237,7 @@ describe("catálogo de autorização e RLS", () => {
             "create_opportunity",
             "create_pipeline",
             "create_pipeline_stage",
+            "create_appointment",
             "create_procedure",
             "create_professional",
             "create_clinic_with_owner",
@@ -252,6 +255,7 @@ describe("catálogo de autorização e RLS", () => {
             "remove_member",
             "rename_pipeline",
             "reopen_opportunity",
+            "reschedule_appointment",
             "reorder_pipeline_stages",
             "revoke_invitation",
             "revoke_support_grant",
@@ -263,6 +267,7 @@ describe("catálogo de autorização e RLS", () => {
             "set_professional_weekly_availability",
             "unlink_contact_as_patient",
             "unlink_professional_user",
+            "update_appointment_status",
             "update_contact",
             "update_contact_method",
             "update_lead_source",

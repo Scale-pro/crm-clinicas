@@ -115,13 +115,25 @@ export default defineConfig([
     },
   },
   {
-    // Exceção fechada: script de seed de desenvolvimento, opt-in e fora de
-    // src/ — não é código de aplicação, então não está sujeito às fronteiras
-    // de módulo nem ao logger sanitizado (CLAUDE.md — "seeds" na lista
-    // fechada de uso de service role).
-    files: ["scripts/seed-dev/**"],
+    // Scripts de linha de comando fora de `src/`: não são código de aplicação
+    // e não atendem requisição nenhuma, então o terminal É a saída deles.
+    // A proibição de `console` protege o log do servidor de vazar dado
+    // pessoal (ADR-012) — aqui não há servidor nem dado real, só ferramenta
+    // de desenvolvimento com fixtures fictícias.
+    files: ["scripts/**"],
     rules: {
       "no-console": "off",
+    },
+  },
+  {
+    // Exceção fechada, mais específica: script de seed de desenvolvimento,
+    // opt-in e fora de src/ — não é código de aplicação, então não está
+    // sujeito às fronteiras de módulo nem ao logger sanitizado (CLAUDE.md —
+    // "seeds" na lista fechada de uso de service role). Vem depois do bloco
+    // geral de `scripts/**` para acrescentar a permissão de import do SDK
+    // sem afrouxar isso para o resto de `scripts/`.
+    files: ["scripts/seed-dev/**"],
+    rules: {
       "no-restricted-imports": [
         "error",
         {

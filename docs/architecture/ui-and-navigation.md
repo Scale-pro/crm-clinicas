@@ -9,7 +9,7 @@
   [ADR-005](../adr/ADR-005-superadmin-isolado-e-support-grants.md),
   [ADR-007](../adr/ADR-007-atribuicao-multitouch.md).
 - **Decisões pendentes relacionadas:** nenhuma específica de UI.
-- **Última revisão:** 2026-07-23.
+- **Última revisão:** 2026-08-05.
 
 > Os ADRs são autoritativos. Aqui está a aplicação prática.
 
@@ -116,6 +116,49 @@ Fazem parte da **Definition of Done das telas** (não ficam para depois):
 | **Formulários (contato/orçamento)** | Labels associadas, mensagens de erro acessíveis, ordem de foco lógica | Campos e botões utilizáveis no celular |
 | **Ficha do contato** | Timeline navegável por teclado; foco em ações | Layout coluna única no celular |
 
-## 9. Decisões pendentes (UI)
+## 9. Telas de operação diária (F4 — entregue)
+
+Três rotas do painel da clínica cobrem a operação do dia. Todas leem o mesmo
+carregamento (`_agenda/agenda-data.ts`) e derivam do mesmo núcleo puro
+(`_agenda/agenda-view-model.ts`), testado em separado.
+
+| Rota | Tela | O que mostra |
+|---|---|---|
+| `/app/today` | **Hoje** | Indicadores do dia, próximos atendimentos, o que precisa de atenção, resumo por hora e desempenho por profissional |
+| `/app/agenda` | **Agenda** | Grade dia × profissional, navegação por dia, marcação em três passos e painel de detalhe com as ações da recepção |
+| `/app/financeiro` | **Financeiro** | Faturamento previsto, recebido, a receber, ticket médio e últimos recebimentos do mês |
+
+Regras que estas telas aplicam:
+
+- **Fuso.** O "hoje" é o dia civil da clínica, nunca o do servidor nem o do
+  navegador. O horário escolhido na interface trafega como dia civil + `HH:MM`
+  locais e só vira instante UTC **no servidor**, com o timezone da clínica
+  ([ADR-006](../adr/ADR-006-modelo-de-dominio-pessoa-e-convencoes.md)).
+- **Escrita.** Marcar, remarcar e mudar status passam por Server Action fina →
+  contrato público de `modules/scheduling` → RPC autorizada com AAL2. A tela
+  esconde botões sem permissão apenas por conforto; o controle é do servidor
+  ([ADR-002](../adr/ADR-002-supabase-acesso-hibrido.md),
+  [ADR-004](../adr/ADR-004-multitenant-membership-based.md)).
+- **Convergência.** Cadastrar um cliente durante a marcação chama o **mesmo**
+  caso de uso de criação de contato do CRM. Não existe segunda porta de entrada
+  de pessoas ([ADR-003](../adr/ADR-003-monolito-modular-e-convergencia-de-dominio.md)).
+- **Preço e duração** são congelados no agendamento: mudança posterior no
+  catálogo não reprecifica o passado.
+- **Teclado.** Cada agendamento da grade é um `<button>`; a agenda é operável
+  sem arrastar, e o dia inteiro também existe como lista cronológica.
+- **Gráfico.** Desenhado em SVG próprio, sem biblioteca de terceiros, e sempre
+  acompanhado da tabela equivalente para leitor de tela.
+
+### Fronteira do Financeiro
+
+A tela Financeiro é **relatório derivado da agenda**, não um módulo financeiro:
+faturamento é o que está marcado, recebido é o que está pago, a receber é a
+diferença. Não há lançamento manual, despesa, forma de pagamento nem conciliação
+— isso seria domínio novo e entra por ADR, não por tela. A interface diz isso
+explicitamente em vez de exibir um total de despesas zerado que passaria por
+informação. A ressalva da seção 5 ("não copiar financeiro/fiscal") segue válida
+para o domínio; o que existe aqui é leitura dos próprios agendamentos.
+
+## 10. Decisões pendentes (UI)
 
 Nenhuma decisão de UI pendente registrada até aqui.

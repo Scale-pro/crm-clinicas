@@ -94,7 +94,7 @@ describe("validação final estática da F1", () => {
       expect(filesUnder("src/app")).toContain(file);
     }
     expect(layout).not.toMatch(
-      /patients|appointments|whatsapp|finance/i,
+      /patients|whatsapp/i,
     );
   });
 

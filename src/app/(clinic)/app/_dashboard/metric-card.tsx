@@ -8,12 +8,18 @@ import { cn } from "@/shared/lib/utils";
  * inventado. `srValue` permite dar ao leitor de tela uma leitura completa
  * quando a versão visual é abreviada.
  */
-export function MetricCard({ label, value, srValue, detail, hint, tone = "neutral" }: {
+export function MetricCard({ label, value, srValue, detail, hint, icon, tone = "neutral" }: {
   label: string;
   value: string;
   srValue?: string;
   detail?: ReactNode;
   hint?: ReactNode;
+  /**
+   * Ícone opcional numa caixa tingida pelo tom, à esquerda do rótulo. É
+   * decoração: fica fora da árvore de acessibilidade, porque o rótulo já diz
+   * o que o número é (ADR-011).
+   */
+  icon?: ReactNode;
   tone?: "neutral" | "accent" | "success" | "danger" | "warning";
 }) {
   const accents = {
@@ -24,8 +30,27 @@ export function MetricCard({ label, value, srValue, detail, hint, tone = "neutra
     warning: "text-warning-strong",
   } as const;
 
+  const iconBoxes = {
+    neutral: "bg-muted text-muted-foreground",
+    accent: "bg-accent/10 text-accent-strong",
+    success: "bg-success/10 text-success-strong",
+    danger: "bg-destructive/10 text-destructive",
+    warning: "bg-warning-surface text-warning-strong",
+  } as const;
+
   return <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-surface p-3">
-    <dt className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+    <dt className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+      {icon ? <span
+        aria-hidden="true"
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-md [&_svg]:size-4",
+          iconBoxes[tone],
+        )}
+      >
+        {icon}
+      </span> : null}
+      <span className="min-w-0 truncate">{label}</span>
+    </dt>
     <dd className="min-w-0">
       <span className={cn("block break-words text-2xl font-semibold leading-tight tabular-nums", accents[tone])}>
         {srValue ? <>

@@ -27,6 +27,7 @@ const REQUIRED_TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "appointments",
 ] as const;
 
 const TENANT_WRITE_TABLES = [
@@ -50,6 +51,7 @@ const TENANT_WRITE_TABLES = [
   "procedures",
   "professional_procedures",
   "professional_weekly_availability",
+  "appointments",
 ] as const;
 
 export type SecurityCatalogViolation = {

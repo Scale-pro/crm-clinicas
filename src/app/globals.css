@@ -31,6 +31,15 @@
   --success-strong: oklch(0.452 0.101 155);
   --warning: oklch(0.746 0.129 78);
   --warning-strong: oklch(0.508 0.109 62);
+  /*
+   * Fundo de superfície em tom de atenção, opaco em vez de `--warning` com
+   * alfa. Alfa sobre a superfície mistura os matizes: no tema escuro o âmbar
+   * (h 78) misturado à superfície azulada (h 259) cai em oliva. Os demais tons
+   * não têm esse problema porque seus matizes são vizinhos do da superfície
+   * (accent h 254) ou toleram a mistura (success h 155) — só o âmbar precisa
+   * de valor próprio.
+   */
+  --warning-surface: oklch(0.963 0.029 82);
   --destructive: oklch(0.577 0.198 25);
   --destructive-foreground: oklch(0.985 0.002 258);
   --ring: oklch(0.556 0.136 254);
@@ -78,6 +87,11 @@
   --success-strong: oklch(0.808 0.086 155);
   --warning: oklch(0.788 0.122 78);
   --warning-strong: oklch(0.858 0.096 84);
+  /* Âmbar escuro sobre a superfície do tema escuro. Luminosidade e croma
+     alinhados ao que `accent/10` e `success/10` produzem por mistura (L~0.27,
+     C~0.03), para que o bloco de atenção pese o mesmo que os vizinhos em vez
+     de saltar. Ver a nota no bloco claro sobre por que não pode sair de alfa. */
+  --warning-surface: oklch(0.272 0.036 78);
   --destructive: oklch(0.688 0.166 25);
   --destructive-foreground: oklch(0.192 0.018 259);
   --ring: oklch(0.652 0.132 254);
@@ -112,6 +126,7 @@
   --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
   --color-warning-strong: var(--warning-strong);
+  --color-warning-surface: var(--warning-surface);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);

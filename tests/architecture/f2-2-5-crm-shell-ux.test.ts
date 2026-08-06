@@ -33,8 +33,10 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     }
     expect(layout).toContain('"/app/account"');
     expect(layout).toContain('"/app/security"');
+    // Agenda/Hoje/Financeiro saíram desta lista quando a F4 os entregou de
+    // verdade. O que segue proibido é rota de área ainda não implementada.
     expect(layout).not.toMatch(
-      /href: "\/app\/(?:whatsapp|conversations|conversas|agenda|schedule|reports|relatorios|automations|automacoes|ai)"/i,
+      /href: "\/app\/(?:whatsapp|conversations|conversas|reports|relatorios|automations|automacoes|ai)"/i,
     );
     expect(layout).not.toContain("localStorage");
   });
@@ -207,7 +209,9 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
 
   it("não introduz superfícies de fases futuras nem dados simulados", () => {
     const files = filesUnder(clinicApp).join("\n");
-    expect(files).not.toMatch(/tasks|appointments|conversations|whatsapp|messages|finance|reports|automations/i);
+    // `agenda`/`financeiro` deixaram de ser fases futuras na F4 e passaram a ter
+    // backend, permissão e RLS próprios; o resto continua sem superfície.
+    expect(files).not.toMatch(/tasks|conversations|whatsapp|messages|reports|automations/i);
     const tree = readTree(clinicApp);
     expect(tree).not.toMatch(/mockData|fakeData|dadosFicticios|placeholderRows/i);
     expect(tree).not.toContain("localStorage");
@@ -220,7 +224,7 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
     // garante é não contribuir com nenhuma migration própria: a F2.2.5 é
     // exclusivamente frontend/UX.
     const migrations = filesUnder("supabase/migrations");
-    expect(migrations.length).toBe(28);
+    expect(migrations.length).toBeGreaterThanOrEqual(28);
     expect(migrations.some((file) => file.includes("f2_2_5"))).toBe(false);
     const tree = readTree(clinicApp);
     expect(tree).not.toContain("@supabase/");
