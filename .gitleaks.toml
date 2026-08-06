@@ -5,3 +5,31 @@
 
 [extend]
 useDefault = true
+
+# `scripts/seed-dev/fixtures.ts` declara chaves de idempotência fixas — é o que
+# torna o seed reexecutável sem duplicar linhas (ver docs/runbooks/seed-dev-data.md).
+# São UUIDs constantes de dados fictícios locais, não credenciais: a regra
+# `generic-api-key` dispara porque o identificador termina em "key" e o UUID tem
+# entropia suficiente.
+#
+# Allowlist GLOBAL, não por regra: um `[[rules]] id = "generic-api-key"` sem
+# repetir o `regex` original da regra padrão a REDEFINE em vez de estendê-la —
+# na prática desativa a detecção da regra inteira, no repositório todo, não só
+# neste arquivo. Testado e descartado.
+#
+# `paths` combinado com `matchCondition = "AND"` também foi testado e
+# descartado: nesta versão (gitleaks 8.30.1) o `paths` sozinho já suprime todo
+# achado do arquivo, ignorando o AND e a exigência de casar o regex — ou seja,
+# esconderia um segredo real no mesmo arquivo. Verificado empiricamente antes
+# de descartar (não documentação, comportamento observado).
+#
+# Por isso a exceção não restringe por caminho: só o regex, que já é estreito
+# por conta própria — exige a literal `idempotencyKey:` seguida de um UUID.
+# Qualquer segredo atribuído a outro nome de campo, neste arquivo ou em
+# qualquer outro, continua sendo reportado. Verificado: renomear uma dessas
+# linhas para `apiKey:` faz o achado voltar a aparecer.
+[[allowlists]]
+regexTarget = "line"
+regexes = [
+  '''idempotencyKey:\s*"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"''',
+]
