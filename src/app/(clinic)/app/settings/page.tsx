@@ -1,4 +1,4 @@
-import { ChevronRight, SlidersHorizontal, Stethoscope, Users } from "lucide-react";
+import { ChevronRight, MessageCircle, SlidersHorizontal, Stethoscope, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -22,10 +22,11 @@ type SettingsLink = {
 export default async function ClinicSettingsPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const [context, query] = await Promise.all([resolveActiveClinicContext(), searchParams]);
   if (context.status !== "ready") redirect("/app");
-  const [manageAccess, professionalAccess, procedureAccess] = await Promise.all([
+  const [manageAccess, professionalAccess, procedureAccess, clinicAccess] = await Promise.all([
     requirePermission(context.clinic.id, "pipeline.manage"),
     requirePermission(context.clinic.id, "professional.view"),
     requirePermission(context.clinic.id, "procedure.view"),
+    requirePermission(context.clinic.id, "clinic.manage"),
   ]);
   const advancedLinks: readonly SettingsLink[] = [
     ...(manageAccess.allowed ? [{
@@ -45,6 +46,12 @@ export default async function ClinicSettingsPage({ searchParams }: { searchParam
       href: "/app/settings/procedures",
       icon: Stethoscope,
       title: "Procedimentos",
+    }] : []),
+    ...(clinicAccess.allowed ? [{
+      description: "Instância do provedor que recebe e envia as mensagens da clínica.",
+      href: "/app/settings/whatsapp",
+      icon: MessageCircle,
+      title: "WhatsApp",
     }] : []),
   ];
   return <section className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-5" aria-labelledby="settings-title">

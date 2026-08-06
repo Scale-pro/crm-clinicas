@@ -10,6 +10,7 @@ import {
   listOpportunityBoard,
 } from "@/modules/crm";
 import { resolveActiveClinicContext } from "@/modules/tenancy";
+import { countUnreadConversations } from "@/modules/whatsapp";
 import { requirePermission } from "@/shared/auth";
 import { formatBrlFromCents } from "@/shared/lib/currency";
 import { formatClinicDateTime } from "@/shared/lib/date";
@@ -59,7 +60,8 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
   const duplicateWarning = params.error === "existing_open";
   const selectedContact = stringParam(params.contactId);
   const existingIdempotency = stringParam(params.idempotencyKey);
-  const [board, owners, sources, contacts, selectedContactResult, createAccess, closeAccess, manageAccess] = await Promise.all([
+  const unreadOnly = params.unread === "1";
+  const [board, owners, sources, contacts, selectedContactResult, createAccess, closeAccess, manageAccess, unread] = await Promise.all([
     listOpportunityBoard({
       assignedToUserId: assignedToUserId || null,
       clinicId: context.clinic.id,
@@ -68,6 +70,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
       pageSize,
       search,
       status,
+      unreadOnly,
     }),
     listContactOwners(context.clinic.id),
     listLeadSources(context.clinic.id),
@@ -83,6 +86,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
     requirePermission(context.clinic.id, "opportunity.create"),
     requirePermission(context.clinic.id, "opportunity.close"),
     requirePermission(context.clinic.id, "pipeline.manage"),
+    countUnreadConversations(context.clinic.id),
   ]);
   if (!board.ok) return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar o pipeline" description="Confira suas permissões ou tente novamente." /></div>;
   const ownerOptions = owners.ok ? owners.owners : [];
@@ -115,6 +119,25 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
     title: card.title,
     updatedLabel: formatClinicDateTime(card.updated_at, context.clinic.timezone),
   }));
+  /*
+   * O RPC do quadro devolve a conversa junto com a oportunidade — uma consulta
+   * só. Buscar conversa por card faria N+1 no maior tenant justamente na tela
+   * mais usada do dia.
+   */
+  const conversations = new Map(board.cards.map((card) => [
+    card.id,
+    card.conversation_id
+      ? {
+        conversationId: card.conversation_id,
+        lastMessageAt: card.conversation_last_message_at,
+        lastMessageDirection: card.conversation_last_message_direction,
+        lastMessageText: card.conversation_last_message_text,
+        lastMessageType: card.conversation_last_message_type,
+        needsReplyFrom: card.conversation_needs_reply_from,
+        unreadCount: card.conversation_unread_count ?? 0,
+      }
+      : null,
+  ]));
   const versions = new Map(board.cards.map((card) => [card.id, card.version]));
   const stageOf = new Map(board.cards.map((card) => [card.id, card.stage_id]));
   const rowsByStage = new Map(openStages.map((stage) => [
@@ -128,6 +151,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
     q: search,
     source: initialSourceId,
     statusFilter: status,
+    unread: unreadOnly ? "1" : "",
   };
 
   return <div className="flex min-h-0 flex-1 flex-col">
@@ -165,21 +189,54 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
         </ActionsMenu>
       </>}
       description={`Escopo: ${board.scope === "all" ? "toda a clínica" : "somente suas oportunidades"}.`}
-      filters={<OpportunityFilters
-        assignedToUserId={assignedToUserId}
-        basePath="/app/pipeline"
-        defaultStatus="open"
-        idPrefix="pipeline"
-        initialSourceId={initialSourceId}
-        owners={ownerOptions.map((owner) => ({ id: owner.userId, label: owner.fullName }))}
-        pageSize={pageSize}
-        search={search}
-        sources={sourceOptions.map((source) => ({ id: source.id, label: source.name }))}
-        status={status}
-      />}
+      filters={<div className="flex flex-wrap items-center gap-2">
+        <OpportunityFilters
+          assignedToUserId={assignedToUserId}
+          basePath="/app/pipeline"
+          defaultStatus="open"
+          idPrefix="pipeline"
+          initialSourceId={initialSourceId}
+          owners={ownerOptions.map((owner) => ({ id: owner.userId, label: owner.fullName }))}
+          pageSize={pageSize}
+          search={search}
+          sources={sourceOptions.map((source) => ({ id: source.id, label: source.name }))}
+          status={status}
+        />
+        {/*
+          O filtro é um link, não um controle de formulário: o quadro já resolve
+          tudo por query string no servidor, então alternar "só não lidas" é
+          navegar — funciona sem JavaScript e o estado fica no endereço,
+          compartilhável e recarregável.
+        */}
+        <Link
+          aria-pressed={unreadOnly}
+          className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+            unreadOnly
+              ? "border-success/40 bg-success/10 text-success-strong"
+              : "border-input bg-background hover:bg-muted"
+          }`}
+          href={opportunityHref("/app/pipeline", params, {
+            page: "1",
+            unread: unreadOnly ? "" : "1",
+          })}
+        >
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-success" />
+          Só não lidas
+          {unread.ok && unread.conversations > 0 ? <span className="rounded-full bg-muted px-1.5 text-[0.6875rem] font-semibold leading-4 tabular-nums text-muted-foreground">
+            {unread.conversations}
+          </span> : null}
+        </Link>
+        {unreadOnly ? <p className="text-xs text-muted-foreground" role="status">
+          Mostrando apenas oportunidades com mensagens não lidas.
+        </p> : null}
+      </div>}
       meta={<>
         <ToolbarMetric label="Oportunidades" value={rows.length} />
         <ToolbarMetric label="Soma visível" value={formatBrlFromCents(sumAmountCents(rows)) ?? "—"} />
+        {unread.ok && unread.conversations > 0 ? <ToolbarMetric
+          label="WhatsApp não lido"
+          value={`${unread.messages} em ${unread.conversations} conversas`}
+        /> : null}
       </>}
       title={board.pipeline.name}
       view={<StatusBadge tone="accent">{status === "open" ? "Kanban" : "Lista"}</StatusBadge>}
@@ -206,8 +263,10 @@ export default async function PipelinePage({ searchParams }: { searchParams: Sea
                 card={row}
                 clinicId={context.clinic.id}
                 closeAllowed={closeAccess.allowed}
+                conversation={conversations.get(row.id) ?? null}
                 key={row.id}
                 moveTargets={openStages.filter((candidate) => candidate.id !== stage.id)}
+                timezone={context.clinic.timezone}
                 version={versions.get(row.id) ?? 1}
               />)}
               {stageRows.length === 0

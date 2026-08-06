@@ -6,36 +6,26 @@ import "server-only";
  * Este é o ÚNICO local autorizado a importar o SDK da fila (QStash/Upstash).
  * Regra verificada por ESLint (`no-restricted-imports`) e dependency-cruiser.
  *
- * Na F0 apenas o contrato existe: nenhum SDK ou serviço real é conectado.
- * A implementação QStash (com retry/backoff/DLQ) chega na F3, atrás desta
- * interface, para que a fila seja substituível sem alterar o domínio.
+ * O contrato vive em `contract.ts` e a implementação QStash em `qstash.ts`.
+ * Este arquivo é só a fachada e o ponto de composição: quem consome a fila
+ * depende da interface, nunca de um provedor.
  */
 
-/** Trabalho a ser enfileirado. `dedupeKey` sustenta a idempotência (ADR-008). */
-export interface QueueJob {
-  readonly kind: string;
-  readonly payload: unknown;
-  readonly dedupeKey?: string;
-}
+import { createNoopQueuePublisher, type QueuePublisher } from "./contract";
 
-export interface QueueEnqueueResult {
-  readonly enqueued: boolean;
-  /** Código interno (nunca conteúdo do payload). */
-  readonly code: "not_configured" | "ok" | "error";
-}
-
-/** Contrato do publicador de jobs. Implementações reais chegam na F3. */
-export interface QueuePublisher {
-  publish(job: QueueJob): Promise<QueueEnqueueResult>;
-}
+export { createNoopQueuePublisher } from "./contract";
+export type { QueueEnqueueResult, QueueJob, QueuePublisher } from "./contract";
+export { verifyQStashSignature } from "./qstash";
 
 /**
- * Publicador neutro da F0: não conecta serviço algum e sinaliza
- * `not_configured`. Existe para que consumidores futuros dependam do contrato,
- * nunca de um SDK.
+ * Ponto único de composição da fila. Ambiente com QStash configurado usa
+ * QStash; sem configuração, o publicador neutro — e quem chama trata
+ * `not_configured` como já trata hoje. É por isto que não existe `if` de
+ * ambiente espalhado pelo domínio.
  */
-export function createNoopQueuePublisher(): QueuePublisher {
-  return {
-    publish: async () => ({ enqueued: false, code: "not_configured" }),
-  };
+export async function resolveQueuePublisher(): Promise<QueuePublisher> {
+  const { serverEnv } = await import("@/shared/config");
+  if (!serverEnv.QSTASH_TOKEN) return createNoopQueuePublisher();
+  const { createQStashQueuePublisher } = await import("./qstash");
+  return createQStashQueuePublisher();
 }

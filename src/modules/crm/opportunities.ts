@@ -79,6 +79,8 @@ const listBoardSchema = z.object({
   pipelineId: z.uuid().nullable().optional(),
   search: z.string().trim().max(160).default(""),
   status: z.enum(["open", "won", "lost", "all"]).default("open"),
+  /** Só oportunidades com conversa de WhatsApp não lida (mesmo nome de `search_conversations`). */
+  unreadOnly: z.boolean().default(false),
 }).strict();
 
 export function calculateBoardPosition(
@@ -167,6 +169,7 @@ async function listOpportunityBoardInternal(input: unknown) {
     p_pipeline_id: selectedPipelineId,
     p_search_term: parsed.data.search,
     p_status: parsed.data.status === "all" ? null : parsed.data.status,
+    p_unread_only: parsed.data.unreadOnly,
   });
   if (opportunities.error) return { ok: false, code: "unavailable" } as const;
 

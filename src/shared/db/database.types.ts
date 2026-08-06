@@ -2194,6 +2194,67 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_whatsapp_account_secret: {
+        Args: {
+          p_clinic_id: string
+          p_token_encrypted: string
+          p_whatsapp_account_id: string
+        }
+        Returns: undefined
+      }
+      mark_whatsapp_event_ignored: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: boolean
+      }
+      get_whatsapp_event_for_processing: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: {
+          clinic_id: string
+          event_id: string
+          event_type: string
+          processing_status: string
+          provider: string
+          raw_payload: Json
+          whatsapp_account_id: string
+        }[]
+      }
+      get_whatsapp_send_credential: {
+        Args: {
+          p_message_id: string
+        }
+        Returns: {
+          attachment_metadata: Json
+          clinic_id: string
+          external_account_id: string
+          key_version: number
+          message_type: string
+          phone_e164: string | null
+          provider: string
+          text_content: string | null
+          token_encrypted: string
+          whatsapp_account_id: string
+        }[]
+      }
+      record_whatsapp_send_result: {
+        Args: {
+          p_attempt_id: string
+          p_clinic_id: string
+          p_error_code: string | null
+          p_external_message_id: string | null
+          p_message_id: string
+          p_occurred_at: string
+          p_status: string
+        }
+        Returns: {
+          applied: boolean
+          duplicate: boolean
+          external_message_id: string | null
+        }[]
+      }
       list_conversation_messages: {
         Args: {
           p_before_occurred_at: string | null
@@ -2336,6 +2397,7 @@ export type Database = {
           p_pipeline_id: string | null
           p_search_term: string
           p_status: string | null
+          p_unread_only: boolean
         }
         Returns: {
           amount_cents: number
@@ -2346,6 +2408,13 @@ export type Database = {
           closed_at: string
           contact_id: string
           contact_name: string
+          conversation_id: string | null
+          conversation_last_message_at: string | null
+          conversation_last_message_direction: string | null
+          conversation_last_message_text: string | null
+          conversation_last_message_type: string | null
+          conversation_needs_reply_from: string | null
+          conversation_unread_count: number | null
           created_at: string
           id: string
           idempotency_key: string

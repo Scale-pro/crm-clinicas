@@ -64,8 +64,10 @@ describe("shell autenticado F1.9", () => {
     expect(existsSync(path.join(root, "src/app/(clinic)/app/loading.tsx"))).toBe(true);
     expect(existsSync(path.join(root, "src/app/(clinic)/app/error.tsx"))).toBe(true);
     // "leads" saiu da lista na F2.2.5: /app/leads é a lista de oportunidades
-    // já entregue. As demais permanecem proibidas até serem implementadas.
-    const forbidden = ["patients", "appointments", "conversations", "whatsapp", "medical-records", "finance"];
+    // já entregue. "whatsapp" saiu na F2/WhatsApp: as rotas técnicas de
+    // ingestão (`/api/whatsapp/**`) são a entrega desta fase. As demais
+    // permanecem proibidas até serem implementadas.
+    const forbidden = ["patients", "appointments", "conversations", "medical-records", "finance"];
     const appFiles = allFiles(path.join(root, "src/app"));
     for (const segment of forbidden) {
       expect(appFiles.some((file) => file.split(path.sep).includes(segment))).toBe(false);

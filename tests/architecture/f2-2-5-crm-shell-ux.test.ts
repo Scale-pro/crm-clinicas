@@ -210,8 +210,11 @@ describe("shell, Kanban e lista de leads F2.2.5", () => {
   it("não introduz superfícies de fases futuras nem dados simulados", () => {
     const files = filesUnder(clinicApp).join("\n");
     // `agenda`/`financeiro` deixaram de ser fases futuras na F4 e passaram a ter
-    // backend, permissão e RLS próprios; o resto continua sem superfície.
-    expect(files).not.toMatch(/tasks|conversations|whatsapp|messages|reports|automations/i);
+    // backend, permissão e RLS próprios. `whatsapp` saiu da lista na F2/WhatsApp
+    // pelo mesmo critério: schema, RLS, RPCs e permissões `conversation.*` já
+    // estão na main. Uma caixa de entrada dedicada (`conversations`) continua
+    // sendo fase futura — a conversa aparece dentro do pipeline.
+    expect(files).not.toMatch(/tasks|conversations|messages|reports|automations/i);
     const tree = readTree(clinicApp);
     expect(tree).not.toMatch(/mockData|fakeData|dadosFicticios|placeholderRows/i);
     expect(tree).not.toContain("localStorage");

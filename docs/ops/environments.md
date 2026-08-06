@@ -139,14 +139,37 @@ duas últimas são server-only.
 | `APP_ENV` | `development` | a aplicação sobe normalmente e se comporta como ambiente de desenvolvimento. O risco é silencioso: um deploy hospedado sem `APP_ENV` se declara `development` em qualquer lugar que consulte o ambiente lógico. **Defina explicitamente** em staging e produção. |
 | `NODE_ENV` | definido pelo runtime | não é configurada à mão. Só o logger a consulta, para decidir o formato da saída (`src/shared/observability/logger.ts`). A Vercel define em produção. |
 
+### Opcionais — WhatsApp (F2/WhatsApp)
+
+Todas são opcionais **de propósito**: sem elas a aplicação sobe e opera com o
+WhatsApp desligado. Cada uma é exigida no ponto onde é de fato necessária, com
+erro alto citando o nome da variável — nunca o valor.
+
+| Variável | Formato | Onde é usada | Se faltar |
+|---|---|---|---|
+| `SUPABASE_SECRET_KEY` | texto não vazio | executor técnico do webhook e do worker (`src/shared/db/technical.ts`) | as rotas técnicas respondem erro; nenhum fluxo de usuário é afetado |
+| `UAZAPI_WEBHOOK_SECRET` | texto, **mínimo 32 caracteres** | autentica a origem do webhook (`/api/whatsapp/uazapi/webhook`) | **todo webhook recebe 401** — é o comportamento correto: sem segredo configurado não há origem confiável |
+| `UAZAPI_API_BASE_URL` | URL | destino do envio de mensagens | a mensagem é gravada e a tentativa fecha como `provider_not_configured` |
+| `WHATSAPP_CREDENTIAL_KEY` | **32 bytes em base64** | cifra/decifra o token da instância (AES-256-GCM) | não é possível cadastrar nem usar credencial de provedor |
+| `QSTASH_TOKEN` | texto não vazio | publica os jobs (`src/shared/queue/qstash.ts`) | a fila cai no publicador no-op: eventos ficam persistidos e `pending`, sem processamento |
+| `QSTASH_CURRENT_SIGNING_KEY` | texto não vazio | verifica a assinatura no worker | **todo job recebe 401** |
+| `QSTASH_NEXT_SIGNING_KEY` | texto não vazio | idem, durante rotação de chave | a rotação derruba a fila até a chave nova virar a atual |
+
+Gerar `WHATSAPP_CREDENTIAL_KEY`: `openssl rand -base64 32`. É um segredo por
+ambiente — girar a chave torna ilegíveis os tokens já gravados, que precisam ser
+recadastrados na tela de Ajustes → WhatsApp.
+
+O endereço a cadastrar no painel do provedor é `<APP_URL>/api/whatsapp/uazapi/webhook`,
+exibido na própria tela de configuração. O segredo **não** aparece na interface:
+mande-o pelo header `x-webhook-secret` ou pelo parâmetro `?t=`.
+
 ### Não existem (e não devem ser inventadas)
 
 | Assunto | Situação |
 |---|---|
-| Fila (QStash/Upstash) | `src/shared/queue` expõe só o contrato e um publicador no-op. Nenhuma variável até a F3. |
 | Observabilidade (Sentry etc.) | Provedor não decidido. Nenhuma variável. |
-| WhatsApp / Meta / Evolution | Chegam na F3, com seus adapters. |
-| `service_role` / secret key do Supabase | **A aplicação nunca a lê.** Não cadastre na hospedagem. Fluxos de usuário usam a sessão/JWT ([ADR-002](../adr/ADR-002-supabase-acesso-hibrido.md)). |
+| Meta / Evolution | Outros provedores de WhatsApp chegam com seus próprios adapters; nenhuma variável hoje. |
+| `service_role` key do Supabase | A chave técnica é `SUPABASE_SECRET_KEY` e tem **uso restrito à lista fechada** do [ADR-002](../adr/ADR-002-supabase-acesso-hibrido.md) (decisão 3): hoje, só as rotas de webhook e do worker, que chegam sem sessão de usuário. Fluxos de usuário continuam usando a sessão/JWT. |
 | `API_URL`, `SERVICE_ROLE_KEY`, `DB_URL`, `PUBLIC_KEY_KIND` | Existem **apenas** para a suíte de integração e para o CI, contra a stack local. Não são variáveis da aplicação e não vão para a hospedagem. |
 
 ## 4. Configuração que não é variável de ambiente

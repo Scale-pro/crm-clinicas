@@ -7,6 +7,10 @@ export const OPPORTUNITY_QUERY_KEYS = [
   "source",
   "statusFilter",
   "pageSize",
+  // Filtro "só não lidas" do quadro: precisa sobreviver à paginação e à volta
+  // de um formulário, senão o quadro reaparece sem o recorte que o usuário
+  // escolheu.
+  "unread",
 ] as const;
 
 export function stringParam(value: string | string[] | undefined): string {

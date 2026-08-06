@@ -179,6 +179,7 @@ describe("contratos de oportunidades", () => {
       p_pipeline_id: pipelineId,
       p_search_term: `% _ \\, " (teste)`,
       p_status: "open",
+      p_unread_only: false,
     });
   });
 });

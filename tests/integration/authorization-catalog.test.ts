@@ -317,7 +317,7 @@ describe("catálogo de autorização e RLS", () => {
        from pg_catalog.pg_proc p
        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
-         and p.oid = 'public.search_opportunity_board(uuid,uuid,text,text,uuid,uuid,integer,integer)'::regprocedure`,
+         and p.oid = 'public.search_opportunity_board(uuid,uuid,text,text,uuid,uuid,boolean,integer,integer)'::regprocedure`,
     );
     expect(rows).toEqual([{
       anon_execute: false,
