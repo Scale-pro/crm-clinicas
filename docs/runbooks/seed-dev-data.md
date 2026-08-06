@@ -15,6 +15,36 @@
 > script é uma ferramenta **separada e opt-in** — nunca roda automaticamente
 > junto de `supabase db reset` ou de CI.
 
+## Estado atual: ferramenta dormante
+
+**Hoje não há ambiente neste projeto onde este script possa rodar.** Ele foi
+mesclado para não se perder, não porque esteja em uso. Antes de tentar rodá-lo,
+saiba o que falta:
+
+- **Ele exige uma stack Supabase local**, que por sua vez exige um **daemon
+  Docker em execução**. As sessões de desenvolvimento usadas neste projeto até
+  agora não têm daemon Docker disponível — o binário pode existir, mas
+  `docker info` falha, e sem ele `pnpm supabase start` não sobe.
+- **Um projeto Supabase hospedado não é alternativa hoje.** O repositório não
+  está linkado a nenhum projeto remoto (não há `supabase/.temp/project-ref`) e,
+  mesmo que estivesse, a guarda de segurança do script recusa qualquer
+  `API_URL` fora de `127.0.0.1`/`localhost` (ver "Guarda de segurança"). Apontar
+  o seed para um projeto hospedado exigiria **afrouxar essa guarda** — uma
+  decisão deliberada, não um ajuste de configuração, já que ela existe
+  justamente para impedir que dados fictícios cheguem a staging ou produção.
+- **O CI não cobre este script.** O job `database-auth` sobe a stack Supabase
+  com Docker no runner, mas **nenhum workflow chama `pnpm seed:dev`**. Portanto
+  o CI verde **não** é evidência de que o seed funciona.
+
+Consequência prática: o script **nunca foi executado ponta a ponta contra uma
+stack real**. `pnpm lint`, `pnpm typecheck`, `pnpm depcruise` e `pnpm test`
+passam, mas isso cobre apenas tipos e fronteiras — não o comportamento contra o
+banco. A primeira pessoa que conseguir Docker local deve tratar a primeira
+execução como **validação**, não como uso rotineiro, e corrigir o que aparecer.
+
+O script segue versionado de propósito: reescrevê-lo do zero depois custa mais
+do que mantê-lo aqui, à espera do ambiente que o torne executável.
+
 ## O que o script faz
 
 `scripts/seed-dev/index.ts` (rodado via `pnpm seed:dev`) cria, chamando
@@ -44,7 +74,13 @@ então uma segunda execução com os mesmos horários não altera nada.
 
 ## Pré-requisitos
 
-- Docker rodando (a stack local do Supabase depende dele).
+> Os passos abaixo pressupõem os pré-requisitos satisfeitos. Enquanto o primeiro
+> deles não estiver — ver "Estado atual: ferramenta dormante" —, esta seção
+> descreve o procedimento pretendido, não um caminho hoje percorrível.
+
+- **Daemon Docker em execução** (a stack local do Supabase depende dele).
+  Verifique com `docker info` antes de tudo: binário instalado não basta. Este é
+  o pré-requisito que hoje não é satisfeito no ambiente do projeto.
 - `pnpm install` já executado.
 - Stack local iniciada: `pnpm supabase start`.
 - Variáveis de ambiente da stack local exportadas no shell atual — os mesmos
@@ -80,6 +116,9 @@ por engano.
 
 ## Limitações conhecidas
 
+- **Não validado em execução real.** Nenhuma das limitações abaixo foi observada
+  rodando o script; são as previstas por leitura do código e das RPCs. Podem
+  existir outras, ainda desconhecidas, que só a primeira execução revelará.
 - MFA local tem limite de 10 fatores por usuário
   (`supabase/config.toml` → `auth.mfa.max_enrolled_factors`). O script tenta
   remover fatores de execuções anteriores antes de registrar um novo, mas a
