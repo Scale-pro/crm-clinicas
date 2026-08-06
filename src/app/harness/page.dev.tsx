@@ -16,6 +16,7 @@ import { Button } from "@/shared/ui/button";
 import { PageToolbar } from "@/shared/ui/page-toolbar";
 
 import { AgendaScreen } from "../(clinic)/app/_agenda/agenda-screen";
+import { FinanceiroScreen } from "../(clinic)/app/_agenda/financeiro-screen";
 import {
   APPOINTMENTS,
   CONTACTS,
@@ -27,7 +28,7 @@ import {
 } from "./fixtures";
 
 /** Cenários disponíveis via `?scenario=`. */
-const SCENARIOS = ["grid", "empty", "no-professionals"] as const;
+const SCENARIOS = ["grid", "empty", "no-professionals", "financeiro", "financeiro-vazio"] as const;
 
 function Harness() {
   const params = useSearchParams();
@@ -35,8 +36,9 @@ function Harness() {
   const requested = params.get("scenario") ?? "grid";
   const scenario = (SCENARIOS as readonly string[]).includes(requested) ? requested : "grid";
 
-  const appointments = scenario === "empty" ? [] : APPOINTMENTS;
+  const appointments = scenario === "empty" || scenario === "financeiro-vazio" ? [] : APPOINTMENTS;
   const professionals = scenario === "no-professionals" ? [] : PROFESSIONALS;
+  const financeiro = scenario.startsWith("financeiro");
 
   return <div className={dark ? "dark" : undefined}>
     <div className="flex min-h-screen flex-col bg-canvas text-foreground">
@@ -53,11 +55,17 @@ function Harness() {
             <ChevronRight aria-hidden="true" />
           </Button>
         </div>}
-        description={`quinta-feira, 06 de agosto de 2026 · fuso ${TIMEZONE}`}
-        title="Agenda"
+        description={financeiro
+          ? `06 de agosto de 2026 · derivado dos agendamentos, no fuso ${TIMEZONE}`
+          : `quinta-feira, 06 de agosto de 2026 · fuso ${TIMEZONE}`}
+        title={financeiro ? "Financeiro" : "Agenda"}
       />
       <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-      <AgendaScreen
+      {financeiro ? <FinanceiroScreen
+        appointments={appointments}
+        periodLabel="06 de agosto de 2026"
+        timezone={TIMEZONE}
+      /> : <AgendaScreen
         appointments={appointments}
         canCreateContact
         canManage
@@ -67,7 +75,7 @@ function Harness() {
         procedures={PROCEDURES}
         professionals={professionals}
         timezone={TIMEZONE}
-      />
+      />}
       </div>
     </div>
   </div>;

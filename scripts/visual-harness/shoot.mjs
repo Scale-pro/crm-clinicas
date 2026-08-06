@@ -33,6 +33,8 @@ for (const viewport of VIEWPORTS) {
   for (const scenario of SCENARIOS) {
     for (const theme of THEMES) {
       await page.goto(`${BASE_URL}?scenario=${scenario}&theme=${theme}`, { waitUntil: "networkidle" });
+      // O indicador de dev do Next não faz parte da tela; some da captura.
+      await page.addStyleTag({ content: "nextjs-portal, #next-logo, [data-nextjs-toast] { display: none !important; }" });
       // Deixa a hidratação assentar antes de capturar.
       await page.waitForTimeout(600);
       const file = `${OUT}/${scenario}-${theme}-${viewport.name}.png`;

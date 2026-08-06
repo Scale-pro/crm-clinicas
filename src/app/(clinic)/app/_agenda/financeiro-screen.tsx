@@ -1,4 +1,4 @@
-import { TrendingUp } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 
 import { formatBrlFromCents } from "@/shared/lib/currency";
@@ -52,18 +52,21 @@ export function FinanceiroScreen({ appointments, periodLabel, timezone }: {
     <MetricGrid label={`Indicadores financeiros — ${periodLabel}`}>
       <MetricCard
         detail="Tudo que está marcado no período"
+        icon={<CalendarClock />}
         label="Faturamento previsto"
         tone="accent"
         value={formatBrlFromCents(expectedCents) ?? "—"}
       />
       <MetricCard
         detail={`${settled.length} atendimento${settled.length === 1 ? "" : "s"} pago${settled.length === 1 ? "" : "s"}`}
+        icon={<CheckCircle2 />}
         label="Recebido"
         tone="success"
         value={formatBrlFromCents(settledCents) ?? "—"}
       />
       <MetricCard
         detail="Marcado e ainda não pago"
+        icon={<Clock />}
         label="A receber"
         tone={expectedCents - settledCents > 0 ? "warning" : "neutral"}
         value={formatBrlFromCents(expectedCents - settledCents) ?? "—"}
@@ -71,6 +74,7 @@ export function FinanceiroScreen({ appointments, periodLabel, timezone }: {
       <MetricCard
         detail="Média dos atendimentos pagos"
         hint={averageTicketCents === null ? "Nenhum pagamento registrado no período" : undefined}
+        icon={<Wallet />}
         label="Ticket médio"
         value={averageTicketCents === null ? "—" : formatBrlFromCents(averageTicketCents) ?? "—"}
       />

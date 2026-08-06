@@ -71,7 +71,7 @@ Com o servidor de desenvolvimento rodando (`pnpm dev`):
 
 ```bash
 # abrir no navegador
-http://127.0.0.1:3000/harness?scenario=grid&theme=dark
+http://localhost:3000/harness?scenario=grid&theme=dark
 
 # capturar tudo: cenários x claro/escuro x desktop/celular
 pnpm harness:shoot .harness-shots
@@ -83,8 +83,17 @@ pnpm harness:measure
 `SCENARIOS` limita a captura: `SCENARIOS=grid pnpm harness:shoot`.
 
 Cenários disponíveis hoje: `grid` (dia cheio), `empty` (dia sem atendimentos),
-`no-professionals` (clínica sem profissional cadastrado). A saída vai para
-`.harness-shots/`, que é ignorada pelo git.
+`no-professionals` (clínica sem profissional cadastrado), `financeiro` e
+`financeiro-vazio`. No cenário `grid` a captura também abre o painel de detalhe
+e o diálogo de marcação **por clique real**, gerando `drawer-*` e `modal-*`. A
+saída vai para `.harness-shots/`, que é ignorada pelo git.
+
+> **Use `localhost`, nunca `127.0.0.1`.** O Next dev trata os dois como origens
+> distintas e bloqueia os recursos de dev na origem "errada". O sintoma é
+> traiçoeiro: a página renderiza normalmente e a captura parece boa, mas o
+> runtime de cliente nunca carrega — nada hidrata e nenhuma interação funciona.
+> O log do dev server avisa com "Blocked cross-origin request to Next.js dev
+> resource".
 
 ## Por que existe um script de medição
 
