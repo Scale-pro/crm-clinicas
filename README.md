@@ -22,4 +22,9 @@ pnpm dev        # servidor de desenvolvimento
 pnpm build      # build de produção
 pnpm lint       # lint
 pnpm typecheck  # verificação de tipos
+pnpm seed:dev   # popula a stack Supabase local com dados fictícios (opt-in)
 ```
+
+Para popular a stack local com clínica, profissionais, procedimentos e
+contatos de exemplo, veja
+[`docs/runbooks/seed-dev-data.md`](docs/runbooks/seed-dev-data.md).
