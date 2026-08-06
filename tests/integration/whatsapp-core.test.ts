@@ -430,7 +430,8 @@ describe("núcleo WhatsApp em banco real", () => {
     expect(assigned.error).toBeNull();
     const list = await sdrA.client.rpc("search_conversations", {
       p_assigned_to_user_id: sdrA.id, p_clinic_id: clinicA, p_page: 1,
-      p_page_size: 1, p_search: "+5511988880008", p_state: "open", p_unread_only: true,
+      p_page_size: 1, p_search: "+5511988880008", p_search_phone: "+5511988880008",
+      p_state: "open", p_unread_only: true,
     });
     expect(list.error).toBeNull();
     expect(list.data).toHaveLength(1);
