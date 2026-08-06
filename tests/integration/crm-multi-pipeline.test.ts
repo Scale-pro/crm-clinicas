@@ -411,6 +411,7 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       p_page_size: 100,
       p_search_term: "multi pipeline",
       p_status: null,
+      p_unread_only: false,
     };
     const [specific, allForOwner, allForSdr] = await Promise.all([
       ownerA.client.rpc("search_opportunity_board", {
@@ -646,6 +647,7 @@ describe("CRM F2.2.6 múltiplas pipelines", () => {
       p_pipeline_id: null,
       p_search_term: "Bloqueia arquivamento",
       p_status: null,
+      p_unread_only: false,
     });
     expect(historical.error).toBeNull();
     expect(historical.data?.[0]).toMatchObject({

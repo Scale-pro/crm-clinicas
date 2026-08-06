@@ -253,6 +253,7 @@ describe("CRM F2.2 oportunidades e pipeline", () => {
       p_pipeline_id: pipelineId,
       p_search_term: overrides.term ?? commonTitle,
       p_status: "open",
+      p_unread_only: false,
     });
 
     const [byTitle, byContact, byAssignee, bySource] = await Promise.all([
