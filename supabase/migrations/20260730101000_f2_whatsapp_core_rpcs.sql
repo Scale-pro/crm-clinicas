@@ -32,23 +32,6 @@ alter function app_private.normalize_whatsapp_phone(text) owner to postgres;
 revoke all on function app_private.normalize_whatsapp_phone(text)
 from public, anon, authenticated, service_role;
 
-create function app_private.try_normalize_whatsapp_phone(p_raw_value text)
-returns text
-language plpgsql
-immutable
-security invoker
-set search_path = ''
-as $$
-begin
-  return app_private.normalize_whatsapp_phone(p_raw_value);
-exception when others then
-  return null;
-end;
-$$;
-alter function app_private.try_normalize_whatsapp_phone(text) owner to postgres;
-revoke all on function app_private.try_normalize_whatsapp_phone(text)
-from public, anon, authenticated, service_role;
-
 create function app_private.resolve_whatsapp_lead(
   p_clinic_id uuid,
   p_phone_e164 text,
@@ -531,9 +514,14 @@ alter function public.retry_whatsapp_event(uuid) owner to postgres;
 revoke all on function public.retry_whatsapp_event(uuid) from public, anon, authenticated;
 grant execute on function public.retry_whatsapp_event(uuid) to service_role;
 
+-- `p_search_phone` chega já normalizado em E.164 pelo chamador. Esta função é
+-- `security invoker` (é a RLS que filtra o tenant), e `authenticated` não tem
+-- acesso ao schema app_private — normalizar aqui dentro exigiria expor o helper
+-- privado. A normalização de entrada do usuário já pertence a shared/lib.
 create function public.search_conversations(
   p_clinic_id uuid,
   p_search text,
+  p_search_phone text,
   p_unread_only boolean,
   p_assigned_to_user_id uuid,
   p_state text,
@@ -569,15 +557,15 @@ as $$
     and (p_assigned_to_user_id is null or c.assigned_to_user_id = p_assigned_to_user_id)
     and (coalesce(trim(p_search), '') = ''
       or contact.full_name ilike '%' || replace(replace(replace(trim(p_search), '\', '\\'), '%', '\%'), '_', '\_') || '%' escape '\'
-      or phone.normalized_value = app_private.try_normalize_whatsapp_phone(p_search))
+      or (p_search_phone is not null and phone.normalized_value = p_search_phone))
   order by c.last_message_at desc nulls last, c.id
   offset (p_page - 1) * p_page_size
   limit p_page_size + 1
 $$;
-alter function public.search_conversations(uuid, text, boolean, uuid, text, integer, integer) owner to postgres;
-revoke all on function public.search_conversations(uuid, text, boolean, uuid, text, integer, integer)
+alter function public.search_conversations(uuid, text, text, boolean, uuid, text, integer, integer) owner to postgres;
+revoke all on function public.search_conversations(uuid, text, text, boolean, uuid, text, integer, integer)
 from public, anon, authenticated;
-grant execute on function public.search_conversations(uuid, text, boolean, uuid, text, integer, integer)
+grant execute on function public.search_conversations(uuid, text, text, boolean, uuid, text, integer, integer)
 to authenticated;
 
 create function public.list_conversation_messages(

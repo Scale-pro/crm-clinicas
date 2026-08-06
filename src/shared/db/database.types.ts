@@ -1672,6 +1672,7 @@ export type Database = {
           p_page: number
           p_page_size: number
           p_search: string
+          p_search_phone: string | null
           p_state: string | null
           p_unread_only: boolean
         }

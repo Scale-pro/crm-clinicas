@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requirePermission } from "@/shared/auth";
 import { createServerSupabaseClient } from "@/shared/db";
+import { normalizeE164Phone } from "@/shared/lib/contact-method";
 
 import { safeAttachmentMetadataSchema, whatsappMessageTypeSchema } from "./contracts";
 
@@ -47,6 +48,7 @@ export async function listConversations(input: unknown) {
     p_page: parsed.data.page,
     p_page_size: parsed.data.pageSize,
     p_search: parsed.data.search,
+    p_search_phone: parsed.data.search ? normalizeE164Phone(parsed.data.search) : null,
     p_state: parsed.data.state,
     p_unread_only: parsed.data.unreadOnly,
   });

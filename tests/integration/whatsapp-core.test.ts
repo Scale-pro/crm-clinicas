@@ -162,6 +162,9 @@ afterAll(async () => {
       "messages", "conversations", "whatsapp_webhook_events", "whatsapp_accounts",
       "opportunity_stage_events", "activities", "opportunities", "pipeline_stages",
       "pipelines", "person_contacts", "contacts",
+      // create_whatsapp_account registra auditoria; sem limpar, o FK de
+      // audit_logs impede a remoção da clínica no fim da suíte.
+      "audit_logs",
     ]) {
       await attempt(() => pool.query(`delete from public.${table} where clinic_id = any($1::uuid[])`, [clinicIds]));
     }
