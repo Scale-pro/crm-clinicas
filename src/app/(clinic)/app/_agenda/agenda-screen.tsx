@@ -46,20 +46,22 @@ const BLOCK_TONES: Readonly<Record<StatusTone, string>> = {
   neutral: "bg-surface border-border",
   accent: "bg-accent/10 border-accent/30",
   success: "bg-success/10 border-success/30",
-  warning: "bg-warning/15 border-warning/40",
+  warning: "bg-warning-surface border-warning/40",
   danger: "bg-destructive/10 border-destructive/30",
 };
 
 /**
  * Densidade do conteúdo pela duração real, para nenhum bloco cortar texto.
- * Os limiares saem de medição no harness visual, não de estimativa: a
- * 5.5rem/hora o conteúdo de cada faixa mede ~41px, ~63px e ~94px, contra
- * caixas de 44px (30min), 66px (45min) e 132px (90min).
+ * Os limiares saem de medição no harness visual, não de estimativa.
  *
- * - `compact` (< 45min): horário + nome numa linha, status na seguinte.
- * - `medium` (45–89min): cabe o procedimento, mas não a pílula de status —
- *   ela vira ponto + rótulo na mesma linha do horário.
- * - `full` (>= 90min): tudo, com a pílula de status.
+ * Em todas as faixas o bloco tem a MESMA estrutura — horário à esquerda e
+ * status à direita na primeira linha, nome na segunda — para que a etiqueta
+ * fique sempre na mesma âncora. O que muda é quanto cabe:
+ *
+ * - `compact` (< 45min): só o horário de início; sem procedimento.
+ * - `medium` (45–89min): intervalo completo e procedimento; status em ponto
+ *   + rótulo, que a pílula não caberia.
+ * - `full` (>= 90min): igual, com a pílula no lugar do ponto.
  */
 function blockDensity(durationMinutes: number): "compact" | "medium" | "full" {
   if (durationMinutes < 45) return "compact";
@@ -231,60 +233,35 @@ export function AgendaScreen({
                     <button
                       aria-label={`${item.timeLabel} às ${item.endLabel}, ${name}, ${appointment.procedureName}, ${STATUS_LABELS[appointment.status]}`}
                       className={cn(
-                        "flex size-full flex-col overflow-hidden rounded-md border border-l-[3px] text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                        density === "compact" ? "justify-center gap-0 px-2 py-0" : density === "medium" ? "gap-0 px-2 py-0.5" : "gap-0.5 px-2 py-1.5",
+                        "flex size-full flex-col overflow-hidden rounded-md border text-left transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                        density === "compact" ? "gap-0 px-2 py-0" : density === "medium" ? "gap-0 px-2 py-0.5" : "gap-0.5 px-2 py-1.5",
                         BLOCK_TONES[tone],
                       )}
                       onClick={() => agenda.select(appointment)}
-                      style={{ borderLeftColor: professional.color }}
                       type="button"
                     >
-                      {density === "compact" ? <>
-                        <span aria-hidden="true" className="shrink-0 truncate text-xs font-medium leading-tight">
-                          {item.timeLabel} · {name}
+                      {/* O status mora sempre no canto superior direito, em
+                          todas as faixas: só o formato muda com o espaço. Ler
+                          uma coluna inteira é varrer uma linha vertical fixa,
+                          não caçar a etiqueta em três lugares diferentes. */}
+                      <span className="flex shrink-0 items-start justify-between gap-1.5">
+                        <span aria-hidden="true" className="shrink truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
+                          {density === "compact" ? item.timeLabel : `${item.timeLabel}–${item.endLabel}`}
                         </span>
                         <span aria-hidden="true" className="shrink-0">
-                          <StatusBadge tone={tone} variant="inline">
+                          <StatusBadge tone={tone} variant={density === "full" ? "pill" : "inline"}>
                             {STATUS_LABELS[appointment.status]}
                           </StatusBadge>
                         </span>
-                      </> : null}
+                      </span>
 
-                      {density === "medium" ? <>
-                        <span className="flex shrink-0 items-center justify-between gap-1.5">
-                          <span aria-hidden="true" className="shrink-0 truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
-                            {item.timeLabel}–{item.endLabel}
-                          </span>
-                          <span aria-hidden="true" className="shrink-0">
-                            <StatusBadge tone={tone} variant="inline">
-                              {STATUS_LABELS[appointment.status]}
-                            </StatusBadge>
-                          </span>
-                        </span>
-                        <span aria-hidden="true" className="shrink-0 truncate text-sm font-medium leading-tight">
-                          {name}
-                        </span>
-                        <span aria-hidden="true" className="shrink-0 truncate text-xs leading-tight text-muted-foreground">
-                          {appointment.procedureName}
-                        </span>
-                      </> : null}
+                      <span aria-hidden="true" className="shrink-0 truncate text-sm font-medium leading-tight">
+                        {name}
+                      </span>
 
-                      {density === "full" ? <>
-                        <span aria-hidden="true" className="shrink-0 truncate text-[0.6875rem] font-medium tabular-nums leading-tight text-muted-foreground">
-                          {item.timeLabel}–{item.endLabel}
-                        </span>
-                        <span aria-hidden="true" className="shrink-0 truncate text-sm font-medium leading-tight">
-                          {name}
-                        </span>
-                        <span aria-hidden="true" className="shrink-0 truncate text-xs leading-tight text-muted-foreground">
-                          {appointment.procedureName}
-                        </span>
-                        <span aria-hidden="true" className="shrink-0 pt-0.5">
-                          <StatusBadge tone={tone}>
-                            {STATUS_LABELS[appointment.status]}
-                          </StatusBadge>
-                        </span>
-                      </> : null}
+                      {density === "compact" ? null : <span aria-hidden="true" className="shrink-0 truncate text-xs leading-tight text-muted-foreground">
+                        {appointment.procedureName}
+                      </span>}
                     </button>
                   </li>;
                 })}
