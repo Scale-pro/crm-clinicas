@@ -114,4 +114,20 @@ export default defineConfig([
       "no-console": "off",
     },
   },
+  {
+    // Exceção fechada: script de seed de desenvolvimento, opt-in e fora de
+    // src/ — não é código de aplicação, então não está sujeito às fronteiras
+    // de módulo nem ao logger sanitizado (CLAUDE.md — "seeds" na lista
+    // fechada de uso de service role).
+    files: ["scripts/seed-dev/**"],
+    rules: {
+      "no-console": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [restrictedSdkPatterns.upstash, restrictedSdkPatterns.moduleInternals],
+        },
+      ],
+    },
+  },
 ]);
