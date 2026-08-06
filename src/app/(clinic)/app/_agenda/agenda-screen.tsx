@@ -1,7 +1,8 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { CalendarRange, List, Plus } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { formatBrlFromCents } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
@@ -88,6 +89,15 @@ export function AgendaScreen({
   timezone,
 }: AgendaWorkspaceData) {
   const agenda = useAgendaActions("/app/agenda");
+  /**
+   * No celular a lista é o padrão: a 390px a grade mostra pouco mais de uma
+   * coluna e exige rolagem lateral, enquanto a lista mostra o dia inteiro com
+   * preço e inclui os cancelados. A grade continua a um toque porque responde
+   * o que a lista não responde — onde há buraco livre e quem está livre ao
+   * mesmo tempo que outro. A partir de `lg` a grade é a única visão, e o
+   * alternador some: as classes de breakpoint vencem o estado.
+   */
+  const [mobileView, setMobileView] = useState<"list" | "grid">("list");
   const dayStart = zonedDayStart(dayKey, timezone);
   const bounds = gridBounds(appointments, dayStart);
   const hours = Array.from(
@@ -130,7 +140,37 @@ export function AgendaScreen({
       </Button>
     </div> : null}
 
-    <div className="scroll-slim min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface">
+    <div
+      aria-label="Visão da agenda no celular"
+      className="flex gap-1 rounded-lg border border-border bg-surface p-1 lg:hidden"
+      role="group"
+    >
+      {([
+        { key: "list", label: "Lista", icon: List },
+        { key: "grid", label: "Grade", icon: CalendarRange },
+      ] as const).map((option) => {
+        const Icon = option.icon;
+        const active = mobileView === option.key;
+        return <button
+          aria-pressed={active}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            active ? "bg-accent/10 text-accent-strong" : "text-muted-foreground hover:bg-muted",
+          )}
+          key={option.key}
+          onClick={() => setMobileView(option.key)}
+          type="button"
+        >
+          <Icon aria-hidden="true" className="size-4" />
+          {option.label}
+        </button>;
+      })}
+    </div>
+
+    <div className={cn(
+      "scroll-slim min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface lg:block",
+      mobileView === "grid" ? "block" : "hidden",
+    )}>
       <div className="min-w-[40rem]">
         {/* Cabeçalho das colunas */}
         <div
@@ -277,7 +317,10 @@ export function AgendaScreen({
 
     {/* Lista equivalente: a grade é visual, mas o dia inteiro continua legível
         em ordem cronológica no celular e por leitor de tela. */}
-    <section aria-label="Agendamentos do dia em lista" className="lg:hidden">
+    <section
+      aria-label="Agendamentos do dia em lista"
+      className={cn("lg:hidden", mobileView === "list" ? "block" : "hidden")}
+    >
       {appointments.length === 0
         ? <EmptyState
           description="Nenhum atendimento marcado para este dia."

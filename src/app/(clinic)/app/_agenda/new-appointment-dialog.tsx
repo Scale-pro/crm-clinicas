@@ -40,6 +40,9 @@ export type SchedulePayload = {
 
 const STEPS = ["Cliente", "Serviço", "Horário"] as const;
 
+/** Passo da grade de horários. Explícito, e o mesmo nas duas chamadas ao núcleo. */
+const SLOT_STEP_MINUTES = 30;
+
 function StepTrail({ step }: { step: number }) {
   return <ol className="flex flex-1 items-center gap-2" aria-label="Etapas da marcação">
     {STEPS.map((label, index) => {
@@ -134,18 +137,40 @@ export function NewAppointmentDialog({
     return matches.slice(0, 8);
   }, [contacts, search]);
 
+  /**
+   * Grade de horários do dia, com os indisponíveis VISÍVEIS e desabilitados.
+   * Um horário que simplesmente some obriga quem atende a adivinhar se ele
+   * não existe ou já foi tomado.
+   *
+   * "Indisponível" é mais amplo que "ocupado": um horário livre às 13:30
+   * também cai fora se o procedimento de 60 min invadir o das 14:00. Por isso o
+   * rótulo fala em espaço para a duração, não em ocupação.
+   *
+   * A grade completa não é remontada aqui: sai do mesmo `availableSlots`,
+   * chamado uma segunda vez com a agenda vazia — sem agendamento nenhum, ele
+   * devolve exatamente todos os horários alinhados ao passo que comportam a
+   * duração. A diferença entre as duas chamadas é, por construção, o conjunto
+   * dos ocupados, já que ocupação é o único motivo pelo qual a função exclui
+   * um horário com os mesmos limites, duração e passo.
+   */
   const slots = useMemo(() => {
     const dayStart = zonedDayStart(dayKey, timezone);
     const professionalAppointments = appointments.filter(
       (appointment) => appointment.professionalId === professionalId,
     );
-    return availableSlots(
+    const bounds = gridBounds(professionalAppointments, dayStart);
+    const free = new Set(availableSlots(
       professionalAppointments,
       dayStart,
-      gridBounds(professionalAppointments, dayStart),
+      bounds,
       durationMinutes,
-    );
+      SLOT_STEP_MINUTES,
+    ));
+    return availableSlots([], dayStart, bounds, durationMinutes, SLOT_STEP_MINUTES)
+      .map((label) => ({ label, taken: !free.has(label) }));
   }, [appointments, dayKey, durationMinutes, professionalId, timezone]);
+
+  const freeCount = slots.filter((slot) => !slot.taken).length;
 
   function reset() {
     setStep(1);
@@ -398,24 +423,30 @@ export function NewAppointmentDialog({
       <div>
         <h3 className="text-lg font-semibold">Escolha o horário</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Horários já ocupados de {selectedProfessional?.name ?? "profissional"} não aparecem.
+          Horários sem espaço para {durationMinutes} min na agenda de{" "}
+          {selectedProfessional?.name ?? "profissional"} aparecem desabilitados — o
+          próprio horário pode estar ocupado ou o atendimento invadiria o seguinte.
           Fuso da clínica: {timezone}.
         </p>
 
-        {slots.length > 0 ? <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {slots.map((slot) => <li key={slot}>
+        {freeCount > 0 ? <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {slots.map((slot) => <li key={slot.label}>
             <button
-              aria-pressed={time === slot}
+              aria-label={slot.taken ? `${slot.label} — sem espaço para ${durationMinutes} min` : slot.label}
+              aria-pressed={time === slot.label}
               className={cn(
                 "w-full rounded-md border py-2 text-sm font-medium tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                time === slot
-                  ? "border-accent bg-accent/10 text-accent-strong"
-                  : "border-border hover:border-accent/60 hover:bg-muted",
+                slot.taken
+                  ? "border-border bg-muted text-muted-foreground line-through decoration-1"
+                  : time === slot.label
+                    ? "border-accent bg-accent/10 text-accent-strong"
+                    : "border-border hover:border-accent/60 hover:bg-muted",
               )}
-              onClick={() => setTime(slot)}
+              disabled={slot.taken || pending}
+              onClick={() => setTime(slot.label)}
               type="button"
             >
-              {slot}
+              {slot.label}
             </button>
           </li>)}
         </ul> : <p className="mt-4 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">

@@ -55,9 +55,13 @@ function Harness() {
             <ChevronRight aria-hidden="true" />
           </Button>
         </div>}
-        description={financeiro
-          ? `06 de agosto de 2026 · derivado dos agendamentos, no fuso ${TIMEZONE}`
-          : `quinta-feira, 06 de agosto de 2026 · fuso ${TIMEZONE}`}
+        description={<>
+          {financeiro ? "06 de agosto de 2026" : "quinta-feira, 06 de agosto de 2026"}
+          {/* Mesmo recorte da rota: o fuso sai abaixo de `sm`. */}
+          <span className="hidden sm:inline">
+            {financeiro ? ` · derivado dos agendamentos, no fuso ${TIMEZONE}` : ` · fuso ${TIMEZONE}`}
+          </span>
+        </>}
         title={financeiro ? "Financeiro" : "Agenda"}
       />
       <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">

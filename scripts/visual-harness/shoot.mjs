@@ -41,6 +41,18 @@ for (const viewport of VIEWPORTS) {
       await page.screenshot({ path: file, fullPage: true });
       console.log(`ok ${file}`);
 
+      // No celular a agenda abre em lista; a grade fica atrás do alternador.
+      if (viewport.name === "mobile" && scenario === "grid") {
+        const gridTab = page.getByRole("button", { name: "Grade" });
+        if (await gridTab.count() > 0) {
+          await gridTab.click();
+          await page.waitForTimeout(300);
+          const file = `${OUT}/grid-${theme}-mobile-grade.png`;
+          await page.screenshot({ path: file, fullPage: true });
+          console.log(`ok ${file}`);
+        }
+      }
+
       // Camadas sobrepostas: abertas por interação real, não por prop, para
       // que a captura mostre o que o usuário veria.
       if (scenario === "grid") {
