@@ -27,7 +27,7 @@ O **estado alvo do primeiro ambiente** (`staging`) é:
 |---|---|---|
 | Banco + Auth | projeto Supabase hospedado, migrations aplicadas por `db push` | criar o projeto e rodar o push |
 | Hospedagem | projeto Vercel com as cinco variáveis da seção 3 | criar o projeto e cadastrar as variáveis |
-| MFA | TOTP habilitado no painel do Supabase | habilitar — sem isso **toda escrita falha** (ver seção 4) |
+| MFA | TOTP habilitado no painel do Supabase | habilitar — sem isso a configuração da operação fica inacessível (ver seção 4) |
 | Configuração de Auth | Site URL e Redirect URLs apontando para `APP_URL` | configurar no painel; hoje não é versionado (ver seção 5) |
 | Fila | — | nada a fazer: não há fila nem variável até a F3 |
 | Observabilidade | — | provedor ainda não decidido ([ADR-012](../adr/ADR-012-seguranca-por-fase-e-governanca.md)) |
@@ -121,11 +121,13 @@ duas últimas são server-only.
 Nem tudo que o ambiente real precisa cabe em variável. Estes ajustes vivem no
 painel do Supabase e **afetam o funcionamento da aplicação**:
 
-- **MFA TOTP habilitado.** As RPCs de escrita chamam
+- **MFA TOTP habilitado.** Boa parte das RPCs de escrita chama
   `app_private.require_aal2()`, que recusa sessão que não seja `aal2`. Com TOTP
-  desabilitado no projeto, o usuário não consegue registrar um fator e **toda
-  escrita fica inacessível** — leitura continua funcionando, o que torna a falha
-  confusa de diagnosticar.
+  desabilitado no projeto o usuário não consegue registrar fator, e **toda a
+  configuração da operação fica inacessível**: profissionais, procedimentos,
+  pipelines, convites e ajustes da clínica. Contatos, oportunidades e a criação
+  da primeira clínica **não** exigem AAL2 — o corte exato está em
+  [primeiro-ambiente](../runbooks/primeiro-ambiente.md#4-configurar-o-auth-do-projeto).
 - **Site URL e Redirect URLs.** A recuperação de senha aponta explicitamente
   para `<APP_URL>/auth/callback`; o cadastro depende do Site URL (ver os
   bloqueios em [primeiro-ambiente](../runbooks/primeiro-ambiente.md)).

@@ -64,6 +64,14 @@ read -rs SUPABASE_DB_URL          # cole a connection string e dê Enter
 pnpm supabase db push --db-url "$SUPABASE_DB_URL"
 ```
 
+> A CLI exige a URI **percent-encoded**. Se a senha do banco tiver `@`, `/`,
+> `#`, `?`, `:` ou espaço, a conexão falha com erro de parsing — que não parece
+> um problema de senha. Codifique só a senha antes de montar a URI:
+>
+> ```bash
+> node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" 'SUA-SENHA'
+> ```
+
 `db push` aplica, em ordem, tudo em `supabase/migrations/`. Confira ao final que
 a contagem de migrations aplicadas bate com a de arquivos no diretório.
 
@@ -89,11 +97,23 @@ Em **Authentication → Providers → Email**: mantenha e-mail/senha habilitado.
 Decida sobre **Confirm email** — o efeito está detalhado no passo 6.
 
 Em **Authentication → Multi-Factor Authentication**: habilite **TOTP (app
-authenticator)**. Isto **não é opcional**: as RPCs de escrita de profissionais,
-procedimentos, pipeline e convites chamam `app_private.require_aal2()`, que
-rejeita qualquer sessão que não seja `aal2`. Sem TOTP habilitado no projeto, o
-usuário não consegue registrar um fator e essas operações ficam todas
-inacessíveis — a leitura funciona, a escrita não.
+authenticator)**. Sem isso o usuário não consegue registrar um segundo fator, e
+tudo que exige `app_private.require_aal2()` fica inacessível.
+
+O corte é específico, e vale conhecê-lo para não diagnosticar errado:
+
+| Exige AAL2 | Não exige |
+|---|---|
+| Configurações da clínica | Criação da clínica (`create_clinic_with_owner`) |
+| Convites e gestão de membros | Contatos e métodos de contato |
+| Pipelines e etapas | Oportunidades (criar, mover, fechar, atribuir) |
+| Profissionais e disponibilidade | Origens de lead |
+| Procedimentos e vínculos | — |
+| Reabrir oportunidade, suporte de plataforma | — |
+
+Ou seja: **o onboarding do passo 6 funciona antes do MFA** — de propósito, senão
+seria impossível criar a primeira clínica. O que trava sem TOTP é a configuração
+da operação: cadastrar profissional, procedimento, pipeline e convidar equipe.
 
 O local usa `minimum_password_length = 6`. Para um ambiente exposto, suba esse
 mínimo no painel; o schema da aplicação não impõe tamanho próprio.
