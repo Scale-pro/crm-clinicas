@@ -1,35 +1,196 @@
+import { Archive, ArrowLeft, Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { getContact, listContactOwners, requireContactEditAccess } from "@/modules/crm";
 import { resolveActiveClinicContext } from "@/modules/tenancy";
 import { requirePermission } from "@/shared/auth";
+import { formatClinicDateTime } from "@/shared/lib/date";
+import { AccessDeniedState } from "@/shared/ui/access-denied-state";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
-import { archiveContactFormAction } from "../actions";
+import { FeedbackBanner } from "@/shared/ui/feedback-banner";
+import { PageToolbar } from "@/shared/ui/page-toolbar";
 
-export default async function ContactPage({ params, searchParams }: { params: Promise<{ contactId: string }>; searchParams: Promise<{ error?: string; status?: string }> }) {
-  const context = await resolveActiveClinicContext();
-  if (context.status !== "ready") redirect("/app");
-  const { contactId } = await params;
-  const [result, owners, editAccess, archivePermission] = await Promise.all([
-    getContact({ clinicId: context.clinic.id, contactId }),
-    listContactOwners(context.clinic.id),
-    requireContactEditAccess(context.clinic.id, contactId),
-    requirePermission(context.clinic.id, "contact.archive"),
+import { archiveContactAction } from "../../_crm/actions";
+import { activityLabel } from "../../_crm/activity-labels";
+import { ContactDetail, type ContactActivityView } from "../../_crm/contact-detail";
+import { loadContactOpportunities } from "../../_crm/contact-opportunities";
+import { crmErrorMessage, mfaHref, requiresMfa } from "../../_crm/crm-errors";
+import {
+  contactMethodDisplayValue,
+  contactMethodKind,
+  scopeLabel,
+  type ContactMethodView,
+} from "../../_crm/crm-view-models";
+
+/**
+ * Lead 360 — visão completa do contato.
+ *
+ * O identificador vem da rota, mas nunca é usado sozinho: toda leitura passa
+ * pelos contratos de `@/modules/crm`, que exigem permissão e escopam a consulta
+ * pela clínica ativa resolvida no servidor. Um identificador de outra clínica
+ * resulta em "não encontrado", nunca em dados alheios.
+ */
+
+const CONTACTS_PATH = "/app/contacts";
+
+const SUCCESS_MESSAGES: Readonly<Record<string, string>> = {
+  archived: "Contato arquivado.",
+  contact_archived: "Contato arquivado.",
+  created: "Contato criado.",
+  updated: "Contato atualizado.",
+};
+
+export default async function ContactDetailPage({ params, searchParams }: {
+  params: Promise<{ contactId: string }>;
+  searchParams: Promise<{ error?: string; status?: string; tab?: string }>;
+}) {
+  const [context, route, query] = await Promise.all([
+    resolveActiveClinicContext(),
+    params,
+    searchParams,
   ]);
+  if (context.status !== "ready") redirect("/app");
+  const clinicId = context.clinic.id;
+  const { contactId } = route;
+  const detailPath = `${CONTACTS_PATH}/${encodeURIComponent(contactId)}`;
+
+  const result = await getContact({ clinicId, contactId });
+
+  const toolbar = <PageToolbar
+    actions={<Button asChild size="sm" variant="outline">
+      <Link href={CONTACTS_PATH}><ArrowLeft aria-hidden="true" />Contatos</Link>
+    </Button>}
+    description="Dados de contato, oportunidades e histórico da pessoa."
+    title="Contato"
+  />;
+
   if (!result.ok) {
-    if (result.code === "not_found" || result.code === "forbidden") notFound();
-    return <div className="p-4 sm:p-5"><ErrorState title="Não foi possível carregar o contato" description="Tente novamente em instantes." /></div>;
+    if (result.code === "not_found" || result.code === "invalid_input") notFound();
+    if (result.code === "forbidden") {
+      return <div className="flex min-h-0 flex-1 flex-col">
+        {toolbar}
+        <div className="p-4 sm:p-5">
+          <AccessDeniedState
+            action={<Button asChild size="sm" variant="outline"><Link href="/app">Voltar à visão geral</Link></Button>}
+            description="Ver contatos exige permissão de visualização. Fale com um responsável da clínica."
+          />
+        </div>
+      </div>;
+    }
+    return <div className="flex min-h-0 flex-1 flex-col">
+      {toolbar}
+      <div className="p-4 sm:p-5">
+        <ErrorState
+          description="Tente novamente em alguns instantes."
+          title="Não foi possível carregar o contato"
+        />
+      </div>
+    </div>;
   }
-  const query = await searchParams;
-  const owner = owners.ok ? owners.owners.find((item) => item.userId === result.contact.owner_user_id) : null;
-  return <section className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><Link className="text-sm underline" href="/app/contacts">Voltar para contatos</Link><h1 className="mt-2 text-2xl font-semibold">{result.contact.full_name}</h1><p className="text-sm text-muted-foreground">{result.contact.archived_at ? "Contato arquivado" : "Contato ativo"}</p></div><div className="flex gap-2">{editAccess.ok ? <Button asChild variant="outline"><Link href={`/app/contacts/${contactId}/edit`}>Editar</Link></Button> : null}{archivePermission.allowed && !result.contact.archived_at ? <form action={archiveContactFormAction}><input name="clinicId" type="hidden" value={context.clinic.id} /><input name="contactId" type="hidden" value={contactId} /><Button type="submit" variant="destructive">Arquivar</Button></form> : null}</div></div>
-    {query.status ? <p className="rounded-md border bg-muted p-3 text-sm" role="status">Alteração concluída.</p> : null}{query.error ? <p className="rounded-md border border-destructive/30 p-3 text-sm text-destructive" role="alert">Não foi possível concluir a ação.</p> : null}
-    <div className="grid gap-4 sm:grid-cols-3"><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Responsável</h2><p className="mt-1 text-sm text-muted-foreground">{owner?.fullName ?? "Sem responsável"}</p></div><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Paciente</h2><p className="mt-1 text-sm text-muted-foreground">{result.patient ? "Vinculado" : "Não vinculado"}</p></div><div className="rounded-lg border bg-background p-4"><h2 className="text-sm font-medium">Versão</h2><p className="mt-1 text-sm text-muted-foreground">{result.contact.version}</p></div></div>
-    <div className="rounded-lg border bg-background p-4"><h2 className="font-semibold">Notas</h2><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{result.contact.notes || "Nenhuma nota cadastrada."}</p></div>
-    <div className="rounded-lg border bg-background p-4"><h2 className="font-semibold">Meios de contato</h2>{result.methods.filter((method) => !method.archived_at).length ? <ul className="mt-3 space-y-2">{result.methods.filter((method) => !method.archived_at).map((method) => <li className="flex flex-wrap gap-2 text-sm" key={method.id}><span className="font-medium">{method.kind === "phone" ? "Telefone" : "E-mail"}:</span><span>{method.raw_value}</span>{method.label ? <span className="text-muted-foreground">({method.label})</span> : null}{method.is_primary ? <span className="rounded bg-muted px-2">Principal</span> : null}{method.is_whatsapp ? <span className="rounded bg-muted px-2">WhatsApp</span> : null}</li>)}</ul> : <p className="mt-2 text-sm text-muted-foreground">Nenhum meio ativo.</p>}</div>
-    <div className="rounded-lg border bg-background p-4"><h2 className="font-semibold">Histórico básico</h2>{result.activities.length ? <ul className="mt-3 space-y-2">{result.activities.map((activity) => <li className="text-sm" key={activity.id}><span className="font-medium">{activity.type}</span><span className="ml-2 text-muted-foreground">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: context.clinic.timezone }).format(new Date(activity.occurred_at))}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted-foreground">Nenhuma atividade disponível.</p>}</div>
-  </section>;
+
+  const [owners, editAccess, archivePermission, opportunities] = await Promise.all([
+    listContactOwners(clinicId),
+    requireContactEditAccess(clinicId, contactId),
+    requirePermission(clinicId, "contact.archive"),
+    loadContactOpportunities({ clinicId, contactId, timezone: context.clinic.timezone }),
+  ]);
+
+  const contact = result.contact;
+  const methods: readonly ContactMethodView[] = result.methods
+    .filter((method) => method.archived_at === null)
+    .map((method) => ({
+      displayValue: contactMethodDisplayValue(method.kind, method.raw_value),
+      id: method.id,
+      isPrimary: method.is_primary,
+      isWhatsapp: method.is_whatsapp,
+      kind: contactMethodKind(method.kind),
+      label: method.label,
+      rawValue: method.raw_value,
+    }));
+
+  const activities: readonly ContactActivityView[] = result.activities.map((activity) => ({
+    id: activity.id,
+    label: activityLabel(activity.type),
+    occurredAtLabel: formatClinicDateTime(activity.occurred_at, context.clinic.timezone),
+  }));
+
+  const ownerName = contact.owner_user_id === null
+    ? null
+    : owners.ok
+      ? owners.owners.find((item) => item.userId === contact.owner_user_id)?.fullName ?? "Membro da clínica"
+      : "Membro da clínica";
+
+  // Falha de leitura não vira lista vazia: `null` diz "não carregou", e a aba
+  // mostra o erro em vez de afirmar que o contato não tem oportunidades.
+  const opportunityRows = opportunities.status === "ok" ? opportunities.rows : null;
+  const opportunitiesNote = opportunities.status === "ok"
+    ? [
+      scopeLabel(opportunities.scope, "oportunidades"),
+      opportunities.complete
+        ? ""
+        : "A busca do quadro não filtra por contato, então esta lista pode estar incompleta em clínicas com muitas oportunidades.",
+    ].filter(Boolean).join(" ")
+    : opportunities.status === "forbidden"
+      ? "Você não tem permissão para ver oportunidades nesta clínica."
+      : undefined;
+
+  const actions = <>
+    {editAccess.ok ? <Button asChild size="sm" variant="outline">
+      <Link href={`${detailPath}/edit`}><Pencil aria-hidden="true" />Editar</Link>
+    </Button> : null}
+    {archivePermission.allowed && contact.archived_at === null
+      ? <form action={archiveContactAction}>
+        <input name="contactId" type="hidden" value={contact.id} />
+        <Button size="sm" type="submit" variant="outline">
+          <Archive aria-hidden="true" />
+          Arquivar
+        </Button>
+      </form>
+      : null}
+  </>;
+
+  const error = query.error ?? "";
+
+  return <div className="flex min-h-0 flex-1 flex-col">
+    {toolbar}
+    <div className="scroll-slim min-h-0 flex-1 space-y-3 overflow-auto p-4 sm:p-5">
+      {query.status && SUCCESS_MESSAGES[query.status]
+        ? <FeedbackBanner tone="success">{SUCCESS_MESSAGES[query.status]}</FeedbackBanner>
+        : null}
+      {error ? <FeedbackBanner tone={requiresMfa(error) ? "warning" : "error"}>
+        {crmErrorMessage(error)}
+        {requiresMfa(error) ? <>
+          {" "}
+          <Link className="underline underline-offset-4" href={mfaHref(detailPath)}>Verificar agora</Link>.
+        </> : null}
+      </FeedbackBanner> : null}
+      {opportunities.status === "forbidden" && opportunitiesNote
+        ? <FeedbackBanner tone="warning">{opportunitiesNote}</FeedbackBanner>
+        : null}
+
+      <ContactDetail
+        actions={actions}
+        activities={activities}
+        contact={{
+          archived: contact.archived_at !== null,
+          createdAtLabel: formatClinicDateTime(contact.created_at, context.clinic.timezone),
+          fullName: contact.full_name,
+          id: contact.id,
+          isPatient: result.patient !== null,
+          methods,
+          notes: contact.notes,
+          ownerName,
+          patientSinceLabel: result.patient?.became_patient_at
+            ? formatClinicDateTime(result.patient.became_patient_at, context.clinic.timezone)
+            : null,
+          updatedAtLabel: formatClinicDateTime(contact.updated_at, context.clinic.timezone),
+        }}
+        defaultTabKey={query.tab}
+        opportunities={opportunityRows}
+        opportunitiesNote={opportunities.status === "ok" ? opportunitiesNote : undefined}
+      />
+    </div>
+  </div>;
 }
